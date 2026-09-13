@@ -1,0 +1,37 @@
+# Development image for Tracky.
+#
+# Dependencies are installed inside the image so the native binaries (Next's
+# SWC, Tailwind's oxide, esbuild) match the container's Linux/musl target
+# rather than the Windows host. docker-compose keeps /app/node_modules on a
+# named volume so the bind-mounted source never shadows them.
+FROM node:24-alpine
+
+# Next's SWC binaries need glibc compatibility on Alpine.
+RUN apk add --no-cache libc6-compat
+
+WORKDIR /app
+
+# Install first, so editing source does not invalidate the dependency layer.
+# package.json carries the `allowScripts` approvals npm 11 needs to build
+# esbuild and unrs-resolver.
+COPY package.json package-lock.json ./
+RUN npm ci
+
+COPY . .
+
+ENV NODE_ENV=development
+ENV NEXT_TELEMETRY_DISABLED=1
+# Bind to every interface so the port publishes out of the container.
+ENV HOSTNAME=0.0.0.0
+
+EXPOSE 3000
+
+# Turbopack, matching the bundler the production build uses.
+#
+# Note for Windows and macOS hosts: filesystem events do not cross a Docker
+# Desktop bind mount, and Turbopack has no polling fallback, so the dev server
+# inside the container will not notice your edits — run `npm run docker:restart`
+# after changing a file. Webpack does poll, but Next 16 cannot compile this
+# app's edge middleware under webpack: it rejects the `node:crypto` import that
+# `lib/crypto/secrets.ts` needs. A broken app is a worse trade than a restart.
+CMD ["npm", "run", "dev"]

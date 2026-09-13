@@ -1,0 +1,115 @@
+# Local development stack for Tracky.
+#
+#   docker compose up --build          start Postgres, the Neon HTTP proxy and the app
+#   docker compose run --rm migrate    apply drizzle/*.sql
+#   docker compose run --rm seed       create the demo store and accounts
+#
+# Production runs on Vercel + Neon; this stack only reproduces the database
+# layer locally. Resend, QStash and Vercel Blob are not emulated — see README.
+
+name: tracky
+
+services:
+  # ---------------------------------------------------------------------------
+  # Plain Postgres. Neon in production, an ordinary container here.
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tracky
+      POSTGRES_PASSWORD: tracky
+      POSTGRES_DB: tracky
+    ports:
+      # Exposed so drizzle-kit, psql and Drizzle Studio can reach it from the host.
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tracky -d tracky"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  # ---------------------------------------------------------------------------
+  # Neon's HTTP protocol in front of that Postgres.
+  #
+  # The app talks to Postgres through @neondatabase/serverless, which speaks
+  # Neon's HTTP API rather than the Postgres wire protocol. This proxy lets the
+  # exact same driver — and therefore the exact same application code — run
+  # against a local database.
+  # ---------------------------------------------------------------------------
+  neon-proxy:
+    image: ghcr.io/timowilhelm/local-neon-http-proxy:main
+    restart: unless-stopped
+    environment:
+      PG_CONNECTION_STRING: postgres://tracky:tracky@postgres:5432/tracky
+    ports:
+      - "4444:4444"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ---------------------------------------------------------------------------
+  # The Next.js dev server.
+  # ---------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    restart: unless-stopped
+    env_file:
+      - .env.docker
+    ports:
+      - "3000:3000"
+    volumes:
+      # Live reload from the host…
+      - .:/app
+      # …but keep the Linux-native dependencies and build cache in the container.
+      - app-node-modules:/app/node_modules
+      - app-next-cache:/app/.next
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neon-proxy:
+        condition: service_started
+
+  # ---------------------------------------------------------------------------
+  # One-shot tasks. `run --rm`, never started by `up`.
+  # ---------------------------------------------------------------------------
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    profiles: ["tools"]
+    env_file:
+      - .env.docker
+    volumes:
+      - .:/app
+      - app-node-modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["npm", "run", "db:migrate"]
+
+  seed:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    profiles: ["tools"]
+    env_file:
+      - .env.docker
+    volumes:
+      - .:/app
+      - app-node-modules:/app/node_modules
+    depends_on:
+      postgres:
+        condition: service_healthy
+      neon-proxy:
+        condition: service_started
+    command: ["npm", "run", "seed", "--", "--with-order"]
+
+volumes:
+  postgres-data:
+  app-node-modules:
+  app-next-cache:

@@ -1,0 +1,23 @@
+# Build output and dependencies are produced inside the image.
+node_modules
+.next
+out
+build
+
+# Local state and secrets never belong in an image layer.
+.env
+.env.local
+.env*.local
+.git
+.gitignore
+
+# Editor / OS noise
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Docs and specs are not needed at runtime.
+context.md
+docs
+README.md

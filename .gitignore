@@ -39,3 +39,13 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Local environment — real secrets never get committed.
+.env
+.env.local
+.env*.local
+
+# …but these two carry no real secrets and ARE meant to be committed:
+# the documented template, and the throwaway Docker dev values.
+!.env.example
+!.env.docker

@@ -1,0 +1,30 @@
+# Shopify app configuration (public OAuth app).
+# Deploy with `shopify app deploy`, or mirror these values in the Partner
+# dashboard. Replace APP_URL with your deployed origin.
+
+name = "Tracky"
+client_id = "REPLACE_WITH_SHOPIFY_API_KEY"
+application_url = "https://APP_URL"
+embedded = false
+
+[access_scopes]
+scopes = "read_orders,write_orders,read_fulfillments,write_fulfillments"
+
+[auth]
+redirect_urls = [ "https://APP_URL/api/shopify/callback" ]
+
+# Public tracking page served on the merchant's own domain:
+#   https://<merchant-domain>/apps/track-order
+# Shopify forwards the request (with a `signature` query parameter) to the URL
+# below, and the route verifies that signature before rendering anything.
+[app_proxy]
+url = "https://APP_URL/proxy/track-order"
+subpath = "track-order"
+prefix = "apps"
+
+[webhooks]
+api_version = "2025-07"
+
+  [[webhooks.subscriptions]]
+  topics = [ "orders/create", "orders/updated", "orders/cancelled", "fulfillments/create", "app/uninstalled" ]
+  uri = "https://APP_URL/api/shopify/webhooks"
