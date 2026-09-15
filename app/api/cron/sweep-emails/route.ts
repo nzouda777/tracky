@@ -1,58 +1,72 @@
-import { and, asc, eq, lte } from "drizzle-orm";
 import { NextResponse, type NextRequest } from "next/server";
 
-import { db, emailSends } from "@/lib/db";
-import { dispatchEmailSend } from "@/lib/email/send";
-import { env } from "@/lib/env";
 import { safeEqual } from "@/lib/crypto/secrets";
+import { sweepDueEmails } from "@/lib/email/sweep";
+import { env } from "@/lib/env";
+import { verifyQstashSignature } from "@/lib/queue/qstash";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-/** Upper bound per run, so one sweep always finishes inside the time limit. */
-const BATCH_SIZE = 50;
-
 /**
- * Fallback sweep for scheduled emails that are due but were never delivered by
- * QStash — a queue outage, a missed publish, or a send that failed to enqueue.
+ * Fallback sweep for scheduled emails that are due but were never delivered
+ * by QStash. The work itself lives in `lib/email/sweep.ts`; this file is only
+ * about who is allowed to ask for it.
  *
- * It is a safety net, not the primary path: QStash handles exact timing, and
- * `dispatchEmailSend` skips rows that are no longer `scheduled`, so the two can
- * run at the same time without double-sending.
+ * Two schedulers call it, because one of them cannot call it often enough:
  *
- * Wire it up in vercel.json as a cron on `/api/cron/sweep-emails`.
+ *   GET  — Vercel Cron, authenticated with `CRON_SECRET`. On the Hobby plan
+ *          Vercel permits a single daily run, so `vercel.json` asks for one.
+ *   POST — an Upstash QStash schedule, authenticated by its signature, every
+ *          15 minutes. This is the one that actually keeps the net tight.
+ *
+ * The sweep is idempotent, so both firing at once is harmless.
+ *
+ * POST also accepts the `CRON_SECRET` bearer token, so any other scheduler
+ * (GitHub Actions, cron-job.org, a Pro-plan Vercel cron) can drive it without
+ * a code change.
  */
 export async function GET(request: NextRequest) {
-  if (!isAuthorised(request)) {
+  if (!hasCronSecret(request)) {
     return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
   }
 
-  const due = await db
-    .select({ id: emailSends.id })
-    .from(emailSends)
-    .where(
-      and(
-        eq(emailSends.status, "scheduled"),
-        lte(emailSends.scheduledFor, new Date()),
-      ),
-    )
-    .orderBy(asc(emailSends.scheduledFor))
-    .limit(BATCH_SIZE);
-
-  const results = { sent: 0, skipped: 0, failed: 0 };
-
-  for (const row of due) {
-    const result = await dispatchEmailSend(row.id);
-    if (result.status === "sent") results.sent += 1;
-    else if (result.status === "skipped") results.skipped += 1;
-    else results.failed += 1;
-  }
-
-  return NextResponse.json({ ok: true, examined: due.length, ...results });
+  const result = await sweepDueEmails();
+  return NextResponse.json({ ok: true, via: "cron-secret", ...result });
 }
 
-function isAuthorised(request: NextRequest): boolean {
+export async function POST(request: NextRequest) {
+  // Read the body first: the QStash signature covers it, so it has to be the
+  // exact bytes that arrived.
+  const rawBody = await request.text();
+
+  if (hasCronSecret(request)) {
+    const result = await sweepDueEmails();
+    return NextResponse.json({ ok: true, via: "cron-secret", ...result });
+  }
+
+  const verified = await verifyQstashSignature({
+    body: rawBody,
+    signature: request.headers.get("upstash-signature"),
+  });
+
+  if (verified === "unconfigured") {
+    return NextResponse.json(
+      { error: "QStash signing keys are not configured." },
+      { status: 503 },
+    );
+  }
+
+  if (!verified) {
+    return NextResponse.json({ error: "Unauthorised." }, { status: 401 });
+  }
+
+  const result = await sweepDueEmails();
+  return NextResponse.json({ ok: true, via: "qstash", ...result });
+}
+
+function hasCronSecret(request: NextRequest): boolean {
   const header = request.headers.get("authorization") ?? "";
   const token = header.startsWith("Bearer ") ? header.slice(7) : "";
   try {

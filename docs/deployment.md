@@ -236,23 +236,51 @@ npx vercel --prod
 | Function region    | the same region as your Neon project                       |
 | Custom domain      | the origin you chose in step 2                             |
 
-### The cron caveat
+### Scheduling: Vercel does what it can, QStash does the rest
 
-`vercel.json` declares the fallback sweep:
+**Vercel's Hobby plan runs a cron job at most once per day.** A `vercel.json`
+asking for anything more is rejected at deploy time:
 
-```json
-{ "crons": [{ "path": "/api/cron/sweep-emails", "schedule": "*/15 * * * *" }] }
+> Hobby accounts are limited to daily cron jobs. This cron expression
+> (`*/15 * * * *`) would run more than once per day.
+
+So the recurring work is split, and Hobby is enough for all of it:
+
+| | Schedule | Set up by | Authenticated by |
+| --- | --- | --- | --- |
+| **Vercel Cron** | `0 3 * * *` — once a day, the plan maximum | `vercel.json`, nothing to run | `Authorization: Bearer $CRON_SECRET`, which Vercel sends automatically |
+| **QStash schedule** | `*/15 * * * *` — the real safety net | `npm run qstash:setup` | its Upstash signature (and the same bearer token) |
+
+Both call `POST`/`GET /api/cron/sweep-emails`. The sweep skips any row that is
+no longer `scheduled`, so the two firing at the same minute is harmless.
+
+Register the QStash half once, after your first deploy:
+
+```bash
+npm run qstash:setup     # create or update the schedule
+npm run qstash:list      # show what QStash currently has
+npm run qstash:remove    # delete it
 ```
 
-**Vercel's Hobby plan runs cron jobs at most once per day**, so this schedule
-needs a Pro plan. On Hobby you have three options:
+It reads `QSTASH_TOKEN`, `CRON_SECRET` and `APP_URL` from your local `.env`, so
+point `APP_URL` at the **deployed** origin — QStash calls in over the internet
+and cannot reach `localhost`. The script refuses rather than registering a
+schedule that can never fire. It is safe to re-run: the schedule has a fixed
+id, so a second run updates it instead of adding a duplicate.
 
-1. Upgrade to Pro.
-2. Change the schedule to `0 3 * * *` and accept a daily safety net. QStash is
-   still the primary path, so this only delays recovery from a QStash outage.
-3. Remove the `crons` block and call `/api/cron/sweep-emails` from an external
-   scheduler (a QStash schedule, GitHub Actions, cron-job.org), sending
-   `Authorization: Bearer <CRON_SECRET>`.
+Confirm it afterwards in **Platform → System health → The sweep**, which reads
+the live schedule back from QStash.
+
+Set `QSTASH_SWEEP_CRON` to override `*/15 * * * *` and re-run `qstash:setup`.
+
+**If you upgrade to Vercel Pro**, change `vercel.json` to `*/15 * * * *` and
+run `npm run qstash:remove`. Nothing else changes — the endpoint is the same.
+`tests/scheduling.test.ts` pins the Hobby-safe expression, so loosen that test
+in the same commit.
+
+Note that none of this affects *when customers get their email*. Each send is
+handed to QStash at the moment it is scheduled; the sweep only exists to catch
+sends QStash never delivered.
 
 The route declares `maxDuration = 60` and processes at most 50 due emails per
 run, which fits inside every plan's limit.
@@ -278,11 +306,11 @@ previews).
 | `SHOPIFY_API_SECRET` | Shopify app client secret | Signs webhooks, OAuth and App Proxy. |
 | `RESEND_API_KEY` | `re_…` | |
 | `RESEND_FROM_EMAIL` | `notifications@your-domain` | Must be on a verified domain. |
-| `QSTASH_TOKEN` | Upstash publish token | |
+| `QSTASH_TOKEN` | Upstash publish token | Also used by `npm run qstash:setup`. |
 | `QSTASH_CURRENT_SIGNING_KEY` | Upstash signing key | |
 | `QSTASH_NEXT_SIGNING_KEY` | Upstash next signing key | |
 | `BLOB_READ_WRITE_TOKEN` | `vercel_blob_rw_…` | Injected automatically if you connected the store to the project. |
-| `CRON_SECRET` | any long random string | Vercel sends it to cron routes as `Authorization: Bearer …`. |
+| `CRON_SECRET` | any long random string | Vercel sends it to cron routes as `Authorization: Bearer …`; the QStash schedule sends it too. |
 
 ### Optional
 
@@ -292,6 +320,7 @@ previews).
 | `RESEND_FROM_NAME` | `Tracky` | Fallback `From` name. |
 | `SHOPIFY_SCOPES` | `read_orders,write_orders,read_fulfillments,write_fulfillments` | Keep in sync with the Partner dashboard. |
 | `SHOPIFY_API_VERSION` | `2025-07` | See the note in step 14 before changing. |
+| `QSTASH_SWEEP_CRON` | `*/15 * * * *` | How often the QStash sweep runs. Re-run `npm run qstash:setup` after changing it. |
 
 ### Must NOT be set in production
 
@@ -501,9 +530,13 @@ select count(*) from webhook_events where shopify_event_id = 'probe-1';  -- 0
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" $APP/api/cron/sweep-emails                        # 401
+curl -s -o /dev/null -w "%{http_code}\n" -X POST $APP/api/cron/sweep-emails                # 401
 curl -s -o /dev/null -w "%{http_code}\n" -H "Authorization: Bearer $CRON_SECRET" \
   $APP/api/cron/sweep-emails                                                                # 200
 ```
+
+The unsigned `POST` is refused too: that is the door the QStash schedule comes
+through, and only a valid Upstash signature or the bearer token opens it.
 
 ### The tracking page refuses direct hits
 
@@ -645,7 +678,7 @@ The stack assumes Vercel, but nothing is unportable. If you self-host:
 
 | Vercel feature | What you need instead |
 | --- | --- |
-| `vercel.json` crons | Any scheduler hitting `/api/cron/sweep-emails` with `Authorization: Bearer $CRON_SECRET` |
+| `vercel.json` crons | Nothing — the QStash schedule already carries the frequent sweep, and it does not care where the app is hosted. Drop the file, or keep any scheduler hitting `/api/cron/sweep-emails` with `Authorization: Bearer $CRON_SECRET` |
 | Vercel Blob | An S3-compatible bucket; rewrite `app/api/blob/upload/route.ts` and the two `upload()` call sites in `components/agency/mark-delivered-form.tsx` and `app/admin/branding/branding-editor.tsx` |
 | `after()` | Works in any Node deployment of Next 16 |
 | Neon | Any Postgres — but `@neondatabase/serverless` speaks Neon's HTTP protocol, so either put a Neon HTTP proxy in front of it (see `docker-compose.yml`) or switch `lib/db/index.ts` to `drizzle-orm/node-postgres`, which is a five-line change |
@@ -669,7 +702,8 @@ multi-stage build using `next build` with `output: "standalone"`.
 [ ] Blob store connected to the Vercel project
 [ ] All required environment variables set on Production
 [ ] NEON_HTTP_ENDPOINT and ALLOW_UNSIGNED_APP_PROXY confirmed NOT set
-[ ] Cron plan limitation resolved (Pro, daily schedule, or external scheduler)
+[ ] npm run qstash:setup run against the deployed APP_URL
+[ ] Platform → System health → The sweep shows the QStash schedule active
 [ ] Migrations applied; 13 tables present
 [ ] npm run db:check reports the database in step with the code
 [ ] Shopify app created; client id and secret in Vercel; redeployed

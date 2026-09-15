@@ -119,6 +119,8 @@ describe("stage transitions are event-driven only", () => {
     const scheduledPaths = [
       "lib/email/scheduler.ts",
       "lib/email/send.ts",
+      "lib/email/sweep.ts",
+      "lib/queue/qstash.ts",
       "app/api/cron/sweep-emails/route.ts",
       "app/api/jobs/send-email/route.ts",
     ];

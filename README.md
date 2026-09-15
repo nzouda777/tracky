@@ -44,7 +44,7 @@ These rules are enforced in code (`lib/orders/transitions.ts`,
 | Hosting        | Vercel                                               |
 | Database       | Neon (serverless Postgres)                           |
 | ORM            | Drizzle ORM, Neon HTTP driver                        |
-| Scheduling     | Upstash QStash, with a Vercel Cron fallback sweep    |
+| Scheduling     | Upstash QStash (delayed sends + the 15-minute sweep), with a daily Vercel Cron backstop |
 | Email          | Resend + React Email, shared platform sending domain |
 | File storage   | Vercel Blob (logos, photos of signed delivery notes) |
 | Auth           | Auth.js (NextAuth) v5, credentials + JWT sessions    |
@@ -198,11 +198,14 @@ Webhooks are registered automatically at install time:
 
 1. Import the repository and set every variable from `.env.example` in the
    Vercel project settings. Set `APP_URL` to the production origin.
-2. `vercel.json` already declares the fallback cron
-   (`/api/cron/sweep-emails`, every 15 minutes). Set `CRON_SECRET` so the
+2. `vercel.json` declares the fallback sweep (`/api/cron/sweep-emails`) once a
+   day, which is all Vercel's Hobby plan allows. Set `CRON_SECRET` so the
    endpoint refuses unauthenticated calls.
 3. Add the QStash signing keys so `/api/jobs/send-email` can verify callbacks.
-4. Run the migration against the production database:
+4. Run `npm run qstash:setup` with `APP_URL` pointing at the deployment. That
+   registers the **every 15 minutes** sweep with QStash — the part Hobby cannot
+   run. Check it afterwards under Platform → System health → The sweep.
+5. Run the migration against the production database:
    `DATABASE_URL=... npm run db:migrate`.
 
 ### The two customer tracking surfaces
@@ -281,9 +284,8 @@ covers the three cases a webhook cannot:
   the event permanently);
 - a store reconnected after a period of being uninstalled.
 
-Note that the Vercel Cron job does **not** sync orders — it only sweeps
-scheduled email that QStash failed to deliver. Nothing polls Shopify on a
-schedule, by design.
+Note that neither scheduler syncs orders — both only sweep scheduled email that
+QStash failed to deliver. Nothing polls Shopify on a schedule, by design.
 
 An order the app already holds only has its Shopify-owned fields refreshed
 (number, customer, address, line items, total, cancellation). Its stage,

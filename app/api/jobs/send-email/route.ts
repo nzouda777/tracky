@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 
 import { dispatchEmailSend } from "@/lib/email/send";
-import { isConfigured, optional } from "@/lib/env";
+import { verifyQstashSignature } from "@/lib/queue/qstash";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,32 +15,20 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(request: NextRequest) {
   const rawBody = await request.text();
-  const signature = request.headers.get("upstash-signature");
 
-  if (
-    !isConfigured("QSTASH_CURRENT_SIGNING_KEY", "QSTASH_NEXT_SIGNING_KEY")
-  ) {
+  const verified = await verifyQstashSignature({
+    body: rawBody,
+    signature: request.headers.get("upstash-signature"),
+  });
+
+  if (verified === "unconfigured") {
     return NextResponse.json(
       { error: "QStash signing keys are not configured." },
       { status: 503 },
     );
   }
 
-  if (!signature) {
-    return NextResponse.json({ error: "Missing signature." }, { status: 401 });
-  }
-
-  const { Receiver } = await import("@upstash/qstash");
-  const receiver = new Receiver({
-    currentSigningKey: optional("QSTASH_CURRENT_SIGNING_KEY", ""),
-    nextSigningKey: optional("QSTASH_NEXT_SIGNING_KEY", ""),
-  });
-
-  const valid = await receiver
-    .verify({ signature, body: rawBody })
-    .catch(() => false);
-
-  if (!valid) {
+  if (!verified) {
     return NextResponse.json({ error: "Invalid signature." }, { status: 401 });
   }
 

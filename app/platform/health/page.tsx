@@ -13,6 +13,11 @@ import {
 import { requirePlatformAdmin } from "@/lib/auth/platform";
 import { getPlatformTotals, getWebhookHealth } from "@/lib/platform/queries";
 import { env, isConfigured } from "@/lib/env";
+import {
+  VERCEL_DAILY_CRON,
+  getSweepScheduleStatus,
+  type SweepScheduleStatus,
+} from "@/lib/queue/qstash";
 import { formatRelative } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "System health" };
@@ -20,9 +25,11 @@ export const metadata: Metadata = { title: "System health" };
 export default async function PlatformHealthPage() {
   await requirePlatformAdmin();
 
-  const [totals, webhooks] = await Promise.all([
+  const [totals, webhooks, sweepSchedule] = await Promise.all([
     getPlatformTotals(),
     getWebhookHealth(7),
+    // Never throws: a failed health check must not take the health page down.
+    getSweepScheduleStatus(),
   ]);
 
   // Whether each integration is wired up at all. These read config, never
@@ -118,13 +125,23 @@ export default async function PlatformHealthPage() {
               <Row label="Failed" value={totals.failedEmails} bad />
             </dl>
             <p className="mt-3 text-xs text-ink-500">
-              A send that stays queued past its time is picked up by the Vercel
-              Cron sweep, which runs every 15 minutes. Failures keep the
-              provider&rsquo;s reason on the order&rsquo;s email log.
+              A send that stays queued past its time is picked up by the sweep.
+              Failures keep the provider&rsquo;s reason on the order&rsquo;s
+              email log.
             </p>
           </CardBody>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader
+          title="The sweep"
+          description="What re-sends scheduled email that QStash never delivered."
+        />
+        <CardBody>
+          <SweepSchedule status={sweepSchedule} />
+        </CardBody>
+      </Card>
 
       <Card>
         <CardHeader
@@ -188,6 +205,83 @@ export default async function PlatformHealthPage() {
         </CardBody>
       </Card>
     </div>
+  );
+}
+
+/**
+ * The sweep runs on two schedulers, and the reason is worth stating on the
+ * page: Vercel's Hobby plan permits one cron run per day and nothing more, so
+ * the frequent run has to live somewhere else.
+ */
+function SweepSchedule({ status }: { status: SweepScheduleStatus }) {
+  const qstash =
+    status.state === "active"
+      ? {
+          tone: status.paused ? "var(--viz-warning)" : "var(--viz-good)",
+          label: status.paused
+            ? `Paused — ${status.cron}`
+            : `Every run of ${status.cron}`,
+        }
+      : status.state === "missing"
+        ? {
+            tone: "var(--viz-warning)",
+            label: "No schedule registered — run npm run qstash:setup",
+          }
+        : status.state === "not-configured"
+          ? { tone: "var(--viz-warning)", label: "QSTASH_TOKEN is not set" }
+          : { tone: "var(--viz-warning)", label: `Unreachable — ${status.error}` };
+
+  return (
+    <>
+      <ul className="divide-y divide-ink-100 -my-2.5">
+        <li className="flex gap-3 py-2.5">
+          <span
+            aria-hidden
+            className="mt-1.5 size-2 shrink-0 rounded-full"
+            style={{ backgroundColor: "var(--viz-good)" }}
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-ink-900">
+              Vercel Cron{" "}
+              <span className="text-xs font-normal text-ink-500">
+                — {VERCEL_DAILY_CRON}, once a day
+              </span>
+            </p>
+            <p className="text-xs text-ink-500">
+              Declared in <code>vercel.json</code>. The Hobby plan allows one
+              run per day, which is why it is not the main sweep.
+            </p>
+          </div>
+        </li>
+
+        <li className="flex gap-3 py-2.5">
+          <span
+            aria-hidden
+            className="mt-1.5 size-2 shrink-0 rounded-full"
+            style={{ backgroundColor: qstash.tone }}
+          />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-ink-900">
+              QStash schedule{" "}
+              <span className="text-xs font-normal text-ink-500">
+                — {qstash.label}
+              </span>
+            </p>
+            <p className="text-xs text-ink-500">
+              {status.state === "active"
+                ? status.destination
+                : "Registered with npm run qstash:setup. This is the frequent sweep."}
+            </p>
+          </div>
+        </li>
+      </ul>
+
+      <p className="mt-3 text-xs text-ink-500">
+        Both call the same endpoint, and the sweep skips anything already sent,
+        so an overlap is harmless. Delayed email itself does not depend on
+        either: each send is queued with QStash at the moment it is scheduled.
+      </p>
+    </>
   );
 }
 

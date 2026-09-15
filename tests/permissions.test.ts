@@ -223,8 +223,43 @@ describe("server-side authorisation", () => {
   });
 
   it("the cron sweep and the QStash job both authenticate their caller", () => {
-    expect(read("app/api/cron/sweep-emails/route.ts")).toContain("safeEqual(");
-    expect(read("app/api/jobs/send-email/route.ts")).toContain("Receiver");
+    const sweep = read("app/api/cron/sweep-emails/route.ts");
+    // The sweep answers to two schedulers, so it needs both checks.
+    expect(sweep).toContain("safeEqual(");
+    expect(sweep).toContain("verifyQstashSignature(");
+
+    expect(read("app/api/jobs/send-email/route.ts")).toContain(
+      "verifyQstashSignature(",
+    );
+
+    // …and the shared verifier really verifies, rather than waving it through.
+    const verifier = read("lib/queue/qstash.ts");
+    expect(verifier).toContain("Receiver");
+    expect(verifier).toContain("receiver.verify(");
+  });
+
+  /**
+   * Every entry point of the sweep must authenticate. It deletes nothing and
+   * sends only what is already due, but an open endpoint would still let
+   * anyone drain the queue at a time of their choosing.
+   */
+  it("no sweep handler runs before it has checked the caller", () => {
+    const sweep = read("app/api/cron/sweep-emails/route.ts");
+    const handlers = sweep.match(/export async function (GET|POST)/g) ?? [];
+    expect(handlers.length).toBeGreaterThan(0);
+
+    for (const handler of handlers) {
+      const body = sweep.slice(sweep.indexOf(handler));
+      const firstSweep = body.indexOf("sweepDueEmails()");
+      const firstCheck = Math.min(
+        ...[body.indexOf("hasCronSecret("), body.indexOf("verifyQstashSignature(")]
+          .filter((index) => index >= 0)
+          .concat(Number.MAX_SAFE_INTEGER),
+      );
+      expect(firstCheck, `${handler} must authenticate first`).toBeLessThan(
+        firstSweep,
+      );
+    }
   });
 
   /**
