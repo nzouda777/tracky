@@ -52,7 +52,7 @@ export default async function PlatformOverviewPage() {
             href="/platform/audit"
             className="text-sm font-medium text-ink-600 underline underline-offset-2"
           >
-            Audit log →
+            Audit log
           </Link>
         }
       />
@@ -69,7 +69,7 @@ export default async function PlatformOverviewPage() {
               suspended > 0 ? `${suspended} suspended` : null,
             ]
               .filter(Boolean)
-              .join(" · ") || "All healthy"
+              .join(", ") || "All healthy"
           }
           href="/platform/stores"
           emphasis

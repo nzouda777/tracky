@@ -33,7 +33,7 @@ export function ConnectStoreForm() {
         label="Store address"
         htmlFor="connect-shop"
         error={state.fieldErrors?.shop}
-        hint="Any of these work: acme-supply · acme-supply.myshopify.com · admin.shopify.com/store/acme-supply"
+        hint="Any of these work: acme-supply, acme-supply.myshopify.com, or admin.shopify.com/store/acme-supply"
         required
       >
         <Input

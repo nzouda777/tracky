@@ -167,7 +167,7 @@ export default async function OrdersPage({
             params={params}
             page={page + 1}
             disabled={page >= lastPage}
-            label="Next →"
+            label="Next"
           />
         </nav>
       ) : null}

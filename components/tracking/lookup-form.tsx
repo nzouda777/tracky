@@ -46,8 +46,8 @@ export function LookupForm({
   mode?: LookupMode;
 }) {
   const fieldStyle = {
-    border: "1px solid var(--brand-border)",
-    backgroundColor: "var(--brand-background)",
+    border: "1px solid var(--brand-line)",
+    backgroundColor: "var(--brand-surface)",
     color: "var(--brand-text)",
   };
 
@@ -55,18 +55,24 @@ export function LookupForm({
 
   return (
     <section
-      className="rounded-xl p-5 sm:p-6"
+      className="rounded-panel p-5 sm:p-6"
       style={{
-        backgroundColor: "var(--brand-surface)",
-        border: "1px solid var(--brand-border)",
+        backgroundColor: "var(--brand-panel)",
+        border: "1px solid var(--brand-line)",
       }}
     >
       <form action={proxyPath} method="get" className="space-y-4">
         {error ? (
           <p
             role="alert"
-            className="rounded-lg px-3 py-2.5 text-sm font-medium"
-            style={{ backgroundColor: "#fee2e2", color: "#991b1b" }}
+            className="rounded-control px-3 py-2.5 text-small font-medium"
+            style={{
+              border:
+                "1px solid color-mix(in srgb, #C4462F 45%, var(--brand-surface))",
+              backgroundColor:
+                "color-mix(in srgb, #C4462F 7%, var(--brand-surface))",
+              color: "#8F2F1F",
+            }}
           >
             {error}
           </p>
@@ -75,7 +81,7 @@ export function LookupForm({
         {state.step === "identify" ? (
           <>
             <div className="space-y-1.5">
-              <label htmlFor="q" className="block text-sm font-medium">
+              <label htmlFor="q" className="block text-small font-medium">
                 {orderOnly ? "Order number" : "Order number or email address"}
               </label>
               <input
@@ -87,10 +93,10 @@ export function LookupForm({
                 autoComplete="off"
                 spellCheck={false}
                 placeholder={orderOnly ? "#1042" : "#1042 or you@example.com"}
-                className="w-full rounded-lg px-3.5 py-3 text-base"
+                className="w-full rounded-control px-3.5 py-3 text-body"
                 style={fieldStyle}
               />
-              <p className="text-xs" style={{ color: "var(--brand-muted)" }}>
+              <p className="text-caption" style={{ color: "var(--brand-muted)" }}>
                 {orderOnly
                   ? "It is at the top of your order confirmation email."
                   : "Whichever you have to hand. We will ask for the other next."}
@@ -104,15 +110,18 @@ export function LookupForm({
             {/* Carries step one forward, so the pair arrives together. */}
             <input type="hidden" name="q" value={state.value} />
 
-            <p className="text-sm" style={{ color: "var(--brand-muted)" }}>
-              {state.kind === "email" ? "Email" : "Order"}:{" "}
-              <span className="font-medium" style={{ color: "var(--brand-text)" }}>
+            <p className="text-small" style={{ color: "var(--brand-muted)" }}>
+              {state.kind === "email" ? "Email" : "Order"}{" "}
+              <span
+                className={state.kind === "email" ? "font-medium" : "type-code"}
+                style={{ color: "var(--brand-text)" }}
+              >
                 {state.value}
               </span>
             </p>
 
             <div className="space-y-1.5">
-              <label htmlFor="confirm" className="block text-sm font-medium">
+              <label htmlFor="confirm" className="block text-small font-medium">
                 {state.kind === "email"
                   ? "Your order number"
                   : "The email address used on the order"}
@@ -126,13 +135,11 @@ export function LookupForm({
                 autoCapitalize="none"
                 autoComplete={state.kind === "email" ? "off" : "email"}
                 spellCheck={false}
-                placeholder={
-                  state.kind === "email" ? "#1042" : "you@example.com"
-                }
-                className="w-full rounded-lg px-3.5 py-3 text-base"
+                placeholder={state.kind === "email" ? "#1042" : "you@example.com"}
+                className="w-full rounded-control px-3.5 py-3 text-body"
                 style={fieldStyle}
               />
-              <p className="text-xs" style={{ color: "var(--brand-muted)" }}>
+              <p className="text-caption" style={{ color: "var(--brand-muted)" }}>
                 We ask for both so nobody else can see your delivery address.
               </p>
             </div>
@@ -141,7 +148,7 @@ export function LookupForm({
 
             <a
               href={proxyPath}
-              className="block text-center text-xs underline"
+              className="block text-center text-caption underline underline-offset-2"
               style={{ color: "var(--brand-muted)" }}
             >
               Start again
@@ -157,10 +164,10 @@ function Submit({ label }: { label: string }) {
   return (
     <button
       type="submit"
-      className="w-full rounded-lg px-4 py-3 text-base font-semibold"
+      className="w-full rounded-control px-4 py-3 text-body font-semibold"
       style={{
-        backgroundColor: "var(--brand-primary)",
-        color: "var(--brand-background)",
+        backgroundColor: "var(--brand-accent)",
+        color: "var(--brand-on-accent)",
       }}
     >
       {label}

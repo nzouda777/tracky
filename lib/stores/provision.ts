@@ -68,7 +68,7 @@ async function provisionBranding(storeId: string): Promise<void> {
         {
           question: "Can I change my delivery address?",
           answer:
-            "Yes, until your order is out for delivery. Use the Edit address button on this page.",
+            "Yes, until your order is out for delivery. Use the Edit address link on this page.",
         },
         {
           question: "Do I need to sign for my delivery?",

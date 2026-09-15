@@ -85,7 +85,7 @@ export function AttentionPanel({ items }: { items: AttentionItem[] }) {
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
                 <p className="text-sm font-medium text-ink-900">{item.title}</p>
                 {/* The severity is spelled out, so colour is never load-bearing. */}
-                <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-500">
+                <span className="text-[11px] font-semibold text-ink-500">
                   {severity.label}
                 </span>
                 {item.count !== undefined ? (
@@ -102,7 +102,7 @@ export function AttentionPanel({ items }: { items: AttentionItem[] }) {
                   href={item.href}
                   className="mt-1.5 inline-block text-xs font-semibold text-ink-800 underline underline-offset-2 hover:text-ink-900"
                 >
-                  {item.linkLabel ?? "Open"} →
+                  {item.linkLabel ?? "Open"}
                 </Link>
               ) : null}
             </div>

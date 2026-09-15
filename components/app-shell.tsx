@@ -32,7 +32,7 @@ export function AppShell({
             <Link href="/" className="text-sm font-semibold text-ink-900">
               Tracky
             </Link>
-            <span className="hidden text-xs uppercase tracking-wide text-ink-400 sm:inline">
+            <span className="hidden text-xs text-ink-500 sm:inline">
               {areaLabel}
             </span>
           </div>

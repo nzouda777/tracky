@@ -61,7 +61,7 @@ export function HistoryTimeline({ history }: { history: HistoryEntry[] }) {
                 {formatDateTime(entry.event.occurredAt)} ·{" "}
                 {formatRelative(entry.event.occurredAt)}
                 {entry.actorEmail
-                  ? ` · by ${entry.actorName ?? entry.actorEmail}`
+                  ? `, by ${entry.actorName ?? entry.actorEmail}`
                   : ""}
               </p>
 

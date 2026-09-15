@@ -23,7 +23,7 @@ export function OrderSummary({ order }: { order: Order }) {
       </dl>
 
       <div className="space-y-1.5">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">
+        <p className="text-xs font-semibold text-ink-500">
           Shipping address
         </p>
         {addressLines.length > 0 ? (
@@ -40,7 +40,7 @@ export function OrderSummary({ order }: { order: Order }) {
       </div>
 
       <div className="space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">
+        <p className="text-xs font-semibold text-ink-500">
           Items
         </p>
         {order.lineItems.length === 0 ? (
@@ -85,7 +85,7 @@ export function OrderSummary({ order }: { order: Order }) {
 function Detail({ label, value }: { label: string; value: string }) {
   return (
     <div className="space-y-0.5">
-      <dt className="text-xs font-semibold uppercase tracking-wide text-ink-500">
+      <dt className="text-xs font-semibold text-ink-500">
         {label}
       </dt>
       <dd className="break-words text-sm text-ink-900">{value}</dd>

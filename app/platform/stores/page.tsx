@@ -28,7 +28,7 @@ export default async function PlatformStoresPage() {
     <div className="space-y-6">
       <PageHeader
         title="Stores"
-        description={`${rows.length} store${rows.length === 1 ? "" : "s"}${suspended > 0 ? ` · ${suspended} suspended` : ""}${disconnected > 0 ? ` · ${disconnected} disconnected` : ""}.`}
+        description={`${rows.length} store${rows.length === 1 ? "" : "s"}${suspended > 0 ? `, ${suspended} suspended` : ""}${disconnected > 0 ? `, ${disconnected} disconnected` : ""}.`}
       />
 
       <Card>

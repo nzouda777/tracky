@@ -30,7 +30,7 @@ export default async function PlatformUsersPage() {
     <div className="space-y-6">
       <PageHeader
         title="Accounts"
-        description={`${rows.length} account${rows.length === 1 ? "" : "s"} · ${operators} operator${operators === 1 ? "" : "s"}${disabled > 0 ? ` · ${disabled} disabled` : ""}${pending > 0 ? ` · ${pending} invite pending` : ""}.`}
+        description={`${rows.length} account${rows.length === 1 ? "" : "s"}, ${operators} operator${operators === 1 ? "" : "s"}${disabled > 0 ? `, ${disabled} disabled` : ""}${pending > 0 ? `, ${pending} invite pending` : ""}.`}
       />
 
       <Card>

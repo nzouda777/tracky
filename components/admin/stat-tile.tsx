@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import type { DailyPoint } from "@/lib/orders/dashboard";
 
 /**
- * KPI stat tile: label · value · optional delta · optional sparkline.
+ * KPI stat tile: a label, a value, an optional delta and an optional sparkline.
  *
  * A single current number is a stat tile, not a one-bar chart. The value uses
  * the font's proportional figures (never `tabular-nums`, which makes a large

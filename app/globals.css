@@ -1,16 +1,71 @@
 @import "tailwindcss";
 
+/* ===========================================================================
+   Dispatch — the platform identity.
+
+   This is a tool for a real delivery operation, so the vocabulary is the
+   operation's: manifest, route, waypoint, dispatch, hi-vis. The palette is
+   ink on manifest paper, structured in dispatch navy, with one hi-vis amber
+   reserved for a single job: marking what is moving right now.
+
+   Colour rules that the components must not break:
+     - `signal` (amber) never fills a large area and never sets text on a light
+       ground. It rings, underlines and marks the active point.
+     - `delivered` (green) appears on the terminal step and nowhere else.
+     - Primary actions are `dispatch` on white, never amber.
+   =========================================================================== */
+
 @theme {
-  --color-ink-50: #f8fafc;
-  --color-ink-100: #f1f5f9;
-  --color-ink-200: #e2e8f0;
-  --color-ink-300: #cbd5e1;
-  --color-ink-400: #94a3b8;
-  --color-ink-500: #64748b;
-  --color-ink-600: #475569;
-  --color-ink-700: #334155;
-  --color-ink-800: #1e293b;
-  --color-ink-900: #0f172a;
+  /* The neutral ramp runs from manifest paper to dispatch ink. Every existing
+     `ink-*` utility in the app resolves through here, so the identity lands
+     everywhere at once rather than file by file. */
+  --color-ink-50: #f4f5f3;
+  --color-ink-100: #eceeea;
+  --color-ink-200: #e2e4e0;
+  --color-ink-300: #c9cdc8;
+  --color-ink-400: #9aa0a0;
+  --color-ink-500: #6b7280;
+  --color-ink-600: #4c5563;
+  --color-ink-700: #333d4d;
+  --color-ink-800: #1f2a3c;
+  --color-ink-900: #131a24;
+
+  /* Named roles. Use these when the meaning is the point. */
+  --color-ink: #131a24;
+  --color-paper: #f4f5f3;
+  --color-line: #e2e4e0;
+  --color-muted: #6b7280;
+  --color-dispatch: #1b2b44;
+  --color-signal: #f5a524;
+  --color-delivered: #2e7d5b;
+  --color-alert: #c4462f;
+
+  --font-sans: var(--font-archivo), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, "SFMono-Regular", monospace;
+
+  /* Type scale: base 16, ratio ~1.25. */
+  --text-caption: 0.8125rem;
+  --text-caption--line-height: 1.125rem;
+  --text-caption--font-weight: 500;
+  --text-small: 0.875rem;
+  --text-small--line-height: 1.375rem;
+  --text-body: 1rem;
+  --text-body--line-height: 1.625rem;
+  --text-h3: 1.0625rem;
+  --text-h3--line-height: 1.5rem;
+  --text-h2: 1.3125rem;
+  --text-h2--line-height: 1.75rem;
+  --text-h1: 1.625rem;
+  --text-h1--line-height: 2rem;
+  --text-display: 2rem;
+  --text-display--line-height: 2.25rem;
+  --text-display-xl: 2.5rem;
+  --text-display-xl--line-height: 2.75rem;
+
+  /* Radii are a hierarchy, not one value sprayed everywhere: rules stay
+     square, controls take 4px, panels take 10px, waypoints are circles. */
+  --radius-control: 4px;
+  --radius-panel: 10px;
 }
 
 :root {
@@ -19,22 +74,22 @@
   /* ---------------------------------------------------------------------
      Data-visualisation roles.
 
-     The backoffice charts are single-series magnitude plots, so they use one
-     validated hue rather than a colour per category — the category is carried
-     by its label and by the stage dot beside it. Status colours are fixed and
-     always ship with an icon + label, never colour alone: two of them sit
-     below 3:1 on a white surface by design.
+     Backoffice charts are single-series magnitude plots, so they use one
+     hue — the category is carried by its label and by the stage dot beside
+     it. Status colours are the operation's own: delivered green, hi-vis
+     amber, brick alert. They always ship with an icon + label, never colour
+     alone.
      --------------------------------------------------------------------- */
   --viz-surface: #ffffff;
-  --viz-series-1: #2a78d6;
-  --viz-series-1-wash: #cde2fb;
-  --viz-grid: #e2e8f0;
-  --viz-deemphasis: #cbd5e1;
+  --viz-series-1: #2f4a72;
+  --viz-series-1-wash: #d3dce9;
+  --viz-grid: #e2e4e0;
+  --viz-deemphasis: #c9cdc8;
 
-  --viz-good: #0ca30c;
-  --viz-warning: #fab219;
-  --viz-serious: #ec835a;
-  --viz-critical: #d03b3b;
+  --viz-good: #2e7d5b;
+  --viz-warning: #f5a524;
+  --viz-serious: #c4703a;
+  --viz-critical: #c4462f;
 }
 
 html,
@@ -43,23 +98,82 @@ body {
 }
 
 body {
-  background-color: var(--color-ink-50);
-  color: var(--color-ink-900);
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
 }
 
-/* Keyboard focus is always visible: the agency UI is used one-handed on a
-   phone and the backoffice is keyboard-driven. */
+/* Keyboard focus is always visible, in hi-vis: the agency UI is used
+   one-handed on a phone and the backoffice is keyboard-driven. */
 :focus-visible {
-  outline: 2px solid var(--color-ink-900);
+  outline: 2px solid var(--color-signal);
   outline-offset: 2px;
 }
 
-/* The public tracking page is themed entirely from branding_settings, which
-   are injected as these custom properties on a wrapper element. */
+/* ---------------------------------------------------------------------------
+   Display type.
+
+   Archivo ships a width axis; the expanded cut is what gives large headings
+   their signage character. Applied only to display sizes — expanded body text
+   is harder to read, not more characterful.
+   --------------------------------------------------------------------------- */
+.type-display {
+  font-variation-settings: "wdth" 118;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+}
+
+/* Real codes — order numbers, tracking ids, times. Never plain labels. */
+.type-code {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+/* ---------------------------------------------------------------------------
+   The public tracking page is themed entirely from branding_settings, which
+   are injected as custom properties on a wrapper element. `--brand-scale`
+   multiplies the type scale so a store can set its own text size without any
+   component hard-coding a pixel value.
+   --------------------------------------------------------------------------- */
 .tracking-root {
-  background-color: var(--brand-background);
+  background-color: var(--brand-surface);
   color: var(--brand-text);
   font-family: var(--brand-font);
-  font-size: var(--brand-base-size);
+  font-size: calc(1rem * var(--brand-scale, 1));
+}
+
+/* ---------------------------------------------------------------------------
+   The one animation in the product that is not a response to an action: the
+   active waypoint on the route line, marking what is moving right now.
+   --------------------------------------------------------------------------- */
+@keyframes waypoint-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.45;
+    transform: scale(1.35);
+  }
+}
+
+.waypoint-pulse {
+  animation: waypoint-pulse 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .waypoint-pulse {
+    animation: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

@@ -195,15 +195,22 @@ describe("server-side authorisation", () => {
    */
   it("the restricted view never renders the address form", () => {
     const page = read("components/tracking/tracking-page.tsx");
-    const unverified = 'const unverified = access === "order-number"';
-    expect(page).toContain(unverified);
+    expect(page).toContain('const unverified = access === "order-number"');
 
-    // The only <EditAddressForm> is behind the `unverified` branch.
+    // There is exactly one <EditAddressForm>, and the condition immediately
+    // guarding it tests `unverified`. Checking the guard rather than a
+    // particular phrasing keeps this from failing on a harmless reshuffle
+    // while still failing if the gate is dropped.
     expect(page.split("<EditAddressForm")).toHaveLength(2);
-    const beforeForm = page.slice(0, page.indexOf("<EditAddressForm"));
-    expect(beforeForm.lastIndexOf("{unverified ?")).toBeGreaterThan(
-      beforeForm.lastIndexOf(unverified),
+
+    const guard = page.slice(
+      Math.max(0, page.indexOf("<EditAddressForm") - 120),
+      page.indexOf("<EditAddressForm"),
     );
+    expect(guard).toContain("unverified");
+
+    // The street address is masked on the same condition.
+    expect(page).toContain("unverified\n    ?");
   });
 
   it("both address handlers share one implementation", () => {

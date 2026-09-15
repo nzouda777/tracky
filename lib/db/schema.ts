@@ -205,20 +205,20 @@ export const brandingSettings = pgTable(
       .notNull()
       .references(() => stores.id, { onDelete: "cascade" }),
 
-    primaryColor: text("primary_color").notNull().default("#111827"),
-    secondaryColor: text("secondary_color").notNull().default("#6b7280"),
-    backgroundColor: text("background_color").notNull().default("#ffffff"),
-    textColor: text("text_color").notNull().default("#111827"),
-    accentColor: text("accent_color").notNull().default("#2563eb"),
+    primaryColor: text("primary_color").notNull().default("#1B2B44"),
+    secondaryColor: text("secondary_color").notNull().default("#F5A524"),
+    backgroundColor: text("background_color").notNull().default("#FFFFFF"),
+    textColor: text("text_color").notNull().default("#131A24"),
+    accentColor: text("accent_color").notNull().default("#1B2B44"),
 
     logoUrl: text("logo_url"),
     fontFamily: text("font_family")
       .notNull()
       .default(
-        "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+        "var(--font-archivo), ui-sans-serif, system-ui, sans-serif",
       ),
     baseFontSize: integer("base_font_size").notNull().default(16),
-    headingFontSize: integer("heading_font_size").notNull().default(24),
+    headingFontSize: integer("heading_font_size").notNull().default(26),
 
     /** Customer-facing copy on the tracking page. English by default. */
     pageTitle: text("page_title").notNull().default("Track your order"),

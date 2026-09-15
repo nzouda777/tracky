@@ -11,11 +11,11 @@ type ButtonSize = "sm" | "md" | "lg";
 
 const BUTTON_VARIANTS: Record<ButtonVariant, string> = {
   primary:
-    "bg-ink-900 text-white hover:bg-ink-800 disabled:hover:bg-ink-900 border border-transparent",
+    "bg-dispatch text-white hover:bg-ink-900 disabled:hover:bg-dispatch border border-transparent",
   secondary:
-    "bg-white text-ink-800 border border-ink-300 hover:bg-ink-50 disabled:hover:bg-white",
+    "bg-white text-ink-900 border border-line hover:bg-paper disabled:hover:bg-white",
   danger:
-    "bg-red-600 text-white hover:bg-red-700 disabled:hover:bg-red-600 border border-transparent",
+    "bg-white text-alert border border-alert hover:bg-paper disabled:hover:bg-white",
   ghost:
     "bg-transparent text-ink-700 border border-transparent hover:bg-ink-100 disabled:hover:bg-transparent",
 };
@@ -41,7 +41,7 @@ export function Button({
     <button
       type={type}
       className={cn(
-        "inline-flex items-center justify-center rounded-lg font-medium transition-colors",
+        "inline-flex items-center justify-center rounded-control font-semibold transition-colors",
         "disabled:cursor-not-allowed disabled:opacity-50",
         BUTTON_VARIANTS[variant],
         BUTTON_SIZES[size],
@@ -57,7 +57,7 @@ export function Button({
 // ---------------------------------------------------------------------------
 
 const FIELD_BASE =
-  "w-full rounded-lg border border-ink-300 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400 disabled:bg-ink-100 disabled:text-ink-500";
+  "w-full rounded-control border border-ink-300 bg-white px-3 py-2 text-sm text-ink-900 placeholder:text-ink-400 disabled:bg-ink-100 disabled:text-ink-500";
 
 export function Input({
   className,
@@ -112,14 +112,14 @@ export function Field({
         className="block text-sm font-medium text-ink-800"
       >
         {label}
-        {required ? <span className="ml-0.5 text-red-600">*</span> : null}
+        {required ? <span className="ml-0.5 text-alert">*</span> : null}
       </label>
       {children}
       {hint && !error ? (
         <p className="text-xs text-ink-500">{hint}</p>
       ) : null}
       {error ? (
-        <p className="text-xs font-medium text-red-600" role="alert">
+        <p className="text-xs font-medium text-alert" role="alert">
           {error}
         </p>
       ) : null}
@@ -171,7 +171,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-xl border border-ink-200 bg-white shadow-sm",
+        "rounded-panel border border-line bg-white",
         className,
       )}
     >
@@ -194,7 +194,7 @@ export function CardHeader({
   return (
     <div
       className={cn(
-        "flex flex-wrap items-start justify-between gap-3 border-b border-ink-200 px-4 py-3 sm:px-5",
+        "flex flex-wrap items-start justify-between gap-3 border-b border-line px-4 py-3 sm:px-5",
         className,
       )}
     >
@@ -221,12 +221,18 @@ export function CardBody({
 
 type BadgeTone = "neutral" | "info" | "success" | "warning" | "danger";
 
+/**
+ * The operation's own status colours, not a generic semantic set: forest green
+ * for what arrived, hi-vis amber for what is moving, brick for what went
+ * wrong. Every one of them is a tint behind ink-weight text rather than a
+ * saturated block, so a table of badges stays a table.
+ */
 const BADGE_TONES: Record<BadgeTone, string> = {
   neutral: "bg-ink-100 text-ink-700 ring-ink-200",
-  info: "bg-blue-50 text-blue-700 ring-blue-200",
-  success: "bg-emerald-50 text-emerald-700 ring-emerald-200",
-  warning: "bg-amber-50 text-amber-800 ring-amber-200",
-  danger: "bg-red-50 text-red-700 ring-red-200",
+  info: "bg-[#eaeef5] text-[#1b2b44] ring-[#c6d0e0]",
+  success: "bg-[#e8f1ec] text-[#1f5c41] ring-[#bdd8cb]",
+  warning: "bg-[#fdf1dc] text-[#7a5310] ring-[#f3ddb0]",
+  danger: "bg-[#f9eae7] text-[#8f2f1f] ring-[#eec7bf]",
 };
 
 export function Badge({
@@ -241,7 +247,7 @@ export function Badge({
   return (
     <span
       className={cn(
-        "inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ring-1 ring-inset",
+        "inline-flex items-center rounded-control px-2 py-0.5 text-xs font-medium ring-1 ring-inset",
         BADGE_TONES[tone],
         className,
       )}
@@ -263,16 +269,16 @@ export function Alert({
   className?: string;
 }) {
   const tones: Record<BadgeTone, string> = {
-    neutral: "border-ink-200 bg-ink-50 text-ink-700",
-    info: "border-blue-200 bg-blue-50 text-blue-800",
-    success: "border-emerald-200 bg-emerald-50 text-emerald-800",
-    warning: "border-amber-200 bg-amber-50 text-amber-900",
-    danger: "border-red-200 bg-red-50 text-red-800",
+    neutral: "border-line bg-paper text-ink-700",
+    info: "border-[#c6d0e0] bg-[#eaeef5] text-[#1b2b44]",
+    success: "border-[#bdd8cb] bg-[#e8f1ec] text-[#1f5c41]",
+    warning: "border-[#f3ddb0] bg-[#fdf1dc] text-[#7a5310]",
+    danger: "border-[#eec7bf] bg-[#f9eae7] text-[#8f2f1f]",
   };
   return (
     <div
       role={tone === "danger" ? "alert" : "status"}
-      className={cn("rounded-lg border px-4 py-3 text-sm", tones[tone], className)}
+      className={cn("rounded-panel border px-4 py-3 text-sm", tones[tone], className)}
     >
       {title ? <p className="font-semibold">{title}</p> : null}
       {children ? <div className={title ? "mt-1" : undefined}>{children}</div> : null}
@@ -346,7 +352,7 @@ export function Th({
     <th
       scope="col"
       className={cn(
-        "border-b border-ink-200 bg-ink-50 px-4 py-2 text-left text-xs font-semibold uppercase tracking-wide text-ink-500",
+        "border-b border-line bg-paper px-4 py-2 text-left text-xs font-semibold text-ink-500",
         className,
       )}
     >

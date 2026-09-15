@@ -1,16 +1,11 @@
 import type { Order, Store } from "@/lib/db";
 import type { LookupAccess, PublicOrderView } from "@/lib/tracking/lookup";
-import {
-  formatAddressLines,
-  formatDate,
-  formatDateTime,
-  formatMoney,
-} from "@/lib/utils";
+import { formatAddressLines, formatDate, formatMoney } from "@/lib/utils";
 import { BrandingStyle, type Branding } from "./branding";
 import { EditAddressForm } from "./edit-address-form";
 import { EventHistory } from "./event-history";
 import { LookupForm, type LookupMode, type LookupStep } from "./lookup-form";
-import { StageTimeline } from "./stage-timeline";
+import { RouteLine } from "./route-line";
 
 const SCOPE_ID = "tracky-tracking";
 
@@ -21,10 +16,11 @@ const SCOPE_ID = "tracky-tracking";
  * the merchant's own domain. Everything on it is either a field mirrored from
  * Shopify or a recorded event — there are no predicted dates, no synthesised
  * "in transit" rows, and no promised update cadence, because none of those
- * would be true.
+ * would be true. The visual tone follows: a run sheet read down a contained
+ * column, not a reassurance panel.
  *
- * The same component also serves the hosted page on Tracky's own domain, where
- * an order number alone opens an order. `access` says which of those happened,
+ * The same component serves the hosted page on Tracky's own domain, where an
+ * order number alone opens an order. `access` says which of those happened,
  * and the page renders to that rather than to "a row was found".
  */
 export function TrackingPage({
@@ -60,8 +56,8 @@ export function TrackingPage({
     <div id={SCOPE_ID} className="tracking-root min-h-dvh">
       <BrandingStyle branding={branding} scopeId={SCOPE_ID} />
 
-      <div className="mx-auto w-full max-w-2xl px-4 py-8 sm:px-6 sm:py-12">
-        <header className="flex flex-wrap items-center justify-between gap-4">
+      <div className="mx-auto w-full max-w-[40rem] px-5 py-9 sm:py-12">
+        <header>
           {branding.logoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -71,15 +67,15 @@ export function TrackingPage({
             />
           ) : (
             <p
-              className="text-base font-bold"
-              style={{ color: "var(--brand-primary)" }}
+              className="type-display text-h2"
+              style={{ color: "var(--brand-accent)" }}
             >
               {storeName}
             </p>
           )}
         </header>
 
-        <main className="mt-8 space-y-8">
+        <main className="mt-9 space-y-9">
           {view ? (
             <OrderView
               view={view}
@@ -93,13 +89,16 @@ export function TrackingPage({
             <>
               <div className="space-y-1.5">
                 <h1
-                  className="font-bold leading-tight"
+                  className="type-display"
                   style={{ fontSize: "var(--brand-heading-size)" }}
                 >
                   {branding.pageTitle}
                 </h1>
                 {branding.pageSubtitle ? (
-                  <p className="text-sm" style={{ color: "var(--brand-muted)" }}>
+                  <p
+                    className="text-body"
+                    style={{ color: "var(--brand-muted)" }}
+                  >
                     {branding.pageSubtitle}
                   </p>
                 ) : null}
@@ -117,17 +116,17 @@ export function TrackingPage({
 
           {branding.helpBannerText ? (
             <aside
-              className="rounded-xl px-4 py-3 text-sm"
+              className="rounded-panel px-4 py-3 text-small"
               style={{
-                backgroundColor: "var(--brand-surface)",
-                border: "1px solid var(--brand-border)",
+                backgroundColor: "var(--brand-panel)",
+                border: "1px solid var(--brand-line)",
               }}
             >
               {branding.helpBannerUrl ? (
                 <a
                   href={branding.helpBannerUrl}
-                  className="font-medium underline"
-                  style={{ color: "var(--brand-accent)" }}
+                  className="font-medium underline underline-offset-2"
+                  style={{ color: "var(--brand-link)" }}
                 >
                   {branding.helpBannerText}
                 </a>
@@ -139,13 +138,13 @@ export function TrackingPage({
         </main>
 
         <footer
-          className="mt-10 border-t pt-5 text-xs"
+          className="mt-12 border-t pt-5 text-caption"
           style={{
-            borderColor: "var(--brand-border)",
+            borderColor: "var(--brand-line)",
             color: "var(--brand-muted)",
           }}
         >
-          {branding.footerText || `${storeName} · Order tracking`}
+          {branding.footerText || `${storeName} — order tracking`}
         </footer>
       </div>
     </div>
@@ -169,7 +168,7 @@ function OrderView({
   addressMessage?: string | null;
   addressError?: string | null;
 }) {
-  const { order, timeline, events, proof, canEditAddress } = view;
+  const { order, stage, timeline, events, proof, canEditAddress } = view;
 
   /**
    * Opened with a guessable order number and nothing else.
@@ -190,40 +189,29 @@ function OrderView({
   const settled = Boolean(proof) || reachedEnd || Boolean(order.cancelledAt);
 
   return (
-    <div className="space-y-8">
-      {/* Two columns of identity: who, and which order. */}
-      <section className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
-        <div>
-          <p
-            className="text-[11px] font-semibold uppercase tracking-wider"
-            style={{ color: "var(--brand-muted)" }}
-          >
-            Customer
-          </p>
-          <p className="mt-0.5 text-xl font-bold leading-tight">
+    <div className="space-y-9">
+      <section className="space-y-3">
+        <h1 className="type-display text-h1">
+          Order <span className="type-code">{order.orderNumber}</span>
+        </h1>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          {stage ? <StatusPill stage={stage} /> : null}
+          <p className="text-small" style={{ color: "var(--brand-muted)" }}>
             {unverified
               ? shortenName(order.customerName)
               : (order.customerName ?? "—")}
-          </p>
-        </div>
-
-        <div className="text-right">
-          <p
-            className="text-[11px] font-semibold uppercase tracking-wider"
-            style={{ color: "var(--brand-muted)" }}
-          >
-            Order
-          </p>
-          <p className="mt-0.5 text-xl font-bold leading-tight">
-            {order.orderNumber}
           </p>
         </div>
       </section>
 
       {order.cancelledAt ? (
         <div
-          className="rounded-xl px-4 py-3 text-sm"
-          style={{ backgroundColor: "#fee2e2", color: "#991b1b" }}
+          className="rounded-panel px-4 py-3 text-small"
+          style={{
+            border:
+              "1px solid color-mix(in srgb, #C4462F 40%, var(--brand-surface))",
+            color: "#8F2F1F",
+          }}
         >
           <p className="font-semibold">This order was cancelled.</p>
           <p className="mt-0.5">
@@ -233,34 +221,26 @@ function OrderView({
         </div>
       ) : null}
 
-      <StageTimeline timeline={timeline} />
+      <RouteLine timeline={timeline} />
 
       {!settled ? <WaitingIndicator /> : null}
 
-      <EventHistory
-        events={events}
-        deliveredNote={
-          proof
-            ? `Delivered ${formatDateTime(proof.deliveredAt)}${
-                proof.recipientName ? `, signed for by ${proof.recipientName}` : ""
-              }.`
-            : null
-        }
+      <EventHistory events={events} proof={proof} />
+
+      <Manifest
+        order={order}
+        branding={branding}
+        unverified={unverified}
+        verifyHref={verifyHref}
       />
 
-      {branding.showOrderSummary ? <OrderRecap order={order} /> : null}
-
-      {unverified ? (
-        <ShippingAddressBlock order={order} verifyHref={verifyHref} />
-      ) : canEditAddress ? (
+      {unverified || !canEditAddress ? null : (
         <EditAddressForm
           proxyPath={proxyPath}
           order={order}
           message={addressMessage}
           error={addressError}
         />
-      ) : (
-        <ShippingAddressBlock order={order} locked />
       )}
     </div>
   );
@@ -280,6 +260,32 @@ function shortenName(name: string | null): string {
 }
 
 /**
+ * The stage badge: a dot in the stage's own colour beside its name.
+ *
+ * The whole badge is never filled with that colour. An admin picks stage
+ * colours to tell stages apart in the backoffice, and a page of saturated
+ * blocks in someone's chosen hue is how a calm page turns loud.
+ */
+function StatusPill({ stage }: { stage: { name: string; color: string } }) {
+  return (
+    <span
+      className="inline-flex items-center gap-2 rounded-control px-2.5 py-1 text-caption"
+      style={{
+        border: "1px solid var(--brand-line)",
+        backgroundColor: "var(--brand-panel)",
+      }}
+    >
+      <span
+        aria-hidden
+        className="size-2 shrink-0 rounded-full"
+        style={{ backgroundColor: stage.color }}
+      />
+      {stage.name}
+    </span>
+  );
+}
+
+/**
  * Shown while an order is still moving.
  *
  * Deliberately promises no cadence. A carrier page can say "updated every 12
@@ -289,93 +295,30 @@ function shortenName(name: string | null): string {
  */
 function WaitingIndicator() {
   return (
-    <div className="flex flex-col items-center gap-1 py-1 text-center">
-      <span className="flex items-center gap-2">
-        <span
-          aria-hidden
-          className="size-3.5 animate-spin rounded-full border-2 border-current border-t-transparent"
-          style={{ color: "var(--brand-muted)", opacity: 0.7 }}
-        />
-        <span className="text-sm font-medium">Waiting for the next update</span>
-      </span>
-      <p className="text-xs" style={{ color: "var(--brand-muted)" }}>
-        This page updates as soon as our delivery team reports progress.
-      </p>
-    </div>
+    <p className="text-small" style={{ color: "var(--brand-muted)" }}>
+      This page updates as soon as our delivery team records the next step.
+    </p>
   );
 }
 
-function OrderRecap({ order }: { order: Order }) {
-  return (
-    <section
-      className="rounded-xl p-5"
-      style={{ border: "1px solid var(--brand-border)" }}
-    >
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="text-sm font-semibold">Order summary</h2>
-        <span className="text-xs" style={{ color: "var(--brand-muted)" }}>
-          Placed {formatDate(order.orderDate)}
-        </span>
-      </div>
-
-      <ul className="mt-3 space-y-2.5">
-        {order.lineItems.length === 0 ? (
-          <li className="text-sm" style={{ color: "var(--brand-muted)" }}>
-            No items recorded for this order.
-          </li>
-        ) : (
-          order.lineItems.map((item, index) => (
-            <li
-              key={`${item.id ?? item.title}-${index}`}
-              className="flex items-start justify-between gap-3 text-sm"
-            >
-              <div className="min-w-0">
-                <p className="font-medium">{item.title}</p>
-                {item.variantTitle ? (
-                  <p style={{ color: "var(--brand-muted)" }}>
-                    {item.variantTitle}
-                  </p>
-                ) : null}
-              </div>
-              <div className="shrink-0 text-right">
-                <p>× {item.quantity}</p>
-                {item.price ? (
-                  <p style={{ color: "var(--brand-muted)" }}>
-                    {formatMoney(item.price, order.currency)}
-                  </p>
-                ) : null}
-              </div>
-            </li>
-          ))
-        )}
-      </ul>
-
-      <div
-        className="mt-4 flex items-center justify-between border-t pt-3 text-sm font-semibold"
-        style={{ borderColor: "var(--brand-border)" }}
-      >
-        <span>Total</span>
-        <span>{formatMoney(order.total, order.currency)}</span>
-      </div>
-    </section>
-  );
-}
-
-function ShippingAddressBlock({
+/**
+ * The manifest: the facts of the order, aligned so they can be checked at a
+ * glance rather than read as prose. Label left, value right, a rule between
+ * each. Real codes are set in mono so the digits line up.
+ */
+function Manifest({
   order,
-  locked,
+  branding,
+  unverified,
   verifyHref,
 }: {
   order: Order;
-  locked?: boolean;
-  /**
-   * Set when the order was opened with its number alone. The street address is
-   * hidden and this links to the form that asks for the email on the order.
-   */
-  verifyHref?: string;
+  branding: Branding;
+  unverified: boolean;
+  verifyHref: string;
 }) {
   const address = order.shippingAddress;
-  const lines = verifyHref
+  const shipTo = unverified
     ? // City and country only: enough to confirm it is going to the right
       // place, not enough to be someone's doorstep.
       [address?.city, address?.country]
@@ -384,71 +327,117 @@ function ShippingAddressBlock({
     : formatAddressLines(address);
 
   return (
-    <section
-      className="rounded-xl p-5"
-      style={{ border: "1px solid var(--brand-border)" }}
-    >
-      <h2 className="text-sm font-semibold">Delivery address</h2>
-      {lines.length > 0 ? (
-        <address className="mt-2 text-sm not-italic leading-relaxed">
-          {lines.map((line) => (
-            <span key={line} className="block">
-              {line}
+    <section>
+      <h2 className="text-h3 font-semibold">Manifest</h2>
+
+      <dl className="mt-3">
+        <Row label="Order no.">
+          <span className="type-code">{order.orderNumber}</span>
+        </Row>
+
+        <Row label="Placed">{formatDate(order.orderDate)}</Row>
+
+        {branding.showOrderSummary && order.lineItems.length > 0 ? (
+          <Row label="Items">
+            <ul className="space-y-1">
+              {order.lineItems.map((item, index) => (
+                <li key={`${item.id ?? item.title}-${index}`}>
+                  {item.title}
+                  {item.variantTitle ? (
+                    <span style={{ color: "var(--brand-muted)" }}>
+                      {" "}
+                      {item.variantTitle}
+                    </span>
+                  ) : null}{" "}
+                  <span className="type-code">×{item.quantity}</span>
+                </li>
+              ))}
+            </ul>
+          </Row>
+        ) : null}
+
+        {branding.showOrderSummary ? (
+          <Row label="Total">
+            <span className="type-code">
+              {formatMoney(order.total, order.currency)}
             </span>
-          ))}
-          {verifyHref ? (
-            <span className="block" style={{ color: "var(--brand-muted)" }}>
-              ···
+          </Row>
+        ) : null}
+
+        <Row label="Ship to">
+          {shipTo.length > 0 ? (
+            <address className="not-italic">
+              {shipTo.map((line) => (
+                <span key={line} className="block">
+                  {line}
+                </span>
+              ))}
+              {unverified ? (
+                <span className="block" style={{ color: "var(--brand-muted)" }}>
+                  ···
+                </span>
+              ) : null}
+            </address>
+          ) : (
+            <span style={{ color: "var(--brand-muted)" }}>
+              No delivery address on file
             </span>
+          )}
+
+          {unverified ? (
+            <p
+              className="mt-1.5 text-caption"
+              style={{ color: "var(--brand-muted)" }}
+            >
+              <a
+                href={verifyHref}
+                className="font-medium underline underline-offset-2"
+                style={{ color: "var(--brand-link)" }}
+              >
+                Confirm your email address
+              </a>{" "}
+              to see the full address or change it.
+            </p>
           ) : null}
-        </address>
-      ) : (
-        <p className="mt-2 text-sm" style={{ color: "var(--brand-muted)" }}>
-          No delivery address on file.
-        </p>
-      )}
-
-      {verifyHref ? (
-        <p className="mt-3 text-xs" style={{ color: "var(--brand-muted)" }}>
-          <a
-            href={verifyHref}
-            className="font-medium underline"
-            style={{ color: "var(--brand-accent)" }}
-          >
-            Confirm your email address
-          </a>{" "}
-          to see the full address or change it.
-        </p>
-      ) : null}
-
-      {locked ? (
-        <p className="mt-3 text-xs" style={{ color: "var(--brand-muted)" }}>
-          This address can no longer be changed because your order is already on
-          its way. Contact us if something is wrong.
-        </p>
-      ) : null}
+        </Row>
+      </dl>
     </section>
+  );
+}
+
+/** One manifest line: label left, value right, rule beneath. */
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div
+      className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b py-2.5 text-small last:border-b-0"
+      style={{ borderColor: "var(--brand-line)" }}
+    >
+      <dt className="shrink-0" style={{ color: "var(--brand-muted)" }}>
+        {label}
+      </dt>
+      <dd className="min-w-0 text-right">{children}</dd>
+    </div>
   );
 }
 
 function Faq({ items }: { items: Array<{ question: string; answer: string }> }) {
   return (
-    <section
-      className="rounded-xl p-5"
-      style={{ border: "1px solid var(--brand-border)" }}
-    >
-      <h2 className="text-sm font-semibold">Frequently asked questions</h2>
-      <div className="mt-3 space-y-2">
+    <section>
+      <h2 className="text-h3 font-semibold">Frequently asked questions</h2>
+      <div className="mt-3">
         {items.map((item) => (
           <details
             key={item.question}
-            className="rounded-lg px-3 py-2"
-            style={{ backgroundColor: "var(--brand-surface)" }}
+            className="border-b py-2.5 last:border-b-0"
+            style={{ borderColor: "var(--brand-line)" }}
           >
-            <summary className="cursor-pointer text-sm font-medium">
+            <summary className="cursor-pointer text-small font-medium">
               {item.question}
             </summary>
-            <p className="mt-1.5 text-sm" style={{ color: "var(--brand-muted)" }}>
+            <p
+              className="mt-1.5 text-small"
+              style={{ color: "var(--brand-muted)" }}
+            >
               {item.answer}
             </p>
           </details>

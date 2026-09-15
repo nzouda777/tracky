@@ -97,7 +97,7 @@ export default async function PlatformStoreDetailPage({
         <Metric
           label="Problems"
           value={metrics.failedFulfillments + metrics.failedEmails}
-          hint={`${metrics.failedFulfillments} fulfillment · ${metrics.failedEmails} email`}
+          hint={`${metrics.failedFulfillments} fulfillment, ${metrics.failedEmails} email`}
         />
       </div>
 

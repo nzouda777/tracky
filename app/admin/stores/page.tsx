@@ -116,7 +116,7 @@ export default async function StoresPage() {
                         {row.store.shopDomain}
                         {row.store.primaryDomain &&
                         row.store.primaryDomain !== row.store.shopDomain
-                          ? ` · ${row.store.primaryDomain}`
+                          ? `, ${row.store.primaryDomain}`
                           : ""}
                       </p>
 
@@ -124,10 +124,10 @@ export default async function StoresPage() {
                         {row.totalOrders} order
                         {row.totalOrders === 1 ? "" : "s"} synced
                         {row.lastOrderAt
-                          ? ` · last one ${formatRelative(row.lastOrderAt)}`
-                          : " · none yet"}
+                          ? `, last one ${formatRelative(row.lastOrderAt)}`
+                          : ", none yet"}
                         {row.store.installedAt
-                          ? ` · connected ${formatDate(row.store.installedAt)}`
+                          ? `, connected ${formatDate(row.store.installedAt)}`
                           : ""}
                       </p>
 

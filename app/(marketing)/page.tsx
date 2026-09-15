@@ -129,7 +129,7 @@ export default function LandingPage() {
             </div>
 
             <div className="rounded-2xl border border-ink-200 bg-ink-50 p-6 sm:p-8">
-              <p className="text-xs font-semibold uppercase tracking-wider text-ink-500">
+              <p className="text-xs font-semibold text-ink-500">
                 What that rules out
               </p>
               <ul className="mt-4 space-y-4">

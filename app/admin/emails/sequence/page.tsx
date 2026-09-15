@@ -31,7 +31,7 @@ export default async function SequencePage() {
             href="/admin/emails/templates"
             className="text-sm font-medium text-ink-600 underline"
           >
-            Templates →
+            Templates
           </Link>
         }
       />

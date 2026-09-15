@@ -8,7 +8,9 @@ import type { Order } from "@/lib/db";
  * new address to Shopify via the Admin API, and redirects back here.
  *
  * Deliberately a plain form: the page is served inside the merchant's theme and
- * must work without any client-side JavaScript.
+ * must work without any client-side JavaScript. It stays collapsed by default
+ * so the manifest above it is what the page leads with — the address is a fact
+ * to check far more often than a thing to change.
  */
 export function EditAddressForm({
   proxyPath,
@@ -23,23 +25,24 @@ export function EditAddressForm({
 }) {
   const address = order.shippingAddress ?? {};
   const fieldStyle = {
-    border: "1px solid var(--brand-border)",
-    backgroundColor: "var(--brand-background)",
+    border: "1px solid var(--brand-line)",
+    backgroundColor: "var(--brand-surface)",
     color: "var(--brand-text)",
   };
 
   return (
-    <section
-      className="rounded-xl p-5"
-      style={{ border: "1px solid var(--brand-border)" }}
-    >
-      <h3 className="text-sm font-semibold">Delivery address</h3>
-
+    <section>
+      {/* Confirmation is stated, not coloured in: the delivered green is
+          reserved for the terminal waypoint and must not start meaning
+          "saved" as well. */}
       {message ? (
         <p
           role="status"
-          className="mt-3 rounded-lg px-3 py-2 text-sm font-medium"
-          style={{ backgroundColor: "#dcfce7", color: "#166534" }}
+          className="mb-3 rounded-control px-3 py-2.5 text-small font-medium"
+          style={{
+            border: "1px solid var(--brand-line)",
+            backgroundColor: "var(--brand-panel)",
+          }}
         >
           {message}
         </p>
@@ -47,15 +50,24 @@ export function EditAddressForm({
       {error ? (
         <p
           role="alert"
-          className="mt-3 rounded-lg px-3 py-2 text-sm font-medium"
-          style={{ backgroundColor: "#fee2e2", color: "#991b1b" }}
+          className="mb-3 rounded-control px-3 py-2.5 text-small font-medium"
+          style={{
+            border:
+              "1px solid color-mix(in srgb, #C4462F 45%, var(--brand-surface))",
+            backgroundColor:
+              "color-mix(in srgb, #C4462F 7%, var(--brand-surface))",
+            color: "#8F2F1F",
+          }}
         >
           {error}
         </p>
       ) : null}
 
-      <details className="mt-3" open={Boolean(error)}>
-        <summary className="cursor-pointer text-sm font-medium">
+      <details open={Boolean(error)}>
+        <summary
+          className="cursor-pointer text-small font-medium underline underline-offset-2"
+          style={{ color: "var(--brand-link)" }}
+        >
           Edit address
         </summary>
 
@@ -69,8 +81,19 @@ export function EditAddressForm({
           <input type="hidden" name="token" value={order.trackingToken} />
 
           <Row>
-            <Field label="Full name" name="name" defaultValue={address.name} style={fieldStyle} required />
-            <Field label="Phone" name="phone" defaultValue={address.phone} style={fieldStyle} />
+            <Field
+              label="Full name"
+              name="name"
+              defaultValue={address.name}
+              style={fieldStyle}
+              required
+            />
+            <Field
+              label="Phone"
+              name="phone"
+              defaultValue={address.phone}
+              style={fieldStyle}
+            />
           </Row>
 
           <Field
@@ -88,27 +111,50 @@ export function EditAddressForm({
           />
 
           <Row>
-            <Field label="Suburb / City" name="city" defaultValue={address.city} style={fieldStyle} required />
-            <Field label="State" name="province" defaultValue={address.province} style={fieldStyle} />
+            <Field
+              label="Suburb / City"
+              name="city"
+              defaultValue={address.city}
+              style={fieldStyle}
+              required
+            />
+            <Field
+              label="State"
+              name="province"
+              defaultValue={address.province}
+              style={fieldStyle}
+            />
           </Row>
 
           <Row>
-            <Field label="Postcode" name="zip" defaultValue={address.zip} style={fieldStyle} required />
-            <Field label="Country" name="country" defaultValue={address.country} style={fieldStyle} required />
+            <Field
+              label="Postcode"
+              name="zip"
+              defaultValue={address.zip}
+              style={fieldStyle}
+              required
+            />
+            <Field
+              label="Country"
+              name="country"
+              defaultValue={address.country}
+              style={fieldStyle}
+              required
+            />
           </Row>
 
           <button
             type="submit"
-            className="w-full rounded-lg px-4 py-3 text-base font-semibold"
+            className="w-full rounded-control px-4 py-3 text-body font-semibold"
             style={{
-              backgroundColor: "var(--brand-primary)",
-              color: "var(--brand-background)",
+              backgroundColor: "var(--brand-accent)",
+              color: "var(--brand-on-accent)",
             }}
           >
             Save new address
           </button>
 
-          <p className="text-xs" style={{ color: "var(--brand-muted)" }}>
+          <p className="text-caption" style={{ color: "var(--brand-muted)" }}>
             You can change your address until your order leaves for delivery.
           </p>
         </form>
@@ -137,7 +183,7 @@ function Field({
   const id = `address-${name}`;
   return (
     <div className="space-y-1.5">
-      <label htmlFor={id} className="block text-sm font-medium">
+      <label htmlFor={id} className="block text-small font-medium">
         {label}
       </label>
       <input
@@ -145,7 +191,7 @@ function Field({
         name={name}
         defaultValue={defaultValue ?? ""}
         required={required}
-        className="w-full rounded-lg px-3 py-2.5 text-base"
+        className="w-full rounded-control px-3 py-2.5 text-body"
         style={style}
       />
     </div>

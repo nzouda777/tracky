@@ -63,7 +63,7 @@ export function ActivityFeed({ entries }: { entries: ActivityEntry[] }) {
                 <time dateTime={entry.occurredAt.toISOString()}>
                   {formatRelative(entry.occurredAt)}
                 </time>
-                {entry.actor ? ` · ${entry.actor}` : ""}
+                {entry.actor ? `, ${entry.actor}` : ""}
               </p>
 
               {entry.note ? (

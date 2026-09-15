@@ -22,9 +22,19 @@ import type { ActionResult } from "@/lib/actions/result";
 import type { Stage } from "@/lib/db";
 import { cn } from "@/lib/utils";
 
+/**
+ * Archivo is the default because it is the face the rest of the product is
+ * set in — a signage grotesque, which is the right register for a delivery
+ * page. The rest are system stacks, which need no download and therefore
+ * cannot make a customer wait on a slow connection.
+ */
 const FONT_STACKS = [
   {
-    label: "System sans (default)",
+    label: "Archivo (default)",
+    value: "var(--font-archivo), ui-sans-serif, system-ui, sans-serif",
+  },
+  {
+    label: "System sans",
     value:
       "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
   },
@@ -33,45 +43,48 @@ const FONT_STACKS = [
     label: "Helvetica / Arial",
     value: "Helvetica Neue, Helvetica, Arial, sans-serif",
   },
-  {
-    label: "Monospace",
-    value: "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
-  },
 ];
 
-/** Ready-made colour sets, so a store looks deliberate without picking hexes. */
+/**
+ * Ready-made colour sets, so a store looks deliberate without picking hexes.
+ *
+ * Every one keeps the secondary colour in hi-vis territory, because that is
+ * the one the page spends on the active waypoint and nothing else. A muted
+ * grey there would leave the route line with nothing marking where the order
+ * actually is.
+ */
 const PRESETS = [
   {
-    name: "Classic",
-    primaryColor: "#111827",
-    accentColor: "#2563eb",
-    backgroundColor: "#ffffff",
-    textColor: "#111827",
-    secondaryColor: "#6b7280",
+    name: "Dispatch",
+    primaryColor: "#1B2B44",
+    accentColor: "#1B2B44",
+    backgroundColor: "#FFFFFF",
+    textColor: "#131A24",
+    secondaryColor: "#F5A524",
   },
   {
-    name: "Warm",
-    primaryColor: "#7c2d12",
-    accentColor: "#ea580c",
-    backgroundColor: "#fffbf7",
-    textColor: "#431407",
-    secondaryColor: "#9a6a56",
+    name: "Slate",
+    primaryColor: "#2F3A45",
+    accentColor: "#2F3A45",
+    backgroundColor: "#FFFFFF",
+    textColor: "#14181C",
+    secondaryColor: "#F5A524",
   },
   {
     name: "Forest",
-    primaryColor: "#14532d",
-    accentColor: "#059669",
-    backgroundColor: "#f8fbf9",
-    textColor: "#052e16",
-    secondaryColor: "#5f7d6c",
+    primaryColor: "#18493A",
+    accentColor: "#18493A",
+    backgroundColor: "#FFFFFF",
+    textColor: "#10231C",
+    secondaryColor: "#E0A32E",
   },
   {
-    name: "Midnight",
-    primaryColor: "#f8fafc",
-    accentColor: "#818cf8",
-    backgroundColor: "#0f172a",
-    textColor: "#e2e8f0",
-    secondaryColor: "#94a3b8",
+    name: "Night",
+    primaryColor: "#E6E8E4",
+    accentColor: "#9FB4D4",
+    backgroundColor: "#131A24",
+    textColor: "#E6E8E4",
+    secondaryColor: "#F5A524",
   },
 ] as const;
 
@@ -461,7 +474,7 @@ export function BrandingEditor({
                       name="footerText"
                       value={draft.footerText}
                       onChange={(e) => set("footerText", e.currentTarget.value)}
-                      placeholder={`${storeName} · Order tracking`}
+                      placeholder={`${storeName} — order tracking`}
                     />
                   </Field>
                 </div>

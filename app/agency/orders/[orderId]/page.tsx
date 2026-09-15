@@ -76,7 +76,7 @@ export default async function AgencyOrderPage({
         <CardHeader title="Delivery details" />
         <CardBody className="space-y-4 text-sm">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">
+            <p className="text-xs font-semibold text-ink-500">
               Deliver to
             </p>
             {addressLines.length > 0 ? (
@@ -105,7 +105,7 @@ export default async function AgencyOrderPage({
           ) : null}
 
           <div>
-            <p className="text-xs font-semibold uppercase tracking-wide text-ink-500">
+            <p className="text-xs font-semibold text-ink-500">
               Items
             </p>
             <ul className="mt-1 space-y-1">
