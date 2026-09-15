@@ -47,14 +47,17 @@ export default async function TrackOrderPage({
 
   const addressStatus = single(params.address);
 
-  // One resolver shared with the hosted page, so both surfaces accept the same
-  // three ways in and enforce the same "order number AND email" rule.
+  // One resolver shared with the hosted page. This surface stays `two-factor`:
+  // the order number and the email are both required, so the page Shopify
+  // serves on the merchant's own domain never becomes an enumeration endpoint
+  // for that merchant's customers.
   const lookup = resolveLookupParams({
     token: single(params.token),
     order: single(params.order),
     email: single(params.email),
     q: single(params.q),
     confirm: single(params.confirm),
+    mode: "two-factor",
   });
 
   // Branding and the order lookup do not depend on each other, so they go out
@@ -82,6 +85,8 @@ export default async function TrackOrderPage({
       view={view || null}
       proxyPath={trackingPath()}
       lookupStep={lookup.formStep}
+      lookupMode="two-factor"
+      access={order ? lookup.access : "none"}
       lookupError={
         lookup.attempted && !order
           ? "We could not find an order with those details. Check the order number and the email address used at checkout."

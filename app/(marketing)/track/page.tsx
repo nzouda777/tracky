@@ -102,13 +102,14 @@ export default async function TrackEntryPage({
 
         <div>
           <h2 className="text-base font-semibold text-ink-900">
-            Why we ask for two things
+            All you need is your order number
           </h2>
           <p className="mt-1.5 text-sm leading-relaxed text-ink-600">
-            On the shop&rsquo;s tracking page you will be asked for your order
-            number <em>and</em> the email address you used — one after the
-            other, not both at once. Requiring both is what stops anyone else
-            reading your name, address and order by guessing an order number.
+            On the shop&rsquo;s tracking page, type the order number from your
+            confirmation email and you will see where your delivery has got to.
+            Your delivery address stays hidden until you confirm the email
+            address on the order — that one extra step is also what lets you
+            change the address, and it is what stops a stranger reading yours.
           </p>
         </div>
 

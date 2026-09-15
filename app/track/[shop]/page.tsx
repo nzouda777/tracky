@@ -37,13 +37,21 @@ export const metadata: Metadata = {
  *     storefront (a receipt, a support reply, an SMS);
  *   - you need to see the real customer page while setting a store up.
  *
- * **It deliberately shares the lookup rules rather than relaxing them.** There
- * is no App Proxy signature here, so the only way in is the same as before:
- * the per-order token from an email link, or the order number *and* the email
- * address used at checkout. Both are required together — an order number alone
- * never resolves, which is what keeps this from becoming an order-enumeration
- * endpoint. Everything rendered comes from `buildPublicOrderView`, the same
- * function the proxy page uses, so the two can never drift apart.
+ * **This surface asks for the order number and nothing else.** A shopper who
+ * arrives here has no signed storefront session and often no email to hand, so
+ * a second question is where they give up. The order number opens the order.
+ *
+ * Order numbers are sequential, so that is a lookup anyone can guess their way
+ * through, and the page is built on that assumption rather than against it:
+ * an order opened this way carries `access: "order-number"` and renders the
+ * delivery progress only. The full name, the street address and the
+ * address-change form — which embeds the order's token, and so would grant
+ * write access — stay behind `?verify=1`, which asks for the email on the
+ * order. The emailed token link and the order+email pair both still land on
+ * the full view directly.
+ *
+ * Everything rendered comes from `buildPublicOrderView`, the same function the
+ * proxy page uses, so the two surfaces cannot drift apart.
  */
 export default async function HostedTrackPage({
   params,
@@ -56,6 +64,7 @@ export default async function HostedTrackPage({
     email?: string;
     q?: string;
     confirm?: string;
+    verify?: string;
     address?: string;
   }>;
 }) {
@@ -77,13 +86,16 @@ export default async function HostedTrackPage({
 
   const tdb = new TenantDb(store.id);
 
-  // Same resolver as the proxy page, so both accept the same three ways in.
+  // Same resolver as the proxy page; `mode` is the only difference between the
+  // two surfaces, and `?verify=1` turns this one back into the two-step form.
   const lookup = resolveLookupParams({
     token: query.token,
     order: query.order,
     email: query.email,
     q: query.q,
     confirm: query.confirm,
+    verify: query.verify,
+    mode: "order-only",
   });
 
   // Independent reads, issued together — see the proxy page for the rationale.
@@ -95,6 +107,9 @@ export default async function HostedTrackPage({
           token: lookup.token,
           orderNumber: lookup.orderNumber,
           email: lookup.email,
+          // Only ever true for the `order-number` access level, which the page
+          // then renders as the restricted view.
+          allowOrderNumberOnly: lookup.access === "order-number",
         })
       : Promise.resolve(null),
   ]);
@@ -111,10 +126,15 @@ export default async function HostedTrackPage({
       // Posts and searches stay on this hosted path rather than the proxy one.
       proxyPath={`/track/${shopDomain}`}
       lookupStep={lookup.formStep}
+      lookupMode={query.verify?.trim() ? "two-factor" : "order-only"}
+      access={order ? lookup.access : "none"}
       lookupError={
-        lookup.attempted && !order
-          ? "We could not find an order with those details. Check the order number and the email address used at checkout."
-          : null
+        lookup.inputError ??
+        (lookup.attempted && !order
+          ? lookup.access === "order-number"
+            ? "We could not find that order number. Check it against your order confirmation email."
+            : "We could not find an order with those details. Check the order number and the email address used at checkout."
+          : null)
       }
       addressMessage={
         query.address === "updated"

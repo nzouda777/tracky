@@ -62,8 +62,8 @@ async function main() {
   console.log("✓ default stages, branding, templates, sequence, fulfillment rules");
 
   const accounts = [
-    { email: "owner@example.com", name: "Christian", role: "owner" as const },
-    { email: "agency@example.com", name: "Dispatch Desk", role: "agency" as const },
+    { email: "owner@tracky.com", name: "Christian", role: "owner" as const },
+    { email: "agency@tracky.com", name: "Dispatch Desk", role: "agency" as const },
   ];
 
   const password = "TrackyDemo1";

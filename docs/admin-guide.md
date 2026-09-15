@@ -307,16 +307,27 @@ App Proxy is set up, or when you want to link tracking from somewhere other
 than your storefront — a support reply, a receipt, an SMS. You will find the
 link on the Stores page under **Hosted tracking**.
 
-Either way a customer gets in one of two ways:
+**The personal link in your emails** opens the customer's order directly on
+either page, with nothing to type. It is always the best link to give them.
 
-- the personal link in their email, which opens their order directly; or
-- their **order number and the email address they used at checkout** — both are
-  needed, so nobody can browse orders by guessing numbers.
+Without that link, the two pages ask for different things — deliberately.
 
-They see the stage timeline, the latest update with any message your agency
-left, their items and total, and their delivery address — which they can change
-themselves until the order reaches the stage you marked as *Locks address
-editing*. Everything is styled from your Branding settings.
+| | On your own domain (App Proxy) | On Tracky's domain |
+| --- | --- | --- |
+| What the customer types | Order number, then the email used at checkout | Order number only |
+| Why | Shopify signs every request to this page, and it is the one your customers reach from your storefront, so it keeps the stricter rule | A visitor arriving cold often has neither the email to hand nor the patience for a second question |
+
+Because an order number can be guessed, an order opened with the number alone
+shows **only the delivery progress**: the stage timeline, the updates your
+agency left, the items and the total, the customer's first name and last
+initial, and the delivery city and country. The full name, the street address
+and the *Edit address* form stay hidden behind a **Confirm your email address**
+link on that page, which asks for the email on the order.
+
+A customer who arrives by their email link, or who confirms their email, sees
+everything — including changing their own address, until the order reaches the
+stage you marked as *Locks address editing*. Everything is styled from your
+Branding settings.
 
 ---
 

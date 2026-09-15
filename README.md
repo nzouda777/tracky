@@ -129,8 +129,8 @@ sequence, plus two accounts:
 
 | Role   | Email                 | Password      |
 | ------ | --------------------- | ------------- |
-| Owner  | `owner@example.com`   | `TrackyDemo1` |
-| Agency | `agency@example.com`  | `TrackyDemo1` |
+| Owner  | `owner@tracky.com`   | `TrackyDemo1` |
+| Agency | `agency@tracky.com`  | `TrackyDemo1` |
 
 The seed refuses to run when `NODE_ENV=production`.
 
@@ -382,8 +382,13 @@ stages, branding, templates, sequence and fulfillment rules.
   `X-Shopify-Event-Id` via a unique index before doing any work.
 - The App Proxy signature is verified on both the tracking page and the address
   update endpoint.
-- The public order lookup requires either the per-order token or **both** the
-  order number and the email address.
+- The public order lookup on the App Proxy page requires either the per-order
+  token or **both** the order number and the email address. The hosted page
+  (`/track/<shop>`) also accepts the order number alone, for a one-field
+  customer flow — `findPublicOrder` only allows that when the caller passes
+  `allowOrderNumberOnly`, and the resulting `access: "order-number"` makes the
+  page withhold the full name, the street address and the address-change form
+  (which carries the order's token) until the email is confirmed.
 - Passwords are hashed with bcrypt (cost 12); a missing account and a wrong
   password take the same time to reject.
 - Every server action starts with a role check; `tests/permissions.test.ts`

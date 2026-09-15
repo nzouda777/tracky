@@ -1,5 +1,5 @@
 import type { Order, Store } from "@/lib/db";
-import type { PublicOrderView } from "@/lib/tracking/lookup";
+import type { LookupAccess, PublicOrderView } from "@/lib/tracking/lookup";
 import {
   formatAddressLines,
   formatDate,
@@ -9,7 +9,7 @@ import {
 import { BrandingStyle, type Branding } from "./branding";
 import { EditAddressForm } from "./edit-address-form";
 import { EventHistory } from "./event-history";
-import { LookupForm, type LookupStep } from "./lookup-form";
+import { LookupForm, type LookupMode, type LookupStep } from "./lookup-form";
 import { StageTimeline } from "./stage-timeline";
 
 const SCOPE_ID = "tracky-tracking";
@@ -22,6 +22,10 @@ const SCOPE_ID = "tracky-tracking";
  * Shopify or a recorded event — there are no predicted dates, no synthesised
  * "in transit" rows, and no promised update cadence, because none of those
  * would be true.
+ *
+ * The same component also serves the hosted page on Tracky's own domain, where
+ * an order number alone opens an order. `access` says which of those happened,
+ * and the page renders to that rather than to "a row was found".
  */
 export function TrackingPage({
   branding,
@@ -29,6 +33,8 @@ export function TrackingPage({
   view,
   proxyPath,
   lookupStep,
+  lookupMode = "two-factor",
+  access = "verified",
   lookupError,
   addressMessage,
   addressError,
@@ -40,6 +46,10 @@ export function TrackingPage({
   proxyPath: string;
   /** Which half of the lookup the visitor is being asked for. */
   lookupStep: LookupStep;
+  /** How many details this surface asks for. */
+  lookupMode?: LookupMode;
+  /** What the visitor proved before the order was opened. */
+  access?: LookupAccess;
   lookupError?: string | null;
   addressMessage?: string | null;
   addressError?: string | null;
@@ -75,6 +85,7 @@ export function TrackingPage({
               view={view}
               branding={branding}
               proxyPath={proxyPath}
+              access={access}
               addressMessage={addressMessage}
               addressError={addressError}
             />
@@ -96,6 +107,7 @@ export function TrackingPage({
               <LookupForm
                 proxyPath={proxyPath}
                 state={lookupStep}
+                mode={lookupMode}
                 error={lookupError}
               />
             </>
@@ -146,16 +158,31 @@ function OrderView({
   view,
   branding,
   proxyPath,
+  access,
   addressMessage,
   addressError,
 }: {
   view: PublicOrderView;
   branding: Branding;
   proxyPath: string;
+  access: LookupAccess;
   addressMessage?: string | null;
   addressError?: string | null;
 }) {
   const { order, timeline, events, proof, canEditAddress } = view;
+
+  /**
+   * Opened with a guessable order number and nothing else.
+   *
+   * Delivery progress is still shown in full — that is what the visitor came
+   * for, and it is the same information the shop puts in its emails. What is
+   * held back is everything that would make walking `#1001`, `#1002`, `#1003`
+   * worth someone's time: the full name, the street address, and the
+   * address-change form, which carries the order's token in a hidden field and
+   * would therefore hand over write access along with it.
+   */
+  const unverified = access === "order-number";
+  const verifyHref = `${proxyPath}?verify=1&q=${encodeURIComponent(order.orderNumber)}`;
 
   const reachedEnd = timeline.some(
     (entry) => entry.state === "current" && entry.stage.isTerminal,
@@ -174,7 +201,9 @@ function OrderView({
             Customer
           </p>
           <p className="mt-0.5 text-xl font-bold leading-tight">
-            {order.customerName ?? "—"}
+            {unverified
+              ? shortenName(order.customerName)
+              : (order.customerName ?? "—")}
           </p>
         </div>
 
@@ -221,7 +250,9 @@ function OrderView({
 
       {branding.showOrderSummary ? <OrderRecap order={order} /> : null}
 
-      {canEditAddress ? (
+      {unverified ? (
+        <ShippingAddressBlock order={order} verifyHref={verifyHref} />
+      ) : canEditAddress ? (
         <EditAddressForm
           proxyPath={proxyPath}
           order={order}
@@ -233,6 +264,19 @@ function OrderView({
       )}
     </div>
   );
+}
+
+/**
+ * "Sarah Jenkins" -> "Sarah J."
+ *
+ * Enough for the customer to recognise their own order at a glance, not enough
+ * to be worth harvesting.
+ */
+function shortenName(name: string | null): string {
+  const parts = name?.trim().split(/\s+/).filter(Boolean) ?? [];
+  if (parts.length === 0) return "—";
+  if (parts.length === 1) return parts[0];
+  return `${parts[0]} ${parts[parts.length - 1][0]}.`;
 }
 
 /**
@@ -320,11 +364,24 @@ function OrderRecap({ order }: { order: Order }) {
 function ShippingAddressBlock({
   order,
   locked,
+  verifyHref,
 }: {
   order: Order;
   locked?: boolean;
+  /**
+   * Set when the order was opened with its number alone. The street address is
+   * hidden and this links to the form that asks for the email on the order.
+   */
+  verifyHref?: string;
 }) {
-  const lines = formatAddressLines(order.shippingAddress);
+  const address = order.shippingAddress;
+  const lines = verifyHref
+    ? // City and country only: enough to confirm it is going to the right
+      // place, not enough to be someone's doorstep.
+      [address?.city, address?.country]
+        .map((line) => line?.trim())
+        .filter((line): line is string => Boolean(line))
+    : formatAddressLines(address);
 
   return (
     <section
@@ -339,12 +396,31 @@ function ShippingAddressBlock({
               {line}
             </span>
           ))}
+          {verifyHref ? (
+            <span className="block" style={{ color: "var(--brand-muted)" }}>
+              ···
+            </span>
+          ) : null}
         </address>
       ) : (
         <p className="mt-2 text-sm" style={{ color: "var(--brand-muted)" }}>
           No delivery address on file.
         </p>
       )}
+
+      {verifyHref ? (
+        <p className="mt-3 text-xs" style={{ color: "var(--brand-muted)" }}>
+          <a
+            href={verifyHref}
+            className="font-medium underline"
+            style={{ color: "var(--brand-accent)" }}
+          >
+            Confirm your email address
+          </a>{" "}
+          to see the full address or change it.
+        </p>
+      ) : null}
+
       {locked ? (
         <p className="mt-3 text-xs" style={{ color: "var(--brand-muted)" }}>
           This address can no longer be changed because your order is already on

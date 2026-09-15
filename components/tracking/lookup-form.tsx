@@ -1,25 +1,33 @@
 /**
- * The customer lookup, asked one field at a time.
+ * The customer lookup.
  *
  * Two fields side by side read as a form to fill in; one reads as a question
  * to answer, which is the difference between a visitor trying and a visitor
- * closing the tab. So step one takes whichever detail they happen to have —
- * order number or email — and step two asks for the other.
+ * closing the tab. So this asks for one thing at a time — and how many things
+ * it asks for depends on which surface it is rendered on.
  *
- * **Both are still required.** It is presented as one field at a time, not
- * reduced to one field: an order number on its own would let anyone walk
- * `#1001`, `#1002`, `#1003` and read other people's names, addresses and
- * order contents, and an email on its own would do the same to anyone whose
- * address is known. Step two is therefore always shown, whether or not step
- * one matched anything, so the form never reveals which orders or addresses
- * exist.
+ * `two-factor` — the Shopify App Proxy page. Step one takes whichever detail
+ * the visitor has to hand, order number or email, and step two asks for the
+ * other. Step two is always shown, whether or not step one matched anything,
+ * so the form never reveals which orders or addresses exist.
  *
- * It is a GET form pointing at the page's own path, so the Shopify App Proxy
- * signs the submitted parameters on the way back in.
+ * `order-only` — the hosted page on Tracky's own domain, where the order
+ * number alone opens the order. One field, one submit, nothing else to
+ * remember. What that buys in simplicity it pays for in privacy: order numbers
+ * are sequential, so anyone can walk `#1001`, `#1002`, `#1003`. The page
+ * answers by showing only what tracking needs and holding back the delivery
+ * address, the full name and the address-change form until the visitor
+ * confirms the email on the order — see `tracking-page.tsx`.
+ *
+ * Either way it is a GET form pointing at the page's own path, so on the proxy
+ * surface Shopify signs the submitted parameters on the way back in.
  */
 export type LookupStep =
   | { step: "identify" }
   | { step: "confirm"; value: string; kind: "email" | "order" };
+
+/** How many details this surface asks a visitor for. */
+export type LookupMode = "two-factor" | "order-only";
 
 /** Decides which half of the pair a typed value is. */
 export function classifyLookup(value: string): "email" | "order" {
@@ -30,16 +38,20 @@ export function LookupForm({
   proxyPath,
   state,
   error,
+  mode = "two-factor",
 }: {
   proxyPath: string;
   state: LookupStep;
   error?: string | null;
+  mode?: LookupMode;
 }) {
   const fieldStyle = {
     border: "1px solid var(--brand-border)",
     backgroundColor: "var(--brand-background)",
     color: "var(--brand-text)",
   };
+
+  const orderOnly = mode === "order-only" && state.step === "identify";
 
   return (
     <section
@@ -64,7 +76,7 @@ export function LookupForm({
           <>
             <div className="space-y-1.5">
               <label htmlFor="q" className="block text-sm font-medium">
-                Order number or email address
+                {orderOnly ? "Order number" : "Order number or email address"}
               </label>
               <input
                 id="q"
@@ -74,16 +86,18 @@ export function LookupForm({
                 autoCapitalize="none"
                 autoComplete="off"
                 spellCheck={false}
-                placeholder="#1042 or you@example.com"
+                placeholder={orderOnly ? "#1042" : "#1042 or you@example.com"}
                 className="w-full rounded-lg px-3.5 py-3 text-base"
                 style={fieldStyle}
               />
               <p className="text-xs" style={{ color: "var(--brand-muted)" }}>
-                Whichever you have to hand. We will ask for the other next.
+                {orderOnly
+                  ? "It is at the top of your order confirmation email."
+                  : "Whichever you have to hand. We will ask for the other next."}
               </p>
             </div>
 
-            <Submit label="Continue" />
+            <Submit label={orderOnly ? "Track my order" : "Continue"} />
           </>
         ) : (
           <>
@@ -119,7 +133,7 @@ export function LookupForm({
                 style={fieldStyle}
               />
               <p className="text-xs" style={{ color: "var(--brand-muted)" }}>
-                We ask for both so nobody else can look up your order.
+                We ask for both so nobody else can see your delivery address.
               </p>
             </div>
 

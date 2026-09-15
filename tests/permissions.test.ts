@@ -151,11 +151,59 @@ describe("server-side authorisation", () => {
     expect(page).toContain("notFound()");
   });
 
-  it("findPublicOrder requires both the order number and the email", () => {
+  /**
+   * An order number on its own is guessable, so resolving one is a privilege a
+   * route has to ask for in writing. It defaults to off, the App Proxy page
+   * never asks for it, and the hosted page only asks for it on the access level
+   * that makes the page withhold personal details.
+   */
+  it("findPublicOrder only accepts an order number alone when asked to", () => {
     const lookup = read("lib/tracking/lookup.ts");
-    const body = lookup.slice(lookup.indexOf("export async function findPublicOrder"));
-    // Bails out unless both are present — an order number alone never resolves.
-    expect(body).toMatch(/if \(!number \|\| !mail\) return null;/);
+    const body = lookup.slice(
+      lookup.indexOf("export async function findPublicOrder"),
+    );
+
+    // Off unless the caller opts in.
+    expect(body).toMatch(/allowOrderNumberOnly = false/);
+    expect(body).toMatch(/if \(!mail && !allowOrderNumberOnly\) return null;/);
+    // And an order number is always required, opt-in or not.
+    expect(body).toMatch(/if \(!number\) return null;/);
+  });
+
+  it("only the hosted page opts out of the two-factor lookup", () => {
+    // The proxy page is served on the merchant's own domain; relaxing the rule
+    // there would expose that merchant's customers to enumeration.
+    expect(read("app/proxy/track-order/page.tsx")).toContain(
+      'mode: "two-factor"',
+    );
+    expect(read("app/proxy/track-order/page.tsx")).not.toContain(
+      "allowOrderNumberOnly",
+    );
+
+    const hosted = read("app/track/[shop]/page.tsx");
+    expect(hosted).toContain('mode: "order-only"');
+    // The opt-in is tied to the access level, not passed unconditionally.
+    expect(hosted).toContain(
+      'allowOrderNumberOnly: lookup.access === "order-number"',
+    );
+  });
+
+  /**
+   * The address form posts the order's tracking token in a hidden field, and
+   * that token is a permanent credential for the order. Rendering it for a
+   * visitor who only guessed an order number would turn a read into a write.
+   */
+  it("the restricted view never renders the address form", () => {
+    const page = read("components/tracking/tracking-page.tsx");
+    const unverified = 'const unverified = access === "order-number"';
+    expect(page).toContain(unverified);
+
+    // The only <EditAddressForm> is behind the `unverified` branch.
+    expect(page.split("<EditAddressForm")).toHaveLength(2);
+    const beforeForm = page.slice(0, page.indexOf("<EditAddressForm"));
+    expect(beforeForm.lastIndexOf("{unverified ?")).toBeGreaterThan(
+      beforeForm.lastIndexOf(unverified),
+    );
   });
 
   it("both address handlers share one implementation", () => {
