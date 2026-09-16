@@ -31,6 +31,23 @@ export const dynamic = "force-dynamic";
  * anything to the database.
  */
 export async function GET(request: NextRequest) {
+  try {
+    return await handleCallback(request);
+  } catch (error) {
+    // Anything thrown past here used to surface as a blank 500 with the reason
+    // only in a server log nobody was reading, which makes a failed install
+    // impossible to diagnose from the outside. Say what happened.
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("[shopify] install failed", {
+      shop: request.nextUrl.searchParams.get("shop"),
+      message,
+      error,
+    });
+    return installError(message);
+  }
+}
+
+async function handleCallback(request: NextRequest) {
   const params = request.nextUrl.searchParams;
   const shopParam = params.get("shop");
   const code = params.get("code");
@@ -40,8 +57,20 @@ export async function GET(request: NextRequest) {
     return installError("The installation link was incomplete. Start again from your Shopify admin.");
   }
 
-  if (!verifyOAuthHmac({ searchParams: params, secret: env.shopify.apiSecret })) {
-    return installError("The installation request could not be verified.");
+  if (
+    !verifyOAuthHmac({
+      searchParams: params,
+      secret: env.shopify.apiSecret,
+      rawQuery: request.nextUrl.search,
+    })
+  ) {
+    console.error("[shopify] OAuth HMAC rejected", {
+      shop: shopDomain,
+      params: [...params.keys()].sort().join(","),
+    });
+    return installError(
+      "The installation request could not be verified. This usually means the API secret key in this deployment does not match the app in your Shopify dashboard.",
+    );
   }
 
   const stateCookie = request.cookies.get(OAUTH_STATE_COOKIE)?.value;
@@ -54,11 +83,34 @@ export async function GET(request: NextRequest) {
     return installError("The installation session expired. Please try again.");
   }
 
-  const { accessToken, scope } = await exchangeCodeForToken({ shopDomain, code });
+  const { accessToken, scope } = await exchangeCodeForToken({
+    shopDomain,
+    code,
+  });
   const client = ShopifyAdminClient.withToken(shopDomain, accessToken);
 
   // A failure here must not block the install; the store can still be used.
-  const profile = await fetchShopProfile(client).catch(() => null);
+  // It is logged rather than swallowed, because a profile that never loads
+  // usually means the granted scopes are not what the app asked for.
+  const profile = await fetchShopProfile(client).catch((error: unknown) => {
+    console.error("[shopify] could not read the shop profile", {
+      shop: shopDomain,
+      scope,
+      message: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  });
+
+  // Only overwrite the shop's details when we actually read them. A reinstall
+  // whose profile call failed must not blank the name and currency an existing
+  // store has been running on.
+  const profileFields = profile
+    ? {
+        name: profile.name,
+        primaryDomain: profile.primaryDomain,
+        currency: profile.currency ?? "AUD",
+      }
+    : {};
 
   const [store] = await db
     .insert(stores)
@@ -76,9 +128,7 @@ export async function GET(request: NextRequest) {
     .onConflictDoUpdate({
       target: stores.shopDomain,
       set: {
-        name: profile?.name ?? null,
-        primaryDomain: profile?.primaryDomain ?? null,
-        currency: profile?.currency ?? "AUD",
+        ...profileFields,
         accessToken: encryptSecret(accessToken),
         scope,
         status: "active",

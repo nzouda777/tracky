@@ -93,6 +93,126 @@ describe("OAuth HMAC", () => {
   });
 });
 
+/**
+ * The real callback carries `host`: base64 of `admin.shopify.com/store/<handle>`.
+ * `admin.shopify.com/store/` is 24 characters, so whether that base64 ends in
+ * `=` padding comes down to the handle length — and two thirds of handles
+ * produce padding. `=` is the one character where "the decoded value" and "the
+ * value on the wire" differ, so an implementation that picks the wrong one
+ * passes every test written with a convenient shop name and then rejects most
+ * real installs.
+ *
+ * These tests use a handle that produces padding, and sign the request each of
+ * the ways Shopify's own tooling does.
+ */
+describe("OAuth HMAC with a real callback payload", () => {
+  const PAYLOAD = {
+    code: "0907a61c0c8d55e99db179b68161bc00",
+    host: Buffer.from("admin.shopify.com/store/acme").toString("base64"),
+    shop: "acme.myshopify.com",
+    state: "809d527521643517539d8b689aa9c8b2",
+    timestamp: "1700000000",
+  };
+
+  it("is a payload that actually exercises the encoding difference", () => {
+    expect(PAYLOAD.host).toContain("=");
+  });
+
+  /** What Shopify's own SDK computes: decode, sort, re-encode. */
+  function signReencoded(params: Record<string, string>): URLSearchParams {
+    const ordered = Object.keys(params)
+      .sort()
+      .reduce<Record<string, string>>((acc, key) => {
+        acc[key] = params[key];
+        return acc;
+      }, {});
+    const canonical = new URLSearchParams(ordered).toString();
+    const hmac = createHmac("sha256", SECRET).update(canonical).digest("hex");
+    return new URLSearchParams({ ...params, hmac });
+  }
+
+  /** Signing the encoded bytes as they travel on the wire. */
+  function signRaw(params: Record<string, string>): {
+    searchParams: URLSearchParams;
+    rawQuery: string;
+  } {
+    const pairs = Object.keys(params)
+      .sort()
+      .map((key) => `${key}=${encodeURIComponent(params[key])}`);
+    const hmac = createHmac("sha256", SECRET)
+      .update(pairs.join("&"))
+      .digest("hex");
+    const rawQuery = `?${pairs.join("&")}&hmac=${hmac}`;
+    return { searchParams: new URLSearchParams(rawQuery), rawQuery };
+  }
+
+  it("accepts a callback signed the way Shopify's SDK signs it", () => {
+    expect(
+      verifyOAuthHmac({ searchParams: signReencoded(PAYLOAD), secret: SECRET }),
+    ).toBe(true);
+  });
+
+  it("accepts a callback signed over the encoded wire bytes", () => {
+    const { searchParams, rawQuery } = signRaw(PAYLOAD);
+    expect(verifyOAuthHmac({ searchParams, secret: SECRET, rawQuery })).toBe(
+      true,
+    );
+  });
+
+  it("accepts the plain decoded join too", () => {
+    const canonical = Object.keys(PAYLOAD)
+      .sort()
+      .map((key) => `${key}=${PAYLOAD[key as keyof typeof PAYLOAD]}`)
+      .join("&");
+    const hmac = createHmac("sha256", SECRET).update(canonical).digest("hex");
+    expect(
+      verifyOAuthHmac({
+        searchParams: new URLSearchParams({ ...PAYLOAD, hmac }),
+        secret: SECRET,
+        rawQuery: undefined,
+      }),
+    ).toBe(true);
+  });
+
+  it("still rejects a tampered shop, whichever way it was signed", () => {
+    const params = signReencoded(PAYLOAD);
+    params.set("shop", "attacker.myshopify.com");
+    expect(verifyOAuthHmac({ searchParams: params, secret: SECRET })).toBe(
+      false,
+    );
+
+    const { searchParams, rawQuery } = signRaw(PAYLOAD);
+    const tampered = rawQuery.replace("acme.myshopify.com", "evil.myshopify.com");
+    expect(
+      verifyOAuthHmac({
+        searchParams: new URLSearchParams(tampered),
+        secret: SECRET,
+        rawQuery: tampered,
+      }),
+    ).toBe(false);
+    expect(searchParams.get("shop")).toBe("acme.myshopify.com");
+  });
+
+  it("still rejects a signature made with a different secret", () => {
+    const ordered = Object.keys(PAYLOAD)
+      .sort()
+      .reduce<Record<string, string>>((acc, key) => {
+        acc[key] = PAYLOAD[key as keyof typeof PAYLOAD];
+        return acc;
+      }, {});
+    const hmac = createHmac("sha256", "not-the-secret")
+      .update(new URLSearchParams(ordered).toString())
+      .digest("hex");
+
+    expect(
+      verifyOAuthHmac({
+        searchParams: new URLSearchParams({ ...PAYLOAD, hmac }),
+        secret: SECRET,
+      }),
+    ).toBe(false);
+  });
+});
+
 describe("App Proxy signature", () => {
   function sign(params: Record<string, string>): URLSearchParams {
     // Shopify's App Proxy scheme: sorted `k=v` pairs joined with NO separator.
