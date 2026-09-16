@@ -16,7 +16,7 @@ import { parseShopInput } from "@/lib/shopify/parse-shop";
  * than finding out after an OAuth round trip. The same parser runs again on the
  * server — this preview is a convenience, never the validation.
  */
-export function ConnectStoreForm() {
+export function ConnectStoreForm({ callbackUrl }: { callbackUrl: string }) {
   const [raw, setRaw] = useState("");
   const [state, formAction] = useActionState<ActionResult, FormData>(
     connectStoreAction,
@@ -75,6 +75,27 @@ export function ConnectStoreForm() {
         You will be taken to Shopify to approve the app. Approving requires admin
         rights on the store.
       </p>
+
+      {/* Shopify rejects the install before it ever reaches us when this URL is
+          not on the app's allowlist, so the merchant sees an error we cannot
+          annotate. Showing the exact string here is the only place we can put
+          it in front of them beforehand. */}
+      <details className="text-xs text-ink-500">
+        <summary className="cursor-pointer">
+          Shopify says the redirect URI is not whitelisted?
+        </summary>
+        <p className="mt-2">
+          Add this to <strong>Allowed redirection URL(s)</strong> in the app&rsquo;s
+          Partner dashboard configuration, exactly as written:
+        </p>
+        <code className="mt-1.5 block break-all rounded-control bg-ink-100 px-2 py-1.5 font-medium text-ink-800">
+          {callbackUrl}
+        </code>
+        <p className="mt-2">
+          An app created inside a store under <em>Develop apps</em> has no such
+          field and cannot be installed this way.
+        </p>
+      </details>
     </form>
   );
 }

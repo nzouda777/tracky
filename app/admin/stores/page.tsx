@@ -15,6 +15,7 @@ import {
   listDisconnectedStores,
   listMyStores,
 } from "@/lib/actions/stores";
+import { env } from "@/lib/env";
 import { shopifyAdminUrl, storefrontUrl } from "@/lib/shopify/parse-shop";
 import { buildTrackingLookupLink } from "@/lib/tracking/links";
 import { formatDate, formatRelative } from "@/lib/utils";
@@ -46,7 +47,7 @@ export default async function StoresPage() {
           description="Paste the store's myshopify.com link, its admin link, or just the handle."
         />
         <CardBody>
-          <ConnectStoreForm />
+          <ConnectStoreForm callbackUrl={`${env.appUrl}/api/shopify/callback`} />
         </CardBody>
       </Card>
 

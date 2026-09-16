@@ -397,6 +397,20 @@ missing migration.
 In the [Partner dashboard](https://partners.shopify.com): **Apps → Create app
 → Create app manually**.
 
+> **It has to be a Partner dashboard app.** Shopify also lets you create an app
+> from inside a single store, under *Settings → Apps and sales channels →
+> Develop apps*. That kind is installed by pressing **Install**, is used with an
+> Admin API access token (`shpat_…`), and **has no "Allowed redirection URL(s)"
+> field at all** — so the OAuth flow this app uses can never succeed with it.
+> Every attempt ends at Shopify with:
+>
+> ```
+> Oauth error invalid_request: The redirect_uri is not whitelisted
+> ```
+>
+> The tell is the secret: a store-admin app issues one beginning `shpss_`.
+> `npm run shopify:check` flags it.
+
 ### Distribution
 
 - **Custom distribution** if you are serving a known set of stores (the usual
@@ -414,6 +428,30 @@ In the [Partner dashboard](https://partners.shopify.com): **Apps → Create app
 
 Copy the **Client ID** into `SHOPIFY_API_KEY` and the **Client secret** into
 `SHOPIFY_API_SECRET`, then redeploy so the new values take effect.
+
+The redirection URL is matched **character for character**, including the
+scheme, the port and the absence of a trailing slash. Run
+`npm run shopify:check` to print the exact string this deployment will send,
+and paste that — do not retype it.
+
+### Developing against a local server
+
+`APP_URL=http://localhost:3000` is enough for OAuth, because it is your own
+browser that follows the redirect. Add
+`http://localhost:3000/api/shopify/callback` to the same allowlist and the
+install will complete.
+
+It is **not** enough for anything Shopify has to reach on its own: webhooks are
+never delivered and the App Proxy page will not load on the storefront. For
+those, put a tunnel in front:
+
+```bash
+cloudflared tunnel --url http://localhost:3000
+```
+
+Then set `APP_URL` to the tunnel origin, restart the dev server, and add that
+origin's `/api/shopify/callback` to the allowlist as well. The allowlist holds
+several URLs, so the localhost and tunnel entries can both stay.
 
 ### Scopes
 
@@ -635,7 +673,8 @@ group by topic;
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| Install redirects to `/install-failed` | OAuth HMAC or state mismatch | The redirect URL in the Partner dashboard must equal `APP_URL` + `/api/shopify/callback`, character for character |
+| Shopify shows `Oauth error invalid_request: The redirect_uri is not whitelisted` | The app's allowlist does not contain the URL this deployment sends — or the app is a store-admin "Develop apps" one, which has no allowlist at all | Run `npm run shopify:check`, paste the printed redirection URL into the Partner dashboard. A `shpss_` secret means the wrong kind of app; see step 11 |
+| Install redirects to `/install-failed` | OAuth HMAC or state mismatch | The message on the page names the cause. HMAC failures mean `SHOPIFY_API_SECRET` does not match the app |
 | Webhooks return 401 | `SHOPIFY_API_SECRET` differs from the app's client secret | Copy it again; redeploy |
 | Webhooks return 200 but no orders appear | The store has no stages | `/admin/stages` → **Restore the default stages** |
 | Tracking page shows "Order tracking unavailable" | App Proxy URL wrong, or the request did not come through the storefront | Check the App Proxy config; the URL is `/proxy/track-order`, not `/api/proxy/...` |
