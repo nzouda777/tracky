@@ -2,8 +2,20 @@
  * Default email templates for a newly connected store, in English.
  *
  * The body is stored as light HTML containing {{merge_variables}}; it is
- * rendered into a branded React Email layout at send time (lib/email/render).
- * Everything here is editable from the backoffice.
+ * rendered into a branded layout at send time (lib/email/render). Everything
+ * here is editable from the backoffice.
+ *
+ * What these bodies deliberately leave out, because the layout already renders
+ * it and saying it twice is what made the old emails look unfinished:
+ *
+ *   - the order number and date — the eyebrow above the headline carries them;
+ *   - the current stage — it is the headline;
+ *   - the tracking link — the layout owns the single call to action;
+ *   - the delivery address — it has its own panel;
+ *   - a sign-off naming the store — the wordmark and the footer both do.
+ *
+ * What is left is the one thing a template should be: what to say to the
+ * customer at this point in the journey, in as few words as it takes.
  */
 export type DefaultTemplate = {
   key: string;
@@ -22,14 +34,10 @@ export const DEFAULT_EMAIL_TEMPLATES: DefaultTemplate[] = [
     key: "order-confirmation",
     name: "Order confirmation",
     subject: "Order {{order_number}} is confirmed",
-    previewText: "Thanks for your order — here is your tracking link.",
+    previewText: "We have your order — here is where to follow it.",
     body: [
-      "<p>Hi {{customer_name}},</p>",
-      "<p>Thanks for shopping with {{store_name}}. We have received order <strong>{{order_number}}</strong>, placed on {{order_date}}.</p>",
-      "<p>You can follow its progress at any time:</p>",
-      '<p><a href="{{tracking_link}}">Track your order</a></p>',
-      "<p>We will email you again as soon as it is on the way.</p>",
-      "<p>— {{store_name}}</p>",
+      "<p>Hi {{customer_name}}, thanks for shopping with {{store_name}}.</p>",
+      "<p>Your order is confirmed and we have started getting it ready. You can follow every step from the link below, and we will email you as soon as it is on the way.</p>",
     ].join("\n"),
     trigger: { type: "on_stage", stageKey: "order-placed" },
   },
@@ -40,10 +48,7 @@ export const DEFAULT_EMAIL_TEMPLATES: DefaultTemplate[] = [
     previewText: "Your items are being picked and packed.",
     body: [
       "<p>Hi {{customer_name}},</p>",
-      "<p>Good news — order <strong>{{order_number}}</strong> is now being packed.</p>",
-      "<p>Current status: <strong>{{current_stage}}</strong></p>",
-      '<p><a href="{{tracking_link}}">View the latest update</a></p>',
-      "<p>— {{store_name}}</p>",
+      "<p>Your order is being picked and packed right now. The next email you get from us will be the one saying it has left for delivery.</p>",
     ].join("\n"),
     trigger: { type: "on_stage", stageKey: "processing" },
   },
@@ -54,11 +59,7 @@ export const DEFAULT_EMAIL_TEMPLATES: DefaultTemplate[] = [
     previewText: "Your order is with our driver today.",
     body: [
       "<p>Hi {{customer_name}},</p>",
-      "<p>Order <strong>{{order_number}}</strong> is on board with our driver and on its way to:</p>",
-      "<p>{{shipping_address}}</p>",
-      "<p>Our driver will ask you to sign the paper delivery note on arrival.</p>",
-      '<p><a href="{{tracking_link}}">Follow your delivery</a></p>',
-      "<p>— {{store_name}}</p>",
+      "<p>Your order is on board with our driver and arriving today. Please make sure someone can receive it — <strong>the driver will ask you to sign the paper delivery note</strong> on arrival.</p>",
     ].join("\n"),
     trigger: { type: "on_stage", stageKey: "out-for-delivery" },
   },
@@ -69,9 +70,7 @@ export const DEFAULT_EMAIL_TEMPLATES: DefaultTemplate[] = [
     previewText: "Your order was delivered and signed for.",
     body: [
       "<p>Hi {{customer_name}},</p>",
-      "<p>Order <strong>{{order_number}}</strong> has been delivered and signed for. We hope everything arrived in perfect condition.</p>",
-      '<p><a href="{{tracking_link}}">View your delivery details</a></p>',
-      "<p>Thanks for shopping with {{store_name}}.</p>",
+      "<p>Your order has been delivered and signed for. We hope everything arrived in perfect condition — if anything is not right, just reply to this email and we will sort it out.</p>",
     ].join("\n"),
     trigger: { type: "on_stage", stageKey: "delivered" },
   },
@@ -82,8 +81,8 @@ export const DEFAULT_EMAIL_TEMPLATES: DefaultTemplate[] = [
     previewText: "A quick note after your delivery.",
     body: [
       "<p>Hi {{customer_name}},</p>",
-      "<p>It has been a few days since order <strong>{{order_number}}</strong> was placed. If anything is not quite right, just reply to this email and we will sort it out.</p>",
-      "<p>— {{store_name}}</p>",
+      "<p>It has been a few days since your order. We wanted to check everything arrived as it should.</p>",
+      "<p>If something is missing, damaged or simply not what you expected, reply to this email — a real person reads it.</p>",
     ].join("\n"),
     // A delay only ever schedules an email. It never moves an order forward.
     trigger: { type: "delay_after_order", delayDays: 7 },

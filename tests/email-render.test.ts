@@ -32,11 +32,68 @@ describe("email rendering", () => {
 
     expect(rendered.subject).toBe("Order #1042 is on the way");
     expect(rendered.html).toContain("<html");
-    // The body survived into the output, merged.
+    // The body survived into the output, merged. The tag is matched loosely
+    // because the layout inlines typography onto it — asserting the exact
+    // spelling would break on styling rather than on anything going wrong.
     expect(rendered.html).toContain("Sarah Jenkins");
-    expect(rendered.html).toContain("<strong>#1042</strong>");
+    expect(rendered.html).toMatch(/<strong[^>]*>#1042<\/strong>/);
     // The store name is the fallback masthead when there is no logo.
     expect(rendered.html).toContain("Northside Supply");
+  });
+
+  /**
+   * Every rule has to survive the trip.
+   *
+   * A `<style>` block is the first thing Outlook and Gmail discard, so the
+   * typography applied to the owner's own HTML is inlined onto each tag. Left
+   * to the client, bare `<p>` tags pick up Outlook's own margins and links
+   * render in default browser blue — the loudest way an otherwise careful
+   * email announces that nobody styled it.
+   */
+  it("inlines typography onto the body the owner wrote", async () => {
+    const rendered = await renderEmail({
+      subject: "Order {{order_number}}",
+      body: BODY,
+      context: sampleMergeContext(store.name),
+      branding: null,
+      store,
+    });
+
+    // Paragraphs carry their own margin and line height.
+    expect(rendered.html).toMatch(/<p style="margin:0[^"]*line-height:\d+px/);
+    // The author's link is brand-coloured, not left to the client's default.
+    expect(rendered.html).toMatch(
+      /<a href="[^"]*track-order[^"]*" style="color:#[0-9A-Fa-f]{6}/,
+    );
+    // No bare tag escapes the pass.
+    expect(rendered.html).not.toContain("<p>");
+    expect(rendered.html).not.toMatch(/<a href="[^"]*"\s*>/);
+  });
+
+  /**
+   * The shell renders the call to action, so a body that carries its own link
+   * is the author's choice rather than the layout duplicating itself. The
+   * shipped defaults therefore contain neither a tracking link nor the
+   * delivery address — both already have a place in the layout.
+   */
+  it("ships defaults that do not duplicate what the layout renders", async () => {
+    const { DEFAULT_EMAIL_TEMPLATES } = await import(
+      "@/lib/email/templates/defaults"
+    );
+
+    for (const template of DEFAULT_EMAIL_TEMPLATES) {
+      expect(template.body, `${template.key} embeds the tracking link`).not.toContain(
+        "{{tracking_link}}",
+      );
+      expect(
+        template.body,
+        `${template.key} repeats the delivery address`,
+      ).not.toContain("{{shipping_address}}");
+      expect(
+        template.body,
+        `${template.key} repeats the stage the headline already shows`,
+      ).not.toContain("{{current_stage}}");
+    }
   });
 
   it("produces a plain-text alternative", async () => {
