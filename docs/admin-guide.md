@@ -80,7 +80,34 @@ marked *Terminal*.
 `/admin/orders`
 
 Orders arrive automatically from Shopify. Search by order number, customer
-name, email or driver; filter by stage, or by In progress / Completed.
+name, email or driver.
+
+### Filtering
+
+The search box, **Stage** and **Status** are always visible; **More filters**
+opens the rest:
+
+| Filter | What it narrows to |
+| --- | --- |
+| Stage | Orders sitting in one tracking step right now |
+| Status | In progress, Completed (a terminal stage), or Cancelled in Shopify |
+| Placed from / to | The date the customer placed the order. **Today**, **7 days**, **30 days** and **90 days** fill both ends for you |
+| Fulfillment | Unfulfilled, partially fulfilled, fulfilled, or **failed** — the last one is the list to watch, since it means Shopify rejected a fulfillment |
+| Driver | One driver, or **Not assigned** for everything still waiting on dispatch |
+| Delivery | Whether the agency has confirmed delivery with proof |
+| Sort by | Newest, oldest, recently updated, or by order value |
+| Per page | 25, 50 or 100 rows |
+
+Filtering happens in the database, across **every** order in the store, not
+just the page on screen — so a filter plus 100 per page is how you work
+through a large backlog. The heading tells you how many orders matched, and
+the footer which slice you are looking at.
+
+Every filter lives in the URL, so a filtered list can be bookmarked or pasted
+to someone else and they will see exactly the same rows. **Clear** removes all
+of them at once; the number next to it is how many are active. Sort order and
+page size are not counted there, because they change how the same orders are
+shown rather than which ones.
 
 ### Sync orders
 

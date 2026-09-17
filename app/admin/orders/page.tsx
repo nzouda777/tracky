@@ -14,7 +14,12 @@ import {
 import { FulfillmentBadge, StageBadge } from "@/components/orders/stage-badge";
 import { requireOwner } from "@/lib/auth/session";
 import { stages } from "@/lib/db";
-import { listOrders } from "@/lib/orders/queries";
+import {
+  countActiveFilters,
+  parseOrderFilters,
+  type OrderSearchParams,
+} from "@/lib/orders/filters";
+import { listDriverNames, listOrders } from "@/lib/orders/queries";
 import { formatDate, formatMoney, formatRelative } from "@/lib/utils";
 import { OrderFilters } from "./order-filters";
 import { BulkEmailBar } from "./bulk-email-bar";
@@ -26,27 +31,22 @@ export const metadata: Metadata = { title: "Orders" };
 export default async function OrdersPage({
   searchParams,
 }: {
-  searchParams: Promise<{
-    q?: string;
-    stage?: string;
-    status?: string;
-    page?: string;
-  }>;
+  searchParams: Promise<OrderSearchParams>;
 }) {
   const { tdb } = await requireOwner();
   const params = await searchParams;
 
-  const allStages = await tdb.findMany(stages, {
-    orderBy: asc(stages.position),
-  });
+  const [allStages, drivers] = await Promise.all([
+    tdb.findMany(stages, { orderBy: asc(stages.position) }),
+    listDriverNames(tdb),
+  ]);
 
-  const { rows, total, page, perPage } = await listOrders(tdb, {
-    search: params.q,
-    stageId: params.stage,
-    onlyActive: params.status === "active",
-    onlyCompleted: params.status === "completed",
-    page: Number(params.page ?? 1) || 1,
-  });
+  // One reading of the query string, shared by the table and the filter bar,
+  // so the two can never describe different queries.
+  const filters = parseOrderFilters(params);
+  const activeCount = countActiveFilters(params);
+
+  const { rows, total, page, perPage } = await listOrders(tdb, filters);
 
   const templates = await listActiveTemplates();
   const lastPage = Math.max(1, Math.ceil(total / perPage));
@@ -55,11 +55,19 @@ export default async function OrdersPage({
     <div className="space-y-5">
       <PageHeader
         title="Orders"
-        description={`${total} order${total === 1 ? "" : "s"} synced from Shopify.`}
+        description={
+          activeCount > 0
+            ? `${total} order${total === 1 ? "" : "s"} match ${activeCount} filter${activeCount === 1 ? "" : "s"}.`
+            : `${total} order${total === 1 ? "" : "s"} synced from Shopify.`
+        }
         action={<SyncOrdersButton compact />}
       />
 
-      <OrderFilters stages={allStages} />
+      <OrderFilters
+        stages={allStages}
+        drivers={drivers}
+        activeCount={activeCount}
+      />
 
       <Card>
         {rows.length === 0 ? (
@@ -161,7 +169,8 @@ export default async function OrdersPage({
             label="← Previous"
           />
           <span className="text-ink-500">
-            Page {page} of {lastPage}
+            {(page - 1) * perPage + 1}&ndash;{Math.min(page * perPage, total)} of{" "}
+            {total} &middot; page {page} of {lastPage}
           </span>
           <PageLink
             params={params}

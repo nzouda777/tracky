@@ -280,19 +280,44 @@ async function main() {
   // for a path that 404s one hop later.
   console.log();
   let missingProxy = false;
+  let escapedRedirect = false;
+
   for (const host of [
     store.shop_domain,
     ...(primaryDomain && primaryDomain !== store.shop_domain
       ? [primaryDomain]
       : []),
   ]) {
-    const probe = await fetch(`https://${host}/apps/track-order`, {
-      redirect: "follow",
-    });
-    if (probe.status === 404) missingProxy = true;
+    const requested = `https://${host}/apps/track-order`;
+    const probe = await fetch(requested, { redirect: "follow" });
+
+    // A redirect the proxied app emitted is passed back to the browser, which
+    // resolves it against the *merchant's* domain — so it lands on a path the
+    // storefront has never heard of. The tell is a final URL still on the
+    // storefront but no longer under /apps.
+    const landedOffProxy =
+      !new URL(probe.url).pathname.startsWith("/apps/track-order");
+    if (landedOffProxy) escapedRedirect = true;
+    else if (probe.status === 404) missingProxy = true;
+
     line(
       probe.status === 404 ? FAIL : PASS,
-      `${`https://${host}/apps/track-order`.padEnd(50)} ${probe.status}`,
+      `${requested.padEnd(50)} ${probe.status}${landedOffProxy ? `\n  ended at ${probe.url}` : ""}`,
+    );
+  }
+
+  if (escapedRedirect) {
+    line(
+      FAIL,
+      "  The app answered the proxied request with a redirect, and Shopify\n" +
+        "  passed it back to the browser, which resolved it against the\n" +
+        "  merchant's domain — where that path does not exist. Hence a 404 on\n" +
+        "  the storefront rather than the tracking page.\n" +
+        "  Almost always a trailing slash on the App Proxy URL in the Shopify\n" +
+        "  dashboard. Set it to exactly, with no slash at the end:\n" +
+        `      ${deploymentOrigin || "https://your-app"}/proxy/track-order\n` +
+        "  `skipTrailingSlashRedirect` in next.config.ts also stops the app\n" +
+        "  from redirecting at all — check that deployment carries it.",
     );
   }
 
