@@ -6,6 +6,7 @@ import { TenantDb } from "@/lib/db/tenant";
 import { authenticateProxyRequest } from "@/lib/shopify/app-proxy";
 import {
   buildPublicOrderView,
+  CUSTOMER_LOOKUP_MODE,
   findPublicOrder,
   getBranding,
   resolveLookupParams,
@@ -47,17 +48,16 @@ export default async function TrackOrderPage({
 
   const addressStatus = single(params.address);
 
-  // One resolver shared with the hosted page. This surface stays `two-factor`:
-  // the order number and the email are both required, so the page Shopify
-  // serves on the merchant's own domain never becomes an enumeration endpoint
-  // for that merchant's customers.
+  // One resolver shared with the hosted page, and one policy — see
+  // CUSTOMER_LOOKUP_MODE for what each setting costs.
   const lookup = resolveLookupParams({
     token: single(params.token),
     order: single(params.order),
     email: single(params.email),
     q: single(params.q),
     confirm: single(params.confirm),
-    mode: "two-factor",
+    verify: single(params.verify),
+    mode: CUSTOMER_LOOKUP_MODE,
   });
 
   // Branding and the order lookup do not depend on each other, so they go out
@@ -70,6 +70,9 @@ export default async function TrackOrderPage({
           token: lookup.token,
           orderNumber: lookup.orderNumber,
           email: lookup.email,
+          // Only ever true for the `email` access level, so a surface that has
+          // not opted in cannot reach the email-only query by accident.
+          allowEmailOnly: lookup.access === "email",
         })
       : Promise.resolve(null),
   ]);
@@ -85,12 +88,17 @@ export default async function TrackOrderPage({
       view={view || null}
       proxyPath={trackingPath()}
       lookupStep={lookup.formStep}
-      lookupMode="two-factor"
+      lookupMode={
+        single(params.verify)?.trim() ? "two-factor" : CUSTOMER_LOOKUP_MODE
+      }
       access={order ? lookup.access : "none"}
       lookupError={
-        lookup.attempted && !order
-          ? "We could not find an order with those details. Check the order number and the email address used at checkout."
-          : null
+        lookup.inputError ??
+        (lookup.attempted && !order
+          ? lookup.access === "email"
+            ? "We could not find an order for that email address. Check it is the one you used at checkout."
+            : "We could not find an order with those details. Check the order number and the email address used at checkout."
+          : null)
       }
       addressMessage={
         addressStatus === "updated"

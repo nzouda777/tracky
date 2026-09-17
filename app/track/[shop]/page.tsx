@@ -9,6 +9,7 @@ import { TenantDb } from "@/lib/db/tenant";
 import { isValidShopDomain, normalizeShopDomain } from "@/lib/shopify/hmac";
 import {
   buildPublicOrderView,
+  CUSTOMER_LOOKUP_MODE,
   findPublicOrder,
   getBranding,
   resolveLookupParams,
@@ -86,8 +87,9 @@ export default async function HostedTrackPage({
 
   const tdb = new TenantDb(store.id);
 
-  // Same resolver as the proxy page; `mode` is the only difference between the
-  // two surfaces, and `?verify=1` turns this one back into the two-step form.
+  // Same resolver and the same policy as the proxy page: a customer should
+  // not have to present more here than on the merchant's own domain. `?verify=1`
+  // still turns this into the two-step form.
   const lookup = resolveLookupParams({
     token: query.token,
     order: query.order,
@@ -95,7 +97,7 @@ export default async function HostedTrackPage({
     q: query.q,
     confirm: query.confirm,
     verify: query.verify,
-    mode: "order-only",
+    mode: CUSTOMER_LOOKUP_MODE,
   });
 
   // Independent reads, issued together — see the proxy page for the rationale.
@@ -107,9 +109,10 @@ export default async function HostedTrackPage({
           token: lookup.token,
           orderNumber: lookup.orderNumber,
           email: lookup.email,
-          // Only ever true for the `order-number` access level, which the page
-          // then renders as the restricted view.
+          // Each opt-in is tied to the access level that produced it, so a
+          // surface cannot reach a relaxed query it did not ask for.
           allowOrderNumberOnly: lookup.access === "order-number",
+          allowEmailOnly: lookup.access === "email",
         })
       : Promise.resolve(null),
   ]);
@@ -126,7 +129,7 @@ export default async function HostedTrackPage({
       // Posts and searches stay on this hosted path rather than the proxy one.
       proxyPath={`/track/${shopDomain}`}
       lookupStep={lookup.formStep}
-      lookupMode={query.verify?.trim() ? "two-factor" : "order-only"}
+      lookupMode={query.verify?.trim() ? "two-factor" : CUSTOMER_LOOKUP_MODE}
       access={order ? lookup.access : "none"}
       lookupError={
         lookup.inputError ??

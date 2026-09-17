@@ -34,14 +34,15 @@ export type PublicOrderView = {
 /**
  * Looks an order up for the public tracking page.
  *
- * Three ways in, in descending order of how much they prove:
+ * Four ways in, in descending order of how much they prove:
  *   - `token`: the opaque per-order token used in emails;
  *   - `orderNumber` + `email`: both must match;
- *   - `orderNumber` alone, and **only** when the caller opts in with
- *     `allowOrderNumberOnly`. Order numbers are sequential and guessable, so a
- *     surface that opts in must restrict what it renders — see `LookupAccess`.
+ *   - `email` alone, when the caller opts in with `allowEmailOnly`;
+ *   - `orderNumber` alone, when the caller opts in with `allowOrderNumberOnly`.
+ *     Order numbers are sequential and guessable, so a surface that opts in
+ *     must restrict what it renders — see `LookupAccess`.
  *
- * The opt-in is a required argument rather than a default precisely so that
+ * Both opt-ins are required arguments rather than defaults precisely so that
  * relaxing the rule is a decision a route has to make in writing.
  */
 export async function findPublicOrder({
@@ -50,12 +51,14 @@ export async function findPublicOrder({
   orderNumber,
   email,
   allowOrderNumberOnly = false,
+  allowEmailOnly = false,
 }: {
   tdb: TenantDb;
   token?: string | null;
   orderNumber?: string | null;
   email?: string | null;
   allowOrderNumberOnly?: boolean;
+  allowEmailOnly?: boolean;
 }): Promise<Order | null> {
   if (token?.trim()) {
     return tdb.findFirst(orders, {
@@ -65,7 +68,18 @@ export async function findPublicOrder({
 
   const number = orderNumber?.trim();
   const mail = email?.trim().toLowerCase();
-  if (!number) return null;
+
+  // Email alone. One address can have many orders, so this answers with the
+  // most recent — the one a customer asking "where is my order" means. The
+  // others stay reachable through the link in their own confirmation email.
+  if (!number) {
+    if (!mail || !allowEmailOnly) return null;
+    return tdb.findFirst(orders, {
+      where: eq(sql`lower(${orders.customerEmail})`, mail),
+      orderBy: desc(orders.orderDate),
+    });
+  }
+
   if (!mail && !allowOrderNumberOnly) return null;
 
   // Customers type "1042", "#1042" or "1042 " — all should work.
@@ -157,12 +171,29 @@ export type LookupAccess =
   | "token"
   /** Order number *and* the email on the order. */
   | "verified"
+  /**
+   * The email on the order, alone.
+   *
+   * Weaker than `verified`: it proves only that the visitor knows an address,
+   * not that they hold anything the merchant sent them. It is nonetheless
+   * treated as sufficient below, because a store that turns this on has
+   * decided that asking for an order number costs more customers than the
+   * exposure costs it. Kept as its own level rather than folded into
+   * `verified` so that decision stays visible, and reversible in one line.
+   */
+  | "email"
   /** Order number alone. Guessable, so treated as unproven. */
   | "order-number";
 
-/** Whether an access level is enough to reveal personal details. */
+/**
+ * Whether an access level is enough to reveal personal details — the delivery
+ * address, the full name, and the address-change form.
+ *
+ * This single predicate is what every surface reads, so tightening
+ * email-only lookups back down is a matter of removing one case here.
+ */
 export function isVerifiedAccess(access: LookupAccess): boolean {
-  return access === "token" || access === "verified";
+  return access === "token" || access === "verified" || access === "email";
 }
 
 /**
@@ -173,15 +204,18 @@ export function isVerifiedAccess(access: LookupAccess): boolean {
  *   ?token=…                   the personal link from an email
  *   ?order=…&email=…           the classic pair, still honoured so old links work
  *   ?q=…  then ?q=…&confirm=…  the one-field-at-a-time form
- *   ?q=…                       order number alone — `order-only` mode only
+ *   ?q=…                       one detail alone — `email-only` / `order-only`
  *
- * `mode` is what separates the two customer surfaces. On `two-factor` (the
- * Shopify App Proxy page) `q` alone never searches; it only decides which
- * question to ask next. On `order-only` (the hosted page) `q` alone searches,
- * and the resulting access level tells the page to withhold personal details.
+ * `mode` is what separates the customer surfaces:
  *
- * `?verify=1` forces `two-factor` behaviour on an `order-only` surface, which
- * is how a customer looking at a withheld address asks for the full view.
+ *   two-factor  `q` alone never searches; it only decides which question to
+ *               ask next, so the form never reveals what exists.
+ *   email-only  an email alone searches and opens the most recent order.
+ *   order-only  an order number alone searches, and the resulting access level
+ *               tells the page to withhold personal details.
+ *
+ * `?verify=1` forces `two-factor` behaviour, which is how a customer looking
+ * at a withheld address asks for the full view.
  */
 export type LookupRequest = {
   token: string | null;
@@ -196,6 +230,22 @@ export type LookupRequest = {
   /** Set when the visitor typed something this surface cannot use. */
   inputError: string | null;
 };
+
+/**
+ * How much a customer has to present to open their own order.
+ *
+ * Both customer surfaces read this, so the trade-off is made once instead of
+ * drifting between the page on the merchant's domain and the hosted one.
+ *
+ * `email-only` asks for the address used at checkout and nothing else. It is
+ * the least friction a tracking page can have, and the reason to think twice:
+ * an email address is not a secret, so anyone who knows a customer's address
+ * can see that customer's latest order — name, delivery address and items —
+ * and learn that the address shops here at all. A store that would rather not
+ * make that trade sets `two-factor`, which asks for the order number as well;
+ * everything else in this file already supports it.
+ */
+export const CUSTOMER_LOOKUP_MODE: LookupMode = "email-only";
 
 export function resolveLookupParams({
   token,
@@ -268,7 +318,24 @@ export function resolveLookupParams({
     };
   }
 
-  const single = typed ?? cleanOrder;
+  const single = typed ?? cleanOrder ?? cleanEmail;
+
+  if (effectiveMode === "email-only") {
+    if (!single) return blank;
+
+    // An order number on its own proves nothing here and this surface has not
+    // opted into showing anything for one, so ask for the address instead of
+    // silently finding nothing.
+    if (classifyLookup(single) !== "email") {
+      return {
+        ...blank,
+        inputError:
+          "Enter the email address you used at checkout, and we will show your latest order.",
+      };
+    }
+
+    return { ...blank, email: single, attempted: true, access: "email" };
+  }
 
   if (effectiveMode === "order-only") {
     if (!single) return blank;

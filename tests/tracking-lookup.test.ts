@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { classifyLookup } from "@/components/tracking/lookup-form";
-import { resolveLookupParams } from "@/lib/tracking/lookup";
+import { isVerifiedAccess, resolveLookupParams } from "@/lib/tracking/lookup";
 
 /**
  * The two customer surfaces ask for different things, and the difference is
@@ -211,5 +211,97 @@ describe("resolveLookupParams — the hosted page (order-only)", () => {
     for (const [input, expected] of earned) {
       expect(resolveLookupParams(input).access).toBe(expected);
     }
+  });
+});
+
+describe("resolveLookupParams — email-only, the current customer policy", () => {
+  it("searches on the email address alone", () => {
+    const result = resolveLookupParams({
+      q: "sarah@example.com",
+      mode: "email-only",
+    });
+
+    expect(result).toMatchObject({
+      email: "sarah@example.com",
+      orderNumber: null,
+      attempted: true,
+      access: "email",
+    });
+    // One field, one submit — it never advances to a second question.
+    expect(result.formStep).toEqual({ step: "identify" });
+    expect(result.inputError).toBeNull();
+  });
+
+  it("accepts the address in the legacy `email` slot too", () => {
+    expect(
+      resolveLookupParams({ email: "sarah@example.com", mode: "email-only" }),
+    ).toMatchObject({ email: "sarah@example.com", attempted: true, access: "email" });
+  });
+
+  it("refuses an order number on its own and says what it wants instead", () => {
+    // This surface has not opted into resolving an order number, so searching
+    // would find nothing and read as "your order does not exist".
+    const result = resolveLookupParams({ q: "#1042", mode: "email-only" });
+
+    expect(result.attempted).toBe(false);
+    expect(result.access).toBe("none");
+    expect(result.inputError).toMatch(/email address/i);
+  });
+
+  it("still prefers the emailed link over anything typed", () => {
+    expect(
+      resolveLookupParams({
+        token: "tok",
+        q: "sarah@example.com",
+        mode: "email-only",
+      }),
+    ).toMatchObject({ token: "tok", access: "token", attempted: true });
+  });
+
+  it("still honours a full pair, and rates it higher than the email alone", () => {
+    expect(
+      resolveLookupParams({
+        order: "#1042",
+        email: "sarah@example.com",
+        mode: "email-only",
+      }),
+    ).toMatchObject({ access: "verified", attempted: true });
+  });
+
+  it("falls back to the two-step form when the visitor asks to verify", () => {
+    const result = resolveLookupParams({
+      q: "sarah@example.com",
+      verify: "1",
+      mode: "email-only",
+    });
+
+    expect(result.attempted).toBe(false);
+    expect(result.formStep).toEqual({
+      step: "confirm",
+      value: "sarah@example.com",
+      kind: "email",
+    });
+  });
+
+  it("never reports an access level the visitor did not earn", () => {
+    const earned: Array<[Parameters<typeof resolveLookupParams>[0], string]> = [
+      [{ q: "sarah@example.com", mode: "email-only" }, "email"],
+      [{ q: "#1042", mode: "email-only" }, "none"],
+      [{ q: "   ", mode: "email-only" }, "none"],
+      [{ mode: "email-only" }, "none"],
+      [{ token: "tok", mode: "email-only" }, "token"],
+    ];
+
+    for (const [input, expected] of earned) {
+      expect(resolveLookupParams(input).access).toBe(expected);
+    }
+  });
+
+  it("counts as proof, so the page does not withhold the address", () => {
+    // Email-only exists to let a customer see their delivery details. If this
+    // ever flips, the tracking page silently becomes the restricted view and
+    // the feature looks broken rather than stricter.
+    expect(isVerifiedAccess("email")).toBe(true);
+    expect(isVerifiedAccess("order-number")).toBe(false);
   });
 });

@@ -152,40 +152,79 @@ describe("server-side authorisation", () => {
   });
 
   /**
-   * An order number on its own is guessable, so resolving one is a privilege a
-   * route has to ask for in writing. It defaults to off, the App Proxy page
-   * never asks for it, and the hosted page only asks for it on the access level
-   * that makes the page withhold personal details.
+   * Opening an order on less than the full pair is a privilege a route has to
+   * ask for in writing.
+   *
+   * There are two such relaxations — an order number alone, and an email alone
+   * — and the rule is the same for both: the parameter defaults to off, the
+   * query is unreachable without it, and a caller that wants it has to say so.
+   * Which one a surface enables is a product decision that has changed before
+   * and will change again; that it stays a decision is what this pins down.
    */
-  it("findPublicOrder only accepts an order number alone when asked to", () => {
+  it("findPublicOrder refuses a partial lookup unless asked", () => {
     const lookup = read("lib/tracking/lookup.ts");
     const body = lookup.slice(
       lookup.indexOf("export async function findPublicOrder"),
     );
 
-    // Off unless the caller opts in.
+    // Both relaxations are off unless the caller opts in.
     expect(body).toMatch(/allowOrderNumberOnly = false/);
+    expect(body).toMatch(/allowEmailOnly = false/);
+
+    // An order number alone reaches nothing without its opt-in.
     expect(body).toMatch(/if \(!mail && !allowOrderNumberOnly\) return null;/);
-    // And an order number is always required, opt-in or not.
-    expect(body).toMatch(/if \(!number\) return null;/);
+
+    // An email alone reaches nothing without its own, and an empty email
+    // reaches nothing at all — otherwise the query would match whichever
+    // order happened to come back first.
+    expect(body).toMatch(/if \(!mail \|\| !allowEmailOnly\) return null;/);
   });
 
-  it("only the hosted page opts out of the two-factor lookup", () => {
-    // The proxy page is served on the merchant's own domain; relaxing the rule
-    // there would expose that merchant's customers to enumeration.
-    expect(read("app/proxy/track-order/page.tsx")).toContain(
-      'mode: "two-factor"',
-    );
-    expect(read("app/proxy/track-order/page.tsx")).not.toContain(
-      "allowOrderNumberOnly",
-    );
-
+  it("both customer surfaces share one lookup policy", () => {
+    // The two pages are the same product to a customer, so they must not
+    // disagree about what proves an order is theirs — a surface quietly
+    // accepting less than the other is how the weaker one becomes the way in.
+    const proxy = read("app/proxy/track-order/page.tsx");
     const hosted = read("app/track/[shop]/page.tsx");
-    expect(hosted).toContain('mode: "order-only"');
-    // The opt-in is tied to the access level, not passed unconditionally.
-    expect(hosted).toContain(
-      'allowOrderNumberOnly: lookup.access === "order-number"',
+
+    for (const page of [proxy, hosted]) {
+      expect(page).toContain("mode: CUSTOMER_LOOKUP_MODE");
+      // Never a literal mode alongside the shared constant.
+      expect(page).not.toMatch(/mode: "(two-factor|email-only|order-only)"/);
+    }
+
+    // And every opt-in is tied to the access level that produced it, never
+    // passed unconditionally.
+    for (const page of [proxy, hosted]) {
+      for (const [flag, level] of [
+        ["allowEmailOnly", "email"],
+        ["allowOrderNumberOnly", "order-number"],
+      ]) {
+        if (page.includes(`${flag}:`)) {
+          expect(page).toContain(`${flag}: lookup.access === "${level}"`);
+        }
+      }
+    }
+  });
+
+  /**
+   * Whatever the current policy is, the levels that reveal a delivery address
+   * are decided in exactly one predicate, so tightening or relaxing it is a
+   * single edit rather than a hunt through the surfaces.
+   */
+  it("one predicate decides what reveals personal details", () => {
+    const lookup = read("lib/tracking/lookup.ts");
+
+    expect(lookup).toContain("export function isVerifiedAccess");
+
+    const body = lookup.slice(
+      lookup.indexOf("export function isVerifiedAccess"),
     );
+    const firstReturn = body.slice(0, body.indexOf(";"));
+
+    // A guessed order number never counts as proof, under any policy.
+    expect(firstReturn).not.toContain("order-number");
+    expect(firstReturn).toContain("token");
   });
 
   /**

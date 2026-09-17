@@ -27,7 +27,7 @@ export type LookupStep =
   | { step: "confirm"; value: string; kind: "email" | "order" };
 
 /** How many details this surface asks a visitor for. */
-export type LookupMode = "two-factor" | "order-only";
+export type LookupMode = "two-factor" | "email-only" | "order-only";
 
 /** Decides which half of the pair a typed value is. */
 export function classifyLookup(value: string): "email" | "order" {
@@ -51,7 +51,9 @@ export function LookupForm({
     color: "var(--brand-text)",
   };
 
-  const orderOnly = mode === "order-only" && state.step === "identify";
+  const identifying = state.step === "identify";
+  const orderOnly = mode === "order-only" && identifying;
+  const emailOnly = mode === "email-only" && identifying;
 
   return (
     <section
@@ -82,28 +84,46 @@ export function LookupForm({
           <>
             <div className="space-y-1.5">
               <label htmlFor="q" className="block text-small font-medium">
-                {orderOnly ? "Order number" : "Order number or email address"}
+                {emailOnly
+                  ? "Email address"
+                  : orderOnly
+                    ? "Order number"
+                    : "Order number or email address"}
               </label>
               <input
                 id="q"
                 name="q"
+                // An email field on a phone brings up the right keyboard and
+                // lets the browser autofill the address, which is the whole
+                // point of asking for only one thing.
+                type={emailOnly ? "email" : "text"}
                 required
                 autoFocus
                 autoCapitalize="none"
-                autoComplete="off"
+                autoComplete={emailOnly ? "email" : "off"}
                 spellCheck={false}
-                placeholder={orderOnly ? "#1042" : "#1042 or you@example.com"}
+                placeholder={
+                  emailOnly
+                    ? "you@example.com"
+                    : orderOnly
+                      ? "#1042"
+                      : "#1042 or you@example.com"
+                }
                 className="w-full rounded-control px-3.5 py-3 text-body"
                 style={fieldStyle}
               />
               <p className="text-caption" style={{ color: "var(--brand-muted)" }}>
-                {orderOnly
-                  ? "It is at the top of your order confirmation email."
-                  : "Whichever you have to hand. We will ask for the other next."}
+                {emailOnly
+                  ? "The address you used at checkout. We will show your most recent order."
+                  : orderOnly
+                    ? "It is at the top of your order confirmation email."
+                    : "Whichever you have to hand. We will ask for the other next."}
               </p>
             </div>
 
-            <Submit label={orderOnly ? "Track my order" : "Continue"} />
+            <Submit
+              label={emailOnly || orderOnly ? "Track my order" : "Continue"}
+            />
           </>
         ) : (
           <>
