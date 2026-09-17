@@ -712,8 +712,16 @@ group by topic;
 
 ## 15. Troubleshooting
 
+`npm run shopify:diagnose -- <shop>` answers most of these outright: it reads
+the store's own credentials and makes the same calls the app makes, reporting
+what Shopify said — whether the token works, which scopes were granted, how
+many orders exist in each window, where the webhooks point, and whether the App
+Proxy is configured. It is read-only.
+
 | Symptom | Cause | Fix |
 | --- | --- | --- |
+| "Sync orders" reports no orders, but the store has some | They are older than the window | The button pulls 60 days, which is as far back as Shopify goes without the protected `read_all_orders` scope. Orders older than that are never returned |
+| Tracking page 404s at `/apps/track-order` on the merchant's domain | That app has no App Proxy configured — Shopify is not forwarding the path at all | In the Partner dashboard: app → Configuration → App proxy → prefix `apps`, subpath `track-order`, URL `https://<your-app>/proxy/track-order`. Each app needs its own. Until then, use the hosted page at `/track/<shop>.myshopify.com` |
 | Shopify shows `Oauth error invalid_request: The redirect_uri is not whitelisted` | That app's allowlist does not contain the URL this deployment sends — or it is a store-admin "Develop apps" app, which has no allowlist at all | Run `npm run shopify:check`, paste the printed redirection URL into that app in the Partner dashboard. A `shpss_` secret means it is a store-admin app: add the store with the **Custom app** option instead; see step 11 |
 | Install redirects to `/install-failed` | OAuth HMAC or state mismatch | The message on the page names the cause and the shop. An HMAC failure means the secret stored for *that store* does not match the app it is being installed from |
 | Install redirects to `/install-failed` saying no app is configured | The shop was never added, so nothing records which app it belongs to | Add it under **Stores → Connect a store**, with its app's keys, then install again |

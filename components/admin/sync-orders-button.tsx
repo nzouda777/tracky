@@ -31,12 +31,19 @@ export function SyncOrdersButton({
     return (
       <div className="space-y-2">
         <form action={formAction} className="flex items-center gap-2">
-          <input type="hidden" name="sinceDays" value="7" />
+          {/* The full 60 days Shopify will return, not a narrower guess.
+              A button with no window control that quietly looked back only a
+              week reported "no new orders" for a store whose orders were all
+              older than that — indistinguishable, from the outside, from the
+              sync being broken. Re-examining an order that already exists only
+              refreshes the fields Shopify owns, so the wider window costs
+              nothing but the request. */}
+          <input type="hidden" name="sinceDays" value="60" />
           <SubmitButton
             variant="secondary"
             size="sm"
             pendingLabel="Syncing…"
-            title="Pull recent orders from Shopify, in case a webhook was missed"
+            title="Pull the last 60 days of orders from Shopify, in case a webhook was missed"
           >
             Sync orders
           </SubmitButton>

@@ -53,6 +53,19 @@ export async function syncOrdersAction(
       return { error: result.problems.join(" ") };
     }
 
+    // Shopify returned nothing at all for the window. Say so in those terms:
+    // "no new orders" reads as "the sync found nothing to do", when in fact
+    // the store may be full of orders that simply predate the window.
+    if (result.examined === 0) {
+      return {
+        ok: true,
+        message:
+          sinceDays >= 60
+            ? "Shopify returned no orders created in the last 60 days, which is as far back as it will go without the protected read_all_orders scope."
+            : `Shopify returned no orders created in the last ${sinceDays} days. Try a longer window — Shopify will go back 60 days.`,
+      };
+    }
+
     const parts: string[] = [];
     parts.push(
       result.imported === 0

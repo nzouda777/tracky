@@ -27,7 +27,8 @@
     "qstash:setup": "tsx scripts/qstash-schedules.ts setup",
     "qstash:list": "tsx scripts/qstash-schedules.ts list",
     "qstash:remove": "tsx scripts/qstash-schedules.ts remove",
-    "shopify:check": "tsx scripts/shopify-check.ts"
+    "shopify:check": "tsx scripts/shopify-check.ts",
+    "shopify:diagnose": "tsx scripts/shopify-diagnose.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
