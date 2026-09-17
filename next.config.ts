@@ -9,35 +9,64 @@ import { PHASE_DEVELOPMENT_SERVER } from "next/constants";
  * our HTML against that domain. `/_next/static/…/app.css` therefore becomes
  * `https://shop.example/_next/static/…/app.css`, which Shopify answers with a
  * 404 — so the tracking page arrives with no stylesheet and no JavaScript, as
- * raw unstyled markup. Nothing in the page is wrong; the browser simply asked
- * the wrong host for it.
+ * raw unstyled markup, and any branding set in the backoffice looks like it
+ * did nothing. Nothing in the page is wrong; the browser asked the wrong host.
  *
- * Naming the origin explicitly makes those URLs absolute and points them back
- * here. Vercel already serves `/_next/static` with `Access-Control-Allow-Origin: *`,
- * so the cross-origin stylesheet, scripts and webfonts all load.
+ * Naming the origin makes those URLs absolute and points them back here.
+ * Vercel serves `/_next/static` with `Access-Control-Allow-Origin: *`, so the
+ * cross-origin stylesheet, scripts and webfonts all load.
+ *
+ * This is resolved at build time, which is the trap: if it silently resolves
+ * to nothing, everything keeps building and deploying and only the customer's
+ * tracking page is broken. So the fallbacks go all the way down to VERCEL_URL,
+ * which Vercel always provides, and a production build that still finds
+ * nothing says so loudly rather than shipping quietly.
  */
 function assetOrigin(isDev: boolean): string | undefined {
   // In development the app is its own origin and the proxy is not in play.
   if (isDev) return undefined;
 
-  const candidate =
-    process.env.NEXT_PUBLIC_ASSET_PREFIX ??
+  const candidates = [
+    // Explicit override, for a CDN or an unusual deployment.
+    process.env.NEXT_PUBLIC_ASSET_PREFIX,
     // A preview deployment must serve its own assets: the chunk names in its
     // HTML do not exist on the production domain, so borrowing that origin
-    // would break every preview.
-    (process.env.VERCEL_ENV === "preview" && process.env.VERCEL_URL
+    // would break every preview. Checked before APP_URL, which is typically
+    // set project-wide to the production URL.
+    process.env.VERCEL_ENV === "preview" && process.env.VERCEL_URL
       ? `https://${process.env.VERCEL_URL}`
-      : undefined) ??
-    process.env.APP_URL ??
-    (process.env.VERCEL_PROJECT_PRODUCTION_URL
+      : undefined,
+    process.env.APP_URL,
+    process.env.VERCEL_PROJECT_PRODUCTION_URL
       ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-      : undefined);
+      : undefined,
+    // Last resort. Not the prettiest origin — it changes with each deployment
+    // — but it is always present on Vercel and always serves this exact
+    // build's assets, so the proxied page works with no configuration at all.
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined,
+  ];
 
+  for (const candidate of candidates) {
+    const origin = httpsOrigin(candidate);
+    if (origin) return origin;
+  }
+
+  // Not on Vercel, or nothing usable was set. Relative URLs are correct
+  // everywhere except behind the App Proxy, so the build continues — but it
+  // must not be a silent degradation.
+  console.warn(
+    "\n[tracky] No absolute asset origin could be resolved for this build.\n" +
+      "         The Shopify App Proxy tracking page will render without CSS or\n" +
+      "         JavaScript, because the browser resolves /_next/… against the\n" +
+      "         merchant's domain. Set APP_URL (or NEXT_PUBLIC_ASSET_PREFIX) to\n" +
+      "         this deployment's own https origin and rebuild.\n",
+  );
+  return undefined;
+}
+
+/** An https origin, or nothing. A wrong prefix would break every page. */
+function httpsOrigin(candidate: string | undefined): string | undefined {
   if (!candidate) return undefined;
-
-  // A wrong prefix breaks every page, so it has to be a real remote origin.
-  // Anything else — a localhost build, a stray path, a typo — falls back to
-  // the relative URLs, which are correct everywhere except behind the proxy.
   try {
     const url = new URL(candidate);
     if (url.protocol !== "https:") return undefined;
