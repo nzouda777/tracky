@@ -20,6 +20,29 @@ import {
 export const storeStatusEnum = pgEnum("store_status", [
   "active",
   "uninstalled",
+  /**
+   * Credentials were entered and the OAuth round trip has started, but the
+   * merchant has not approved yet. The row exists only so the callback (and
+   * the install route Shopify itself calls) can find out *which* Shopify app
+   * this shop belongs to — see `auth_mode` below. It is invisible everywhere
+   * else: `getMemberships` and `requireStoreById` both demand `active`.
+   */
+  "pending",
+]);
+
+/**
+ * How this store's Admin API token was obtained.
+ *
+ * `oauth`  — a public/Partner app: we hold the client id and secret and the
+ *            merchant approves the install, which mints the token.
+ * `custom` — an app created inside the store under *Develop apps*: there is no
+ *            OAuth flow at all, the Admin API token is pasted in by hand and
+ *            the API secret key is only used to verify webhooks and App Proxy
+ *            signatures.
+ */
+export const shopifyAuthModeEnum = pgEnum("shopify_auth_mode", [
+  "oauth",
+  "custom",
 ]);
 
 export const membershipRoleEnum = pgEnum("membership_role", [
@@ -108,6 +131,28 @@ export const stores = pgTable(
     /** AES-256-GCM ciphertext of the Shopify Admin API access token. */
     accessToken: text("access_token"),
     scope: text("scope"),
+
+    // --- Shopify app credentials, per store ---------------------------------
+    //
+    // The application used to hold exactly one set of app credentials, in
+    // SHOPIFY_API_KEY / SHOPIFY_API_SECRET, which capped the whole platform at
+    // a single Shopify app. Every store now carries its own, so any number of
+    // apps created in the Partner dashboard can be spread across stores
+    // without a redeploy. The environment variables remain as a fallback for
+    // stores connected before this change.
+    authMode: shopifyAuthModeEnum("auth_mode").notNull().default("oauth"),
+    /** Client ID (OAuth app) or API key (custom app). Not a secret. */
+    apiKey: text("api_key"),
+    /**
+     * AES-256-GCM ciphertext of the app's client secret / API secret key.
+     * This is the value every Shopify signature on this store is verified
+     * with: webhook HMAC, OAuth callback HMAC and App Proxy signature.
+     */
+    apiSecret: text("api_secret"),
+    /** Scopes requested at install. Null falls back to SHOPIFY_SCOPES. */
+    scopes: text("scopes"),
+    /** Admin API version. Null falls back to SHOPIFY_API_VERSION. */
+    apiVersion: text("api_version"),
     status: storeStatusEnum("status").notNull().default("active"),
     installedAt: timestamp("installed_at", { withTimezone: true }),
     uninstalledAt: timestamp("uninstalled_at", { withTimezone: true }),
@@ -597,6 +642,8 @@ export const platformActionEnum = pgEnum("platform_action", [
   "store.resume",
   "store.disconnect",
   "store.note",
+  /** An operator replaced the Shopify app credentials a store runs on. */
+  "store.credentials",
   "user.disable",
   "user.enable",
   "user.grant_platform_admin",
@@ -787,5 +834,7 @@ export type FulfillmentRules = typeof fulfillmentRules.$inferSelect;
 export type WebhookEvent = typeof webhookEvents.$inferSelect;
 export type PlatformAuditEntry = typeof platformAuditLog.$inferSelect;
 export type PlatformAction = (typeof platformActionEnum.enumValues)[number];
+export type ShopifyAuthMode = (typeof shopifyAuthModeEnum.enumValues)[number];
+export type StoreStatus = (typeof storeStatusEnum.enumValues)[number];
 export type MembershipRole = (typeof membershipRoleEnum.enumValues)[number];
 export type StageEventSource = (typeof stageEventSourceEnum.enumValues)[number];

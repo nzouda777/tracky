@@ -41,9 +41,13 @@ export default async function PlatformHealthPage() {
       note: "Every screen you are looking at came from it.",
     },
     {
-      name: "Shopify app",
+      name: "Shopify fallback app",
       configured: isConfigured("SHOPIFY_API_KEY", "SHOPIFY_API_SECRET"),
-      note: "Needed for OAuth, webhook verification and the App Proxy signature.",
+      // Each store now carries the keys of the app it was connected through,
+      // so this is no longer required — it only catches stores that predate
+      // per-store credentials and were never reconnected.
+      optional: true,
+      note: "Only used by stores that carry no app keys of their own. Every store added since carries them.",
     },
     {
       name: "Email (Resend)",
@@ -67,7 +71,9 @@ export default async function PlatformHealthPage() {
     },
   ];
 
-  const missing = integrations.filter((entry) => !entry.configured);
+  const missing = integrations.filter(
+    (entry) => !entry.configured && !("optional" in entry && entry.optional),
+  );
 
   return (
     <div className="space-y-6">
@@ -99,14 +105,21 @@ export default async function PlatformHealthPage() {
                     style={{
                       backgroundColor: entry.configured
                         ? "var(--viz-good)"
-                        : "var(--viz-warning)",
+                        : "optional" in entry && entry.optional
+                          ? "var(--viz-deemphasis)"
+                          : "var(--viz-warning)",
                     }}
                   />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-ink-900">
                       {entry.name}{" "}
                       <span className="text-xs font-normal text-ink-500">
-                        — {entry.configured ? "configured" : "not configured"}
+                        —{" "}
+                        {entry.configured
+                          ? "configured"
+                          : "optional" in entry && entry.optional
+                            ? "not set, and not needed"
+                            : "not configured"}
                       </span>
                     </p>
                     <p className="text-xs text-ink-500">{entry.note}</p>

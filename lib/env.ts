@@ -52,11 +52,24 @@ export const env = {
     return required("ENCRYPTION_KEY");
   },
   shopify: {
-    get apiKey(): string {
-      return required("SHOPIFY_API_KEY");
+    /**
+     * The single set of app credentials the platform used to run on.
+     *
+     * Credentials now live on each store row (`stores.api_key` /
+     * `stores.api_secret`), so several Shopify apps can be spread across
+     * stores. These two are only a fallback, for stores connected before that
+     * change and for a deployment that still runs one app for everything —
+     * which is why they are optional rather than `required()`. Resolve them
+     * through `lib/shopify/credentials.ts`, never directly.
+     */
+    get fallbackApiKey(): string | null {
+      return read("SHOPIFY_API_KEY") ?? null;
     },
-    get apiSecret(): string {
-      return required("SHOPIFY_API_SECRET");
+    get fallbackApiSecret(): string | null {
+      return read("SHOPIFY_API_SECRET") ?? null;
+    },
+    get fallbackConfigured(): boolean {
+      return isConfigured("SHOPIFY_API_KEY", "SHOPIFY_API_SECRET");
     },
     get scopes(): string {
       return optional(

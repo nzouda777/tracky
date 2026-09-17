@@ -1,7 +1,8 @@
 import { eq } from "drizzle-orm";
 
 import { db, stores, type Store } from "@/lib/db";
-import { env, isConfigured } from "@/lib/env";
+import { isConfigured } from "@/lib/env";
+import { credentialsForStore } from "./credentials";
 import {
   isValidShopDomain,
   normalizeShopDomain,
@@ -30,15 +31,9 @@ export async function authenticateProxyRequest(
     return { ok: false, reason: "missing-shop" };
   }
 
-  const signatureOk = verifyAppProxySignature({
-    searchParams,
-    secret: env.shopify.apiSecret,
-  });
-
-  if (!signatureOk && !allowUnsignedInDevelopment()) {
-    return { ok: false, reason: "bad-signature" };
-  }
-
+  // The store is looked up first because the signature can only be checked
+  // against the secret of the Shopify app this particular store is installed
+  // from, and different stores run on different apps.
   const [store] = await db
     .select()
     .from(stores)
@@ -47,6 +42,18 @@ export async function authenticateProxyRequest(
 
   if (!store) return { ok: false, reason: "unknown-store" };
   if (store.status !== "active") return { ok: false, reason: "uninstalled" };
+
+  const credentials = credentialsForStore(store);
+  const signatureOk =
+    credentials !== null &&
+    verifyAppProxySignature({
+      searchParams,
+      secret: credentials.apiSecret,
+    });
+
+  if (!signatureOk && !allowUnsignedInDevelopment()) {
+    return { ok: false, reason: "bad-signature" };
+  }
 
   return {
     ok: true,

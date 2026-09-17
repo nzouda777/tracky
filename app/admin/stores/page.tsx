@@ -19,8 +19,10 @@ import { env } from "@/lib/env";
 import { shopifyAdminUrl, storefrontUrl } from "@/lib/shopify/parse-shop";
 import { buildTrackingLookupLink } from "@/lib/tracking/links";
 import { formatDate, formatRelative } from "@/lib/utils";
+import { maskSecret } from "@/lib/shopify/credentials";
 import { ConnectStoreForm } from "./connect-store-form";
 import { ReconnectButton } from "./reconnect-button";
+import { StoreCredentialsForm } from "./store-credentials-form";
 import { SwitchToStoreButton } from "./switch-to-store-button";
 
 export const metadata: Metadata = { title: "Stores" };
@@ -47,7 +49,10 @@ export default async function StoresPage() {
           description="Paste the store's myshopify.com link, its admin link, or just the handle."
         />
         <CardBody>
-          <ConnectStoreForm callbackUrl={`${env.appUrl}/api/shopify/callback`} />
+          <ConnectStoreForm
+            callbackUrl={`${env.appUrl}/api/shopify/callback`}
+            platformAppConfigured={env.shopify.fallbackConfigured}
+          />
         </CardBody>
       </Card>
 
@@ -121,6 +126,14 @@ export default async function StoresPage() {
                           : ""}
                       </p>
 
+                      {/* Which Shopify app this store runs on. Only the key is
+                          shown, masked — the secret never leaves the server. */}
+                      <p className="truncate text-xs text-ink-500">
+                        {row.store.apiKey
+                          ? `${row.store.authMode === "custom" ? "Custom app" : "Partner app"} ${maskSecret(row.store.apiKey)}`
+                          : "Running on this deployment's default app"}
+                      </p>
+
                       <p className="text-xs text-ink-500">
                         {row.totalOrders} order
                         {row.totalOrders === 1 ? "" : "s"} synced
@@ -175,6 +188,21 @@ export default async function StoresPage() {
                     ) : null}
                   </div>
                 </div>
+
+                {row.role === "owner" ? (
+                  <details className="mt-3 sm:pl-12">
+                    <summary className="cursor-pointer text-xs font-medium text-ink-600 underline underline-offset-2 hover:text-ink-900">
+                      Shopify app keys
+                    </summary>
+                    <div className="mt-3 rounded-card border border-ink-200 bg-ink-50/60 p-4">
+                      <StoreCredentialsForm
+                        storeId={row.store.id}
+                        shopDomain={row.store.shopDomain}
+                        currentMode={row.store.authMode}
+                      />
+                    </div>
+                  </details>
+                ) : null}
               </li>
             ))}
           </ul>
@@ -185,8 +213,18 @@ export default async function StoresPage() {
         <CardHeader title="What happens when you connect a store" />
         <CardBody className="space-y-2 text-sm text-ink-600">
           <p>
-            You are sent to Shopify to approve the app. Approving requires admin
-            rights on that store, which is what proves the store is yours.
+            Each store is connected through <strong>its own Shopify app</strong>,
+            whose keys you enter above. One app reaching its install ceiling
+            therefore never blocks the next store, and adding an app needs no
+            redeploy — only the one redirect URL shown above, added once to each
+            app in the Partner dashboard.
+          </p>
+          <p>
+            With a Partner app you are sent to Shopify to approve it. Approving
+            requires admin rights on that store, which is what proves the store
+            is yours. With a custom app there is no approval step: the Admin API
+            token you paste is issued inside that store&rsquo;s own admin, which
+            proves the same thing.
           </p>
           <p>
             The store then starts with <strong>its own</strong> tracking stages,

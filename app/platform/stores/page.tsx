@@ -22,13 +22,18 @@ export default async function PlatformStoresPage() {
   const rows = await getPlatformStores();
 
   const suspended = rows.filter((row) => row.store.suspendedAt).length;
-  const disconnected = rows.filter((row) => row.store.status !== "active").length;
+  const disconnected = rows.filter(
+    (row) => row.store.status === "uninstalled",
+  ).length;
+  // Keys entered, approval never completed. Counted apart from a disconnect,
+  // because nothing was ever connected in the first place.
+  const pending = rows.filter((row) => row.store.status === "pending").length;
 
   return (
     <div className="space-y-6">
       <PageHeader
         title="Stores"
-        description={`${rows.length} store${rows.length === 1 ? "" : "s"}${suspended > 0 ? `, ${suspended} suspended` : ""}${disconnected > 0 ? `, ${disconnected} disconnected` : ""}.`}
+        description={`${rows.length} store${rows.length === 1 ? "" : "s"}${suspended > 0 ? `, ${suspended} suspended` : ""}${disconnected > 0 ? `, ${disconnected} disconnected` : ""}${pending > 0 ? `, ${pending} awaiting approval` : ""}.`}
       />
 
       <Card>
@@ -78,6 +83,8 @@ export default async function PlatformStoresPage() {
                       <HealthBadge health={row.health} reason={row.healthReason} />
                       {row.store.suspendedAt ? (
                         <Badge tone="warning">Suspended</Badge>
+                      ) : row.store.status === "pending" ? (
+                        <Badge tone="neutral">Install unfinished</Badge>
                       ) : row.store.status !== "active" ? (
                         <Badge tone="danger">Disconnected</Badge>
                       ) : null}

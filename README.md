@@ -183,10 +183,22 @@ or Vercel's firewall in front of it if it starts attracting attention.
    leave the store's domain. Every proxied request is signature-verified before
    any order data is read.
 
-5. **Install**: open `https://<your-app>/api/shopify/install?shop=<shop>.myshopify.com`.
-   The callback verifies the HMAC and the state nonce, stores an **encrypted**
-   access token, provisions that store's own defaults, and registers the
-   webhooks. The installer is then asked to create the store's owner account.
+5. **Install**: add the store in `/admin/stores` with that app's Client ID and
+   secret, which sends you to Shopify to approve it. The callback verifies the
+   HMAC and the state nonce, stores an **encrypted** access token, provisions
+   that store's own defaults, and registers the webhooks. The installer is then
+   asked to create the store's owner account.
+
+   > **One deployment, many Shopify apps.** Credentials live on each store row,
+   > not in the environment: `stores.api_key` and `stores.api_secret` (the
+   > secret encrypted at rest), and every signature from a store is verified
+   > with its own app's secret. A Shopify app is capped in how widely it can be
+   > installed, so distributing to many stores means distributing across apps —
+   > create as many as you like and pick one per store. The App URL, redirect
+   > URL and App Proxy URL above are identical for every app, because each
+   > request identifies its app from the shop domain it names. A store created
+   > in its own Shopify admin under *Develop apps* is added the other way: paste
+   > its Admin API access token and no OAuth happens at all.
 
 Webhooks are registered automatically at install time:
 `orders/create`, `orders/updated`, `orders/cancelled`, `fulfillments/create`,

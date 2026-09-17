@@ -302,8 +302,6 @@ previews).
 | `AUTH_SECRET` | 32-byte base64 | From step 4. |
 | `AUTH_TRUST_HOST` | `true` | Required behind Vercel's proxy. |
 | `ENCRYPTION_KEY` | 32-byte base64 | From step 4. Not rotatable — see the warning there. |
-| `SHOPIFY_API_KEY` | Shopify app client ID | From step 11. |
-| `SHOPIFY_API_SECRET` | Shopify app client secret | Signs webhooks, OAuth and App Proxy. |
 | `RESEND_API_KEY` | `re_…` | |
 | `RESEND_FROM_EMAIL` | `notifications@your-domain` | Must be on a verified domain. |
 | `QSTASH_TOKEN` | Upstash publish token | Also used by `npm run qstash:setup`. |
@@ -318,8 +316,10 @@ previews).
 | --- | --- | --- |
 | `PLATFORM_NAME` | `Tracky` | Fallback display name. |
 | `RESEND_FROM_NAME` | `Tracky` | Fallback `From` name. |
-| `SHOPIFY_SCOPES` | `read_orders,write_orders,read_fulfillments,write_fulfillments` | Keep in sync with the Partner dashboard. |
-| `SHOPIFY_API_VERSION` | `2025-07` | See the note in step 14 before changing. |
+| `SHOPIFY_SCOPES` | `read_orders,write_orders,read_fulfillments,write_fulfillments` | Default for a store that does not override it. Keep in sync with each app's configuration. |
+| `SHOPIFY_API_VERSION` | `2025-07` | Default for a store that does not override it. See the note in step 14 before changing. |
+| `SHOPIFY_API_KEY` | *(unset)* | Fallback app client ID — see step 11. Only used by stores carrying no keys of their own. |
+| `SHOPIFY_API_SECRET` | *(unset)* | Fallback app client secret. Same. |
 | `QSTASH_SWEEP_CRON` | `*/15 * * * *` | How often the QStash sweep runs. Re-run `npm run qstash:setup` after changing it. |
 
 ### Must NOT be set in production
@@ -392,24 +392,48 @@ missing migration.
 
 ---
 
-## 11. Create the Shopify app
+## 11. Create the Shopify apps
+
+**Credentials are not deployment-wide.** Each store records the app it was
+connected through, in `stores.api_key` and `stores.api_secret` (the secret
+encrypted with `ENCRYPTION_KEY`), and every Shopify signature that store
+produces — webhook HMAC, OAuth callback HMAC, App Proxy signature — is verified
+with *that* app's secret.
+
+This is what lets one deployment serve any number of stores. A Shopify app is
+capped in how widely it can be installed, so spreading across stores means
+spreading across apps: create as many as you need, and pick one per store when
+adding it in the backoffice. Adding an app requires no redeploy and no
+environment change.
+
+Two kinds of app are accepted.
+
+### Partner dashboard app (OAuth)
 
 In the [Partner dashboard](https://partners.shopify.com): **Apps → Create app
-→ Create app manually**.
+→ Create app manually**. The merchant approves the install and Shopify mints
+the token. This is the kind to use when you are distributing to stores you do
+not administer yourself.
 
-> **It has to be a Partner dashboard app.** Shopify also lets you create an app
-> from inside a single store, under *Settings → Apps and sales channels →
-> Develop apps*. That kind is installed by pressing **Install**, is used with an
-> Admin API access token (`shpat_…`), and **has no "Allowed redirection URL(s)"
-> field at all** — so the OAuth flow this app uses can never succeed with it.
-> Every attempt ends at Shopify with:
->
-> ```
-> Oauth error invalid_request: The redirect_uri is not whitelisted
-> ```
->
-> The tell is the secret: a store-admin app issues one beginning `shpss_`.
-> `npm run shopify:check` flags it.
+### Store-admin app (custom)
+
+Created inside one store, under *Settings → Apps and sales channels → Develop
+apps*. It is installed by pressing **Install** and used with an Admin API
+access token (`shpat_…`), and it has **no "Allowed redirection URL(s)" field**,
+so it has no OAuth flow — an OAuth install against one always ends at:
+
+```
+Oauth error invalid_request: The redirect_uri is not whitelisted
+```
+
+Add such a store with the **Custom app** option instead: paste the Admin API
+access token and the API secret key, and it connects immediately, with no
+redirect. The tell is the secret, which begins `shpss_`; `npm run shopify:check`
+flags it.
+
+> Store-admin apps do not support App Proxies. Their tracking page is served at
+> `/track/<shop>.myshopify.com` on this deployment rather than on the
+> merchant's own domain; everything else behaves identically.
 
 ### Distribution
 
@@ -420,19 +444,35 @@ In the [Partner dashboard](https://partners.shopify.com): **Apps → Create app
 
 ### Configuration
 
+Every Partner app you create gets the same three values:
+
 | Field | Value |
 | --- | --- |
 | App URL | `https://tracky.yourcompany.com` |
 | Allowed redirection URL | `https://tracky.yourcompany.com/api/shopify/callback` |
 | Embedded in Shopify admin | **No** |
 
-Copy the **Client ID** into `SHOPIFY_API_KEY` and the **Client secret** into
-`SHOPIFY_API_SECRET`, then redeploy so the new values take effect.
+They are identical for every app — there is one callback URL, not one per app,
+because each request identifies its own app from the shop domain it names. So
+adding an app is: create it, paste those three values, then enter its **Client
+ID** and **Client secret** in the backoffice under **Stores → Connect a store**
+alongside the shop address. No redeploy.
 
 The redirection URL is matched **character for character**, including the
 scheme, the port and the absence of a trailing slash. Run
 `npm run shopify:check` to print the exact string this deployment will send,
-and paste that — do not retype it.
+and paste that — do not retype it. To preflight an app before adding it:
+
+```bash
+npm run shopify:check -- acme-supply.myshopify.com <client-id> <client-secret>
+```
+
+> **Optional fallback.** Setting `SHOPIFY_API_KEY` and `SHOPIFY_API_SECRET` in
+> the environment makes one app the default for stores that carry no keys of
+> their own. It exists for deployments that predate per-store credentials;
+> leave both unset on a fresh one. A store connected while the fallback was in
+> use has those keys written onto its row the next time it is installed, so it
+> stops depending on them.
 
 ### Developing against a local server
 
@@ -629,7 +669,8 @@ Nothing to deploy. Send the merchant to
 | `CRON_SECRET` | None | Change it, redeploy |
 | `RESEND_API_KEY` | None | Change it, redeploy |
 | `QSTASH_*` | In-flight messages may fail their signature check | Rotate the signing keys in Upstash first; keep both current and next set |
-| `SHOPIFY_API_SECRET` | **Breaks every webhook, OAuth flow and App Proxy request** | Rotate in the Partner dashboard, update the variable, redeploy immediately |
+| `SHOPIFY_API_SECRET` | Breaks only the stores still falling back to it | Rotate in the Partner dashboard, update the variable, redeploy immediately |
+| A store's own app secret | **Breaks every webhook, OAuth flow and App Proxy request for that one store** | Rotate in the Partner dashboard, then paste the new secret under **Stores → Shopify app keys** (or in `/platform`, where it is audited). Takes effect on the next request, no redeploy |
 | `ENCRYPTION_KEY` | **Every stored Shopify token becomes undecryptable** | Avoid. If unavoidable, every merchant must reinstall |
 
 ### Changing `APP_URL`
@@ -673,9 +714,10 @@ group by topic;
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| Shopify shows `Oauth error invalid_request: The redirect_uri is not whitelisted` | The app's allowlist does not contain the URL this deployment sends — or the app is a store-admin "Develop apps" one, which has no allowlist at all | Run `npm run shopify:check`, paste the printed redirection URL into the Partner dashboard. A `shpss_` secret means the wrong kind of app; see step 11 |
-| Install redirects to `/install-failed` | OAuth HMAC or state mismatch | The message on the page names the cause. HMAC failures mean `SHOPIFY_API_SECRET` does not match the app |
-| Webhooks return 401 | `SHOPIFY_API_SECRET` differs from the app's client secret | Copy it again; redeploy |
+| Shopify shows `Oauth error invalid_request: The redirect_uri is not whitelisted` | That app's allowlist does not contain the URL this deployment sends — or it is a store-admin "Develop apps" app, which has no allowlist at all | Run `npm run shopify:check`, paste the printed redirection URL into that app in the Partner dashboard. A `shpss_` secret means it is a store-admin app: add the store with the **Custom app** option instead; see step 11 |
+| Install redirects to `/install-failed` | OAuth HMAC or state mismatch | The message on the page names the cause and the shop. An HMAC failure means the secret stored for *that store* does not match the app it is being installed from |
+| Install redirects to `/install-failed` saying no app is configured | The shop was never added, so nothing records which app it belongs to | Add it under **Stores → Connect a store**, with its app's keys, then install again |
+| Webhooks return 401 | The secret stored for that store differs from its app's client secret | Paste it again under **Stores → Shopify app keys**. No redeploy |
 | Webhooks return 200 but no orders appear | The store has no stages | `/admin/stages` → **Restore the default stages** |
 | Tracking page shows "Order tracking unavailable" | App Proxy URL wrong, or the request did not come through the storefront | Check the App Proxy config; the URL is `/proxy/track-order`, not `/api/proxy/...` |
 | Tracking page 404s on the storefront | Prefix/subpath mismatch | They must be `apps` and `track-order` |

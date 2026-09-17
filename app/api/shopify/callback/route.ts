@@ -7,6 +7,7 @@ import { db, storeMemberships, stores } from "@/lib/db";
 import { env } from "@/lib/env";
 import { getCurrentUser } from "@/lib/auth/session";
 import { ShopifyAdminClient } from "@/lib/shopify/admin-api";
+import { credentialColumns, resolveShop } from "@/lib/shopify/credentials";
 import {
   isValidShopDomain,
   normalizeShopDomain,
@@ -57,10 +58,22 @@ async function handleCallback(request: NextRequest) {
     return installError("The installation link was incomplete. Start again from your Shopify admin.");
   }
 
+  // Which Shopify app is this install for? The shop domain answers it: its
+  // store row was created with that app's credentials when it was added. The
+  // domain is unverified at this point, but it only picks the secret the
+  // signature below is checked against — a wrong pick fails that check.
+  const { credentials } = await resolveShop(shopDomain);
+
+  if (!credentials) {
+    return installError(
+      `No Shopify app credentials are configured for ${shopDomain}. Add the store with its app's API key and secret key, then install it again.`,
+    );
+  }
+
   if (
     !verifyOAuthHmac({
       searchParams: params,
-      secret: env.shopify.apiSecret,
+      secret: credentials.apiSecret,
       rawQuery: request.nextUrl.search,
     })
   ) {
@@ -69,7 +82,7 @@ async function handleCallback(request: NextRequest) {
       params: [...params.keys()].sort().join(","),
     });
     return installError(
-      "The installation request could not be verified. This usually means the API secret key in this deployment does not match the app in your Shopify dashboard.",
+      `The installation request could not be verified. This usually means the API secret key stored for ${shopDomain} does not match the app it is being installed from.`,
     );
   }
 
@@ -86,8 +99,13 @@ async function handleCallback(request: NextRequest) {
   const { accessToken, scope } = await exchangeCodeForToken({
     shopDomain,
     code,
+    credentials,
   });
-  const client = ShopifyAdminClient.withToken(shopDomain, accessToken);
+  const client = ShopifyAdminClient.withToken(
+    shopDomain,
+    accessToken,
+    credentials.apiVersion,
+  );
 
   // A failure here must not block the install; the store can still be used.
   // It is logged rather than swallowed, because a profile that never loads
@@ -112,6 +130,20 @@ async function handleCallback(request: NextRequest) {
       }
     : {};
 
+  // The credentials just completed a real OAuth round trip against this shop,
+  // so they are written onto the row whichever way they were resolved. A store
+  // that had been running on the environment fallback becomes self-describing
+  // from here on, and no longer depends on a platform-wide variable.
+  const appColumns = {
+    authMode: "oauth" as const,
+    ...credentialColumns({
+      apiKey: credentials.apiKey,
+      apiSecret: credentials.apiSecret,
+      scopes: credentials.scopes,
+      apiVersion: credentials.apiVersion,
+    }),
+  };
+
   const [store] = await db
     .insert(stores)
     .values({
@@ -124,6 +156,7 @@ async function handleCallback(request: NextRequest) {
       status: "active",
       installedAt: new Date(),
       uninstalledAt: null,
+      ...appColumns,
     })
     .onConflictDoUpdate({
       target: stores.shopDomain,
@@ -135,6 +168,7 @@ async function handleCallback(request: NextRequest) {
         installedAt: new Date(),
         uninstalledAt: null,
         updatedAt: new Date(),
+        ...appColumns,
       },
     })
     .returning();

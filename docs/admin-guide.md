@@ -268,17 +268,36 @@ app asks them to use **Mark as delivered** so the proof is always recorded.
 
 `/admin/stores`
 
-Paste the store's address into **Connect a store** and press *Connect with
-Shopify*. Any of these work — the field shows you which store it resolved
-before you submit:
+Paste the store's address into **Connect a store**. Any of these work — the
+field shows you which store it resolved before you submit:
 
 - `acme-supply`
 - `acme-supply.myshopify.com`
 - `https://acme-supply.myshopify.com/admin/products`
 - `https://admin.shopify.com/store/acme-supply/orders/1234`
 
-You are sent to Shopify to approve the app. Approving needs admin rights on
-that store, which is what proves it is yours.
+Then give it the **Shopify app** it should run on. Each store runs on its own
+app, so one app reaching its install ceiling never blocks the next store, and
+adding an app never needs a redeploy. Two kinds are accepted:
+
+**Partner app** — created in your Shopify Partner dashboard. Enter its *Client
+ID* and *Client secret*, press **Connect with Shopify**, and you are sent to
+Shopify to approve it. Approving needs admin rights on that store, which is
+what proves it is yours.
+
+> Each new app needs the deployment's redirect URL added once, under *Allowed
+> redirection URL(s)* in its configuration. It is the same URL for every app,
+> and the form shows you the exact string.
+
+**Custom app** — created inside that store, under *Settings → Apps and sales
+channels → Develop apps*. There is no approval step: enter its *API key*, *API
+secret key* and *Admin API access token*, and the store connects straight away.
+The token is checked against Shopify before anything is saved, so a mistyped
+one is rejected on the spot rather than failing silently later.
+
+Secrets and tokens are stored encrypted and are never shown again — only the
+first and last few characters of the key, so you can tell which app a store is
+on.
 
 The new store arrives with **its own** stages, branding, templates, sequence
 and fulfillment rules, completely independent of your existing stores. Nothing
@@ -293,6 +312,11 @@ selector in the top bar.
 disconnected — that means Tracky was uninstalled from Shopify, so nothing is
 syncing — or after you change the app's permissions. The store's orders and
 settings are kept while it is disconnected.
+
+**Shopify app keys**, under each store, is where you rotate a leaked secret or
+move that store onto a different app. Changing the secret takes effect on the
+very next request. Moving a store to another Partner app does not carry its
+token across, so press **Reconnect** afterwards to have the new app issue one.
 
 ## 12. The customer tracking page
 

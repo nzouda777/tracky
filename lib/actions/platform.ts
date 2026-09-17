@@ -6,6 +6,8 @@ import { revalidatePath } from "next/cache";
 import { requirePlatformAdmin } from "@/lib/auth/platform";
 import { db, storeMemberships, stores, users } from "@/lib/db";
 import { recordPlatformAction } from "@/lib/platform/audit";
+import { parseCredentialInput } from "@/lib/shopify/credentials";
+import { writeStoreCredentials } from "@/lib/stores/credentials";
 import { guard, type ActionResult } from "./result";
 
 /**
@@ -221,6 +223,59 @@ export async function updateStoreNoteAction(
 
     revalidatePlatform(storeId);
     return { ok: true, message: "Note saved." };
+  });
+}
+
+/**
+ * Moves a store onto a different Shopify app, from the operator side.
+ *
+ * The same write the store's own owner can make, with two differences: it
+ * reaches any store rather than one the operator is a member of, and it lands
+ * in the audit log. That matters more here than for most operator actions —
+ * the API secret key is what every webhook and tracking-page request for a
+ * store is verified against, so replacing it changes what that store will
+ * accept as genuine.
+ *
+ * The secret itself is never recorded, only the key it now runs on.
+ */
+export async function setStoreCredentialsAction(
+  _previous: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  return guard(async (): Promise<ActionResult> => {
+    const session = await requirePlatformAdmin();
+    const storeId = String(formData.get("storeId") ?? "");
+    const reason = reasonOf(formData);
+
+    const [store] = await db
+      .select()
+      .from(stores)
+      .where(eq(stores.id, storeId))
+      .limit(1);
+    if (!store) return { error: "That store no longer exists." };
+
+    const parsed = parseCredentialInput(formData);
+    if (!parsed.ok) return { fieldErrors: parsed.fieldErrors };
+
+    const result = await writeStoreCredentials(store, parsed.value);
+    if (!result.ok) return result;
+
+    await recordPlatformAction({
+      session,
+      action: "store.credentials",
+      targetStoreId: storeId,
+      targetLabel: store.name ?? store.shopDomain,
+      reason,
+      metadata: {
+        authMode: parsed.value.authMode,
+        apiKey: parsed.value.apiKey,
+        from: store.apiKey ?? null,
+        tokenReplaced: Boolean(parsed.value.accessToken),
+      },
+    });
+
+    revalidatePlatform(storeId);
+    return result;
   });
 }
 

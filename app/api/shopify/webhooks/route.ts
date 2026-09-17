@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
 import { after, NextResponse, type NextRequest } from "next/server";
 
-import { db, stores, webhookEvents } from "@/lib/db";
-import { env } from "@/lib/env";
+import { db, webhookEvents } from "@/lib/db";
+import { resolveShop } from "@/lib/shopify/credentials";
 import { handleWebhook } from "@/lib/shopify/handlers";
 import {
   isValidShopDomain,
@@ -18,8 +18,9 @@ export const dynamic = "force-dynamic";
  * Single endpoint for every Shopify webhook.
  *
  * Contract with Shopify:
- *   1. Verify the HMAC over the raw body — an unverified payload is rejected
- *      with 401 and nothing is written.
+ *   1. Work out which app sent this, then verify the HMAC over the raw body
+ *      with that app's secret — an unverified payload is rejected with 401 and
+ *      nothing is written.
  *   2. Deduplicate on `X-Shopify-Event-Id` via a unique index, so a redelivery
  *      is acknowledged without being processed a second time.
  *   3. Acknowledge immediately and do the work in `after()`, so a slow
@@ -29,21 +30,38 @@ export async function POST(request: NextRequest) {
   // The raw bytes, exactly as received: re-serialising would break the HMAC.
   const rawBody = await request.text();
 
-  const headerHmac = request.headers.get("x-shopify-hmac-sha256");
-  if (
-    !verifyWebhookHmac({
-      rawBody,
-      headerHmac,
-      secret: env.shopify.apiSecret,
-    })
-  ) {
-    return NextResponse.json({ error: "Invalid signature." }, { status: 401 });
-  }
-
   const topicHeader = request.headers.get("x-shopify-topic") ?? "";
   const eventId = request.headers.get("x-shopify-event-id");
   const shopHeader = request.headers.get("x-shopify-shop-domain");
   const shopDomain = shopHeader ? normalizeShopDomain(shopHeader) : null;
+
+  // --- Which app signed this? ----------------------------------------------
+  // One endpoint serves every Shopify app the platform holds, and each app has
+  // its own secret, so the shop domain has to be read before the signature can
+  // be checked at all. The header is unauthenticated — it only selects a
+  // candidate secret, and naming the wrong shop simply fails the check below.
+  // Authenticity still rests entirely on the HMAC.
+  if (!shopDomain || !isValidShopDomain(shopDomain)) {
+    return NextResponse.json({ error: "Missing shop domain." }, { status: 400 });
+  }
+
+  const { store, credentials } = await resolveShop(shopDomain);
+
+  // A shop we do not know falls back to the environment credentials, so a
+  // webhook that arrives before the install finishes is still verifiable. With
+  // neither, the answer is the same as a bad signature — deliberately, so this
+  // endpoint cannot be used to find out which shops exist.
+  const signatureOk =
+    credentials !== null &&
+    verifyWebhookHmac({
+      rawBody,
+      headerHmac: request.headers.get("x-shopify-hmac-sha256"),
+      secret: credentials.apiSecret,
+    });
+
+  if (!signatureOk) {
+    return NextResponse.json({ error: "Invalid signature." }, { status: 401 });
+  }
 
   const topic = topicFromHeader(topicHeader);
   if (!topic) {
@@ -52,9 +70,6 @@ export async function POST(request: NextRequest) {
   }
   if (!eventId) {
     return NextResponse.json({ error: "Missing event id." }, { status: 400 });
-  }
-  if (!shopDomain || !isValidShopDomain(shopDomain)) {
-    return NextResponse.json({ error: "Missing shop domain." }, { status: 400 });
   }
 
   // --- Idempotence ---------------------------------------------------------
@@ -70,12 +85,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: true, duplicate: true });
   }
   const eventRowId = claimed[0].id;
-
-  const [store] = await db
-    .select()
-    .from(stores)
-    .where(eq(stores.shopDomain, shopDomain))
-    .limit(1);
 
   if (!store) {
     await db

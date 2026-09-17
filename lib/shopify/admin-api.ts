@@ -18,10 +18,18 @@ export class ShopifyAdminClient {
   private constructor(
     private readonly shopDomain: string,
     private readonly accessToken: string,
+    /**
+     * Per store, because each store may be installed from a different Shopify
+     * app, and an app pinned to an older API version must keep being called on
+     * that version.
+     */
+    private readonly apiVersion: string,
   ) {}
 
   /** Builds a client from a store row, decrypting the stored token. */
-  static forStore(store: Pick<Store, "shopDomain" | "accessToken" | "status">) {
+  static forStore(
+    store: Pick<Store, "shopDomain" | "accessToken" | "status" | "apiVersion">,
+  ) {
     if (store.status !== "active" || !store.accessToken) {
       throw new ShopifyApiError(
         `Store ${store.shopDomain} has no usable Shopify access token.`,
@@ -30,15 +38,24 @@ export class ShopifyAdminClient {
     return new ShopifyAdminClient(
       store.shopDomain,
       decryptSecret(store.accessToken),
+      store.apiVersion ?? env.shopify.apiVersion,
     );
   }
 
-  static withToken(shopDomain: string, accessToken: string) {
-    return new ShopifyAdminClient(shopDomain, accessToken);
+  static withToken(
+    shopDomain: string,
+    accessToken: string,
+    apiVersion?: string | null,
+  ) {
+    return new ShopifyAdminClient(
+      shopDomain,
+      accessToken,
+      apiVersion ?? env.shopify.apiVersion,
+    );
   }
 
   private get baseUrl(): string {
-    return `https://${this.shopDomain}/admin/api/${env.shopify.apiVersion}`;
+    return `https://${this.shopDomain}/admin/api/${this.apiVersion}`;
   }
 
   private get headers(): HeadersInit {

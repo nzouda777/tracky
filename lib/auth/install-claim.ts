@@ -13,11 +13,17 @@ const TTL_MS = 30 * 60 * 1000;
  *
  * Completing OAuth requires Shopify admin rights on that shop, so the claim is
  * what lets the installer create the store's first owner account. It is signed
- * with the app secret and expires quickly, so it cannot be forged or replayed
+ * with a platform key and expires quickly, so it cannot be forged or replayed
  * to grab ownership of somebody else's store.
+ *
+ * The key is ENCRYPTION_KEY rather than a Shopify app secret: the claim is
+ * ours, not Shopify's, and now that each store may run on a different app
+ * there is no single app secret to sign it with. A claim issued before this
+ * change simply fails to verify and the installer starts again — the cookie
+ * lives thirty minutes.
  */
 function sign(payload: string): string {
-  return createHmac("sha256", env.shopify.apiSecret)
+  return createHmac("sha256", `install-claim.${env.encryptionKey}`)
     .update(payload)
     .digest("base64url");
 }

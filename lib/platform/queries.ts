@@ -12,6 +12,7 @@ import {
   db,
   type Store,
 } from "@/lib/db";
+import { env } from "@/lib/env";
 
 /**
  * Cross-tenant read models for the platform panel.
@@ -300,8 +301,25 @@ export function assessStoreHealth({
         : "Suspended by an operator",
     };
   }
+  // Credentials were entered but the merchant never finished approving. The
+  // row exists only so the OAuth callback can find out which app the shop
+  // belongs to, so it is half-finished rather than broken.
+  if (store.status === "pending") {
+    return {
+      health: "attention",
+      healthReason: "Install started but never approved in Shopify",
+    };
+  }
   if (store.status !== "active") {
     return { health: "broken", healthReason: "App uninstalled from Shopify" };
+  }
+  // No keys of its own and no platform-wide fallback means every webhook and
+  // tracking-page request from this store now fails to verify.
+  if (!store.apiKey && !env.shopify.fallbackConfigured) {
+    return {
+      health: "broken",
+      healthReason: "No Shopify app keys — webhooks cannot be verified",
+    };
   }
   if (stageCount === 0) {
     return {

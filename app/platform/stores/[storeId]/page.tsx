@@ -17,6 +17,7 @@ import { AuditTable } from "@/components/platform/audit-table";
 import { HealthBadge } from "@/components/platform/health-badge";
 import { PlatformActionForm } from "@/components/platform/action-form";
 import { StoreNoteForm } from "./store-note-form";
+import { PlatformStoreCredentialsForm } from "./store-credentials-form";
 import { MembershipRow } from "./membership-row";
 import { requirePlatformAdmin } from "@/lib/auth/platform";
 import {
@@ -26,6 +27,7 @@ import {
 } from "@/lib/actions/platform";
 import { listPlatformAudit } from "@/lib/platform/audit";
 import { getPlatformStoreDetail } from "@/lib/platform/detail";
+import { maskSecret } from "@/lib/shopify/credentials";
 import { shopifyAdminUrl, storefrontUrl } from "@/lib/shopify/parse-shop";
 import { buildTrackingLookupLink } from "@/lib/tracking/links";
 import { formatDate, formatDateTime, formatRelative } from "@/lib/utils";
@@ -68,6 +70,8 @@ export default async function PlatformStoreDetailPage({
           <Badge tone="warning">Suspended</Badge>
         ) : store.status === "active" ? (
           <Badge tone="success">Connected</Badge>
+        ) : store.status === "pending" ? (
+          <Badge tone="neutral">Install unfinished</Badge>
         ) : (
           <Badge tone="danger">Disconnected</Badge>
         )}
@@ -183,6 +187,30 @@ export default async function PlatformStoreDetailPage({
             </tbody>
           </TableWrap>
         )}
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Shopify app"
+          description={
+            store.apiKey
+              ? `${store.authMode === "custom" ? "Custom app created in the store's own admin" : "Partner app"}, key ${maskSecret(store.apiKey)}.`
+              : "No app keys on this store — it falls back to the credentials configured for this deployment."
+          }
+        />
+        <CardBody className="space-y-4">
+          <p className="text-sm text-ink-600">
+            Stores are spread across several Shopify apps so that no single
+            app&rsquo;s install ceiling limits the platform. Replace the keys
+            here to move this store onto a different app, or to rotate the ones
+            it is on.
+          </p>
+          <PlatformStoreCredentialsForm
+            storeId={store.id}
+            shopDomain={store.shopDomain}
+            currentMode={store.authMode}
+          />
+        </CardBody>
       </Card>
 
       <Card>

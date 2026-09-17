@@ -1,9 +1,17 @@
 # Shopify app configuration (public OAuth app).
+#
+# This is a TEMPLATE for one app, not the app the deployment runs on: Tracky
+# holds many Shopify apps at once and each store records which one it uses, in
+# `stores.api_key` / `stores.api_secret`. Copy these settings into every app
+# you create in the Partner dashboard — the URLs below are identical for all of
+# them, because each request identifies its app from the shop domain.
+#
 # Deploy with `shopify app deploy`, or mirror these values in the Partner
 # dashboard. Replace APP_URL with your deployed origin.
 
 name = "Tracky"
-client_id = "REPLACE_WITH_SHOPIFY_API_KEY"
+# One per app. Enter the same value in Tracky when adding the store.
+client_id = "REPLACE_WITH_THIS_APP_CLIENT_ID"
 application_url = "https://APP_URL"
 embedded = false
 

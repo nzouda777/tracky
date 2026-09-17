@@ -1,9 +1,16 @@
 /**
- * Checks the Shopify app configuration before you spend another OAuth round
+ * Checks a Shopify app's configuration before you spend another OAuth round
  * trip on it.
  *
  *   npm run shopify:check
  *   npm run shopify:check -- luneaz.myshopify.com
+ *   npm run shopify:check -- luneaz.myshopify.com <client-id> <client-secret>
+ *
+ * App credentials live on each store row, not in this deployment's
+ * environment, so there is usually nothing here to read: pass the keys of the
+ * app you are about to add as the second and third arguments to preflight it.
+ * The environment variables are still checked, because a store connected
+ * before per-store credentials existed falls back to them.
  *
  * Everything here is read-only. It reports what this deployment will send to
  * Shopify and what must match on the Shopify side, because almost every failed
@@ -27,60 +34,79 @@ function line(mark: string, text: string) {
 
 async function main() {
   const shopArg = process.argv[2]?.trim();
+  const keyArg = process.argv[3]?.trim();
+  const secretArg = process.argv[4]?.trim();
 
   console.log("Shopify configuration\n");
 
   const appUrl = (process.env.APP_URL ?? "").trim().replace(/\/$/, "");
-  const apiKey = (process.env.SHOPIFY_API_KEY ?? "").trim();
-  const apiSecret = (process.env.SHOPIFY_API_SECRET ?? "").trim();
   const scopes = (process.env.SHOPIFY_SCOPES ?? "").trim();
 
-  // --- the three values that must be set -----------------------------------
+  // Credentials passed on the command line win: they are the app you are about
+  // to add. The environment is only the fallback stores may still be using.
+  const apiKey = keyArg || (process.env.SHOPIFY_API_KEY ?? "").trim();
+  const apiSecret = secretArg || (process.env.SHOPIFY_API_SECRET ?? "").trim();
+  const fromArgs = Boolean(keyArg || secretArg);
+
   if (appUrl) line(PASS, `APP_URL            ${appUrl}`);
   else line(FAIL, "APP_URL is not set. OAuth cannot build a redirect URL.");
 
-  if (apiKey) line(PASS, `SHOPIFY_API_KEY    ${apiKey}`);
-  else line(FAIL, "SHOPIFY_API_KEY is not set.");
+  const origin = fromArgs ? "argument" : "environment fallback";
 
-  if (apiSecret) line(PASS, `SHOPIFY_API_SECRET ${mask(apiSecret)}`);
-  else line(FAIL, "SHOPIFY_API_SECRET is not set.");
+  if (apiKey) line(PASS, `client id          ${apiKey} (${origin})`);
+  if (apiSecret) line(PASS, `client secret      ${mask(apiSecret)} (${origin})`);
+
+  if (!apiKey || !apiSecret) {
+    // Not a failure: every store carries the keys of the app it runs on, so an
+    // empty environment is the normal state of a current deployment.
+    line(
+      WARN,
+      "No app credentials to check.\n" +
+        "  Stores carry their own, entered in the backoffice under Stores →\n" +
+        "  Connect a store, so nothing has to be set here. To preflight an app\n" +
+        "  before adding it, pass its keys:\n" +
+        "    npm run shopify:check -- acme.myshopify.com <client-id> <client-secret>",
+    );
+  }
 
   console.log(`  scopes           ${scopes || "(default)"}`);
   console.log();
 
   // --- which kind of app the credentials came from -------------------------
-  if (apiSecret.startsWith("shpss_")) {
-    line(
-      WARN,
-      "The API secret starts with `shpss_`, which is the shape Shopify issues\n" +
-        "  for an app created inside a store's admin (Settings → Apps and sales\n" +
-        "  channels → Develop apps). Those apps are installed by clicking Install\n" +
-        "  and are used with an Admin API access token (`shpat_…`). They have no\n" +
-        "  redirect URLs and do not support the OAuth flow this app uses.\n" +
-        "  Check the app you took these keys from: if its page shows an\n" +
-        "  \"Admin API access token\" and no \"Allowed redirection URL(s)\", it is\n" +
-        "  that kind, and OAuth will keep failing. Create the app in the Shopify\n" +
-        "  Partner dashboard instead and use those credentials.",
-    );
-    console.log();
-  }
-
-  if (apiSecret.startsWith("shpat_")) {
+  if (apiSecret.startsWith("shpat_") || apiSecret.startsWith("shpca_")) {
     line(
       FAIL,
-      "SHOPIFY_API_SECRET holds an Admin API access token (`shpat_…`), not the\n" +
-        "  app's secret key. OAuth and webhook verification will both fail.",
+      "That is an Admin API access token (`shpat_…`), not an app secret key.\n" +
+        "  The token goes in the \"Admin API access token\" field when adding a\n" +
+        "  store as a custom app; the secret key is the separate value on the\n" +
+        "  same page, and is what verifies webhooks.",
+    );
+    console.log();
+  } else if (apiSecret.startsWith("shpss_")) {
+    line(
+      WARN,
+      "The secret starts with `shpss_`, the shape Shopify issues for an app\n" +
+        "  created inside a store's admin (Settings → Apps and sales channels →\n" +
+        "  Develop apps). Those apps have no redirect URL and no OAuth flow, so\n" +
+        "  the authorize probe below will fail for them — that is expected.\n" +
+        "  Add such a store with the \"Custom app\" option instead, pasting its\n" +
+        "  Admin API access token. Everything else (webhooks, the tracking page)\n" +
+        "  works the same way afterwards.",
     );
     console.log();
   }
 
   // --- what Shopify has to be told ----------------------------------------
   if (appUrl) {
-    console.log("These must appear in the Shopify app, exactly:\n");
+    console.log("These must appear in EVERY Partner app you add, exactly:\n");
     console.log(`  App URL                    ${appUrl}`);
     console.log(`  Allowed redirection URL    ${appUrl}/api/shopify/callback`);
     console.log(`  App Proxy URL              ${appUrl}/proxy/track-order`);
     console.log();
+    console.log(
+      "  They are the same for every app, because each request identifies its\n" +
+        "  own app from the shop domain it names.\n",
+    );
 
     if (/^http:\/\//.test(appUrl) && !/localhost|127\.0\.0\.1/.test(appUrl)) {
       line(FAIL, "APP_URL is plain http. Shopify requires https off localhost.");
@@ -99,7 +125,7 @@ async function main() {
   }
 
   // --- does the shop exist -------------------------------------------------
-  if (shopArg) {
+  if (shopArg && apiKey) {
     console.log();
     const shop = shopArg.replace(/^https?:\/\//, "").replace(/\/.*$/, "");
     const authorize =
@@ -137,7 +163,10 @@ async function main() {
       );
     }
   } else {
-    console.log("\nPass a shop to probe it: npm run shopify:check -- acme.myshopify.com");
+    console.log(
+      "\nPass a shop and an app's keys to probe them:\n" +
+        "  npm run shopify:check -- acme.myshopify.com <client-id> <client-secret>",
+    );
   }
 
   console.log();

@@ -90,6 +90,7 @@ export const ACTION_LABELS: Record<PlatformAction, string> = {
   "store.resume": "Resumed store",
   "store.disconnect": "Disconnected store from Shopify",
   "store.note": "Updated internal note",
+  "store.credentials": "Replaced Shopify app credentials",
   "user.disable": "Disabled account",
   "user.enable": "Re-enabled account",
   "user.grant_platform_admin": "Granted platform access",
