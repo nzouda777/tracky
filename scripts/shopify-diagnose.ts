@@ -281,6 +281,7 @@ async function main() {
   console.log();
   let missingProxy = false;
   let escapedRedirect = false;
+  let relativeAssets = false;
 
   for (const host of [
     store.shop_domain,
@@ -290,6 +291,13 @@ async function main() {
   ]) {
     const requested = `https://${host}/apps/track-order`;
     const probe = await fetch(requested, { redirect: "follow" });
+    const body = probe.ok ? await probe.text() : "";
+
+    // Root-relative asset URLs are resolved by the browser against the
+    // merchant's domain, which has no /_next — so the page arrives as raw
+    // unstyled markup. It renders, it just has no stylesheet, which is why
+    // this is worth asserting rather than eyeballing.
+    if (/(?:href|src)="\/_next\//.test(body)) relativeAssets = true;
 
     // A redirect the proxied app emitted is passed back to the browser, which
     // resolves it against the *merchant's* domain — so it lands on a path the
@@ -303,6 +311,18 @@ async function main() {
     line(
       probe.status === 404 ? FAIL : PASS,
       `${requested.padEnd(50)} ${probe.status}${landedOffProxy ? `\n  ended at ${probe.url}` : ""}`,
+    );
+  }
+
+  if (relativeAssets) {
+    line(
+      FAIL,
+      "  The page loads its CSS and JavaScript from root-relative /_next/…\n" +
+        "  URLs, which the browser resolves against the merchant's domain —\n" +
+        "  where they do not exist. The tracking page will render unstyled, and\n" +
+        "  any branding set in the backoffice will look like it did nothing.\n" +
+        `  Set APP_URL to this deployment's own origin (${deploymentOrigin || "https://your-app"})\n` +
+        "  and rebuild: next.config.ts turns it into an absolute assetPrefix.",
     );
   }
 
