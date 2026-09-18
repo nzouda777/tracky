@@ -8,6 +8,8 @@ extensions/*/node_modules
 # Bundle output written by `shopify app build` / `deploy`.
 extensions/*/dist
 extensions/*/manifest.json
+# Written by the Shopify CLI when it builds or deploys.
+/.shopify
 /.pnp
 .pnp.*
 .yarn/*

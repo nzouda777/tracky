@@ -132,7 +132,11 @@ export async function markDeliveredAction(
   formData: FormData,
 ): Promise<ActionResult> {
   return guard(async (): Promise<ActionResult> => {
-    const { tdb, user } = await requireAgency();
+    // Owners are inside `requireAgency`, deliberately: a store that runs its
+    // own deliveries has no separate agency to wait for, and the declaration
+    // is the only thing standing between a delivered order and a fulfilled
+    // one. What changes with the role is the attribution, not the permission.
+    const { tdb, user, role } = await requireAgency();
 
     const orderId = String(formData.get("orderId") ?? "");
     const recipientName = String(formData.get("recipientName") ?? "").trim();
@@ -189,7 +193,9 @@ export async function markDeliveredAction(
       tdb,
       order,
       stageId: terminal.id,
-      source: "agency",
+      // The timeline is an audit trail: it records who really declared this,
+      // not which form they happened to use.
+      source: role === "owner" ? "admin" : "agency",
       note:
         notes ||
         (recipientName

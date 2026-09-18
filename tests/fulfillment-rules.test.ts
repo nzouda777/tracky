@@ -116,9 +116,13 @@ describe("no fulfillment without a confirmed delivery", () => {
     });
 
     expect(result.status).toBe("skipped");
-    expect(result).toMatchObject({
-      reason: expect.stringContaining("delivery agency"),
-    });
+    if (result.status !== "skipped") throw new Error("expected a skip");
+
+    // The reason names the missing record, not a missing party: a store that
+    // delivers its own orders has no agency to wait for, and can declare the
+    // delivery itself from the order screen.
+    expect(result.reason).toMatch(/deliver(y|ed)/i);
+    expect(result.reason).not.toMatch(/delivery agency/i);
   });
 
   it("skips when auto-fulfillment is turned off for the store", async () => {

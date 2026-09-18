@@ -450,4 +450,5 @@ stages, branding, templates, sequence and fulfillment rules.
 | Document | Audience |
 | --- | --- |
 | [`docs/deployment.md`](docs/deployment.md) | Whoever deploys and operates the platform |
+| [`docs/store-onboarding.md`](docs/store-onboarding.md) | Whoever connects a new store, start to finish |
 | [`docs/admin-guide.md`](docs/admin-guide.md) | The store owner running day-to-day operations |

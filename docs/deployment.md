@@ -544,6 +544,11 @@ never produces duplicate subscriptions.
 
 ## 12. Install on a store
 
+> Connecting a store end to end — the Shopify app, the App Proxy, the checkout
+> extension, the per-store configuration and the checks that prove it works —
+> is its own runbook: [`store-onboarding.md`](store-onboarding.md). What
+> follows is the short form.
+
 1. Open:
 
    ```

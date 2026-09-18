@@ -18,6 +18,8 @@ const eslintConfig = defineConfig([
     // `extensions/track-order/tsconfig.json`; what is ignored here is the
     // bundle the CLI writes next to it.
     "extensions/**",
+    // Bundle the Shopify CLI writes when building or deploying.
+    ".shopify/**",
   ]),
 ]);
 

@@ -94,8 +94,11 @@ export async function attemptFulfillment({
   if (requiresProof && !proof) {
     return {
       status: "skipped",
+      // Named as a missing record rather than a missing party: a store that
+      // delivers its own orders has no agency to wait for, and can record the
+      // declaration itself from the order screen.
       reason:
-        "Waiting for the delivery agency to confirm the delivery before fulfilling.",
+        "no delivery has been confirmed yet. Record it with \"Mark as delivered\" on the order, or turn off \"require delivery confirmation\" in fulfillment settings.",
     };
   }
 

@@ -289,9 +289,24 @@ listed back to you.
 The agency cannot skip step 5 by choosing the delivered stage in step 4 — the
 app asks them to use **Mark as delivered** so the proof is always recorded.
 
+**You are not bound by that sequence.** From an order's page you can move it to
+**any** stage with *Manual stage override*, and record the delivery yourself
+under *Proof of delivery* — the same declaration the agency makes, attributed
+to you in the timeline. A store that runs its own deliveries never has to wait
+for anybody.
+
+What still holds is the record, not the messenger: Shopify is not told an order
+is fulfilled until a delivery has been confirmed by *someone*. If you would
+rather it fulfil on the stage alone, turn off **require delivery confirmation**
+in `/admin/settings/fulfillment`.
+
 ---
 
 ## 11. Adding another store
+
+> This section covers the backoffice side. The full sequence — creating the
+> Shopify app, the App Proxy, the thank-you button and the checks that prove
+> it works — is in [`store-onboarding.md`](store-onboarding.md).
 
 `/admin/stores`
 

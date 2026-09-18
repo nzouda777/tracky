@@ -21,6 +21,7 @@ import { requireOwner } from "@/lib/auth/session";
 import { getOrderDetail, listDriverNames } from "@/lib/orders/queries";
 import { buildTrackingLink } from "@/lib/tracking/links";
 import { formatDateTime } from "@/lib/utils";
+import { MarkDeliveredForm } from "@/components/agency/mark-delivered-form";
 import { AssignDriverForm } from "./assign-driver-form";
 import { OverrideStageForm } from "./override-stage-form";
 import { RetryFulfillmentForm } from "./retry-fulfillment-form";
@@ -41,6 +42,11 @@ export default async function OrderDetailPage({
 
   const { order, stage, allStages, history, proof, proofAuthor } = detail;
   const drivers = await listDriverNames(tdb);
+  // Where a delivery declaration lands the order. Same rule the action uses:
+  // the stage marked terminal, or the last one if none is.
+  const terminalStage =
+    allStages.find((entry) => entry.isTerminal) ??
+    [...allStages].sort((a, b) => b.position - a.position)[0];
   const emailSends = await listOrderEmailSends(order.id);
   const trackingLink = buildTrackingLink(store, order);
 
@@ -192,10 +198,33 @@ export default async function OrderDetailPage({
                   </p>
                 </>
               ) : (
-                <p className="text-ink-500">
-                  No proof of delivery yet. The delivery agency records it when
-                  the order has been handed over and the paper note signed.
-                </p>
+                <>
+                  <p className="text-ink-500">
+                    No delivery confirmed yet. The agency records this from
+                    their own screen once the order has been handed over and
+                    the paper note signed — or you can record it here.
+                  </p>
+
+                  {/* The same declaration the agency makes, on the admin's own
+                      screen. Without it a store that delivers its own orders
+                      could move an order to Delivered but never fulfil it,
+                      because fulfillment waits on this record — and the only
+                      form that writes it lived in the agency area. */}
+                  {terminalStage ? (
+                    <MarkDeliveredForm
+                      orderId={order.id}
+                      storeId={store.id}
+                      terminalStageName={terminalStage.name}
+                      defaultRecipient={order.customerName}
+                      disabled={Boolean(order.cancelledAt)}
+                    />
+                  ) : (
+                    <p className="text-xs text-ink-400">
+                      This store has no terminal stage, so a delivery cannot be
+                      recorded. Add one in Stages.
+                    </p>
+                  )}
+                </>
               )}
             </CardBody>
           </Card>
