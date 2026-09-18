@@ -249,7 +249,18 @@ describe("server-side authorisation", () => {
     expect(guard).toContain("unverified");
 
     // The street address is masked on the same condition.
-    expect(page).toContain("unverified\n    ?");
+    // Matched as a pattern rather than an exact slice of source. The previous
+    // form pinned the indentation of a ternary, so merely reformatting the
+    // file failed a security guardrail while the protection it guards was
+    // untouched — a check that cries wolf gets deleted by the next person.
+    const shipTo = page.slice(
+      page.indexOf("const shipTo"),
+      page.indexOf("formatAddressLines(address)"),
+    );
+    expect(shipTo).toMatch(/const shipTo\s*=\s*unverified\s*\?/);
+    // The masked branch gives the locality, never the doorstep.
+    expect(shipTo).toContain("address?.city");
+    expect(shipTo).not.toContain("address?.address1");
   });
 
   it("both address handlers share one implementation", () => {

@@ -27,6 +27,16 @@ export const BRANDING_FALLBACK = {
   faq: [] as Array<{ question: string; answer: string }>,
   showOrderSummary: true,
   showAddressEditing: true,
+
+  // Layout. The defaults are the embedded look: a centred column that reads as
+  // one of the merchant's own sections rather than a panel bolted on.
+  contentAlignment: "center" as "left" | "center",
+  showStoreName: false,
+  contentWidth: 640,
+  cardRadius: 14,
+  buttonRadius: 10,
+  buttonFullWidth: true,
+  sectionBackground: null as string | null,
 } as const;
 
 /** Reserved across every theme: the terminal step, and nothing else. */
@@ -228,6 +238,18 @@ export function BrandingStyle({
   --brand-line: color-mix(in srgb, ${text} 14%, ${surface});
   --brand-panel: color-mix(in srgb, ${text} 4%, ${surface});
   --brand-wash: color-mix(in srgb, ${branding.primaryColor} 8%, ${surface});
+
+  --brand-align: ${branding.contentAlignment === "center" ? "center" : "left"};
+  --brand-items: ${branding.contentAlignment === "center" ? "center" : "stretch"};
+  --brand-width: ${branding.contentWidth}px;
+  --brand-card-radius: ${branding.cardRadius}px;
+  --brand-button-radius: ${branding.buttonRadius}px;
+  --brand-button-width: ${branding.buttonFullWidth ? "100%" : "auto"};
+  --brand-section: ${branding.sectionBackground || surface};
+  /* The card lifts off a tinted band, or sits in it when there is none. */
+  /* A centred column centres its logo too; a left-aligned one does not. */
+  --brand-logo-inline: ${branding.contentAlignment === "center" ? "auto" : "0"};
+  --brand-card: ${branding.sectionBackground ? surface : `color-mix(in srgb, ${text} 4%, ${surface})`};
 }
 `;
   return <style dangerouslySetInnerHTML={{ __html: css }} />;

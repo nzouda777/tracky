@@ -40,6 +40,18 @@ export const storeStatusEnum = pgEnum("store_status", [
  *            the API secret key is only used to verify webhooks and App Proxy
  *            signatures.
  */
+/**
+ * How the public tracking page arranges itself.
+ *
+ * `center` is the default because the page now renders inside the merchant's
+ * own theme, between their header and footer, where a centred column reads as
+ * a section of their site rather than a panel bolted onto the side of it.
+ */
+export const contentAlignmentEnum = pgEnum("content_alignment", [
+  "left",
+  "center",
+]);
+
 export const shopifyAuthModeEnum = pgEnum("shopify_auth_mode", [
   "oauth",
   "custom",
@@ -282,6 +294,37 @@ export const brandingSettings = pgTable(
       .$type<Array<{ question: string; answer: string }>>(),
     showOrderSummary: boolean("show_order_summary").notNull().default(true),
     showAddressEditing: boolean("show_address_editing").notNull().default(true),
+
+    // --- Layout -------------------------------------------------------------
+    //
+    // These exist because the page stopped being a page. Served inside a
+    // Shopify theme it is one band among the merchant's own sections, and the
+    // things that make it sit there properly — where the column sits, how wide
+    // it runs, how round its corners are, whether it repeats a brand the theme
+    // header already shows — are decisions per store, not constants.
+    contentAlignment: contentAlignmentEnum("content_alignment")
+      .notNull()
+      .default("center"),
+    /**
+     * Repeat the store name or logo above the tracking form.
+     *
+     * Off by default: the theme's own header is directly above this, and two
+     * wordmarks in a row is the clearest sign of an app bolted on.
+     */
+    showStoreName: boolean("show_store_name").notNull().default(false),
+    /** Width of the content column, in px. */
+    contentWidth: integer("content_width").notNull().default(640),
+    /** Corner radius of panels and cards, in px. */
+    cardRadius: integer("card_radius").notNull().default(14),
+    /** Corner radius of buttons and inputs, in px. */
+    buttonRadius: integer("button_radius").notNull().default(10),
+    /** A button that fills its column reads as the page's one action. */
+    buttonFullWidth: boolean("button_full_width").notNull().default(true),
+    /**
+     * The band behind the tracking card, when it should differ from the page.
+     * Null means the page background, with no band at all.
+     */
+    sectionBackground: text("section_background"),
     ...timestamps,
   },
   (table) => [uniqueIndex("branding_settings_store_key").on(table.storeId)],
@@ -835,6 +878,7 @@ export type WebhookEvent = typeof webhookEvents.$inferSelect;
 export type PlatformAuditEntry = typeof platformAuditLog.$inferSelect;
 export type PlatformAction = (typeof platformActionEnum.enumValues)[number];
 export type ShopifyAuthMode = (typeof shopifyAuthModeEnum.enumValues)[number];
+export type ContentAlignment = (typeof contentAlignmentEnum.enumValues)[number];
 export type StoreStatus = (typeof storeStatusEnum.enumValues)[number];
 export type MembershipRole = (typeof membershipRoleEnum.enumValues)[number];
 export type StageEventSource = (typeof stageEventSourceEnum.enumValues)[number];

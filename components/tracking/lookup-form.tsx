@@ -49,6 +49,7 @@ export function LookupForm({
     border: "1px solid var(--brand-line)",
     backgroundColor: "var(--brand-surface)",
     color: "var(--brand-text)",
+    borderRadius: "var(--brand-button-radius)",
   };
 
   const identifying = state.step === "identify";
@@ -57,10 +58,15 @@ export function LookupForm({
 
   return (
     <section
-      className="rounded-panel p-5 sm:p-6"
+      className="mx-auto p-5 sm:p-6"
       style={{
-        backgroundColor: "var(--brand-panel)",
+        backgroundColor: "var(--brand-card)",
         border: "1px solid var(--brand-line)",
+        borderRadius: "var(--brand-card-radius)",
+        // The form is the one thing on an empty tracking page, so it keeps its
+        // own measure rather than running the full width of a wide column.
+        maxWidth: "34rem",
+        textAlign: "left",
       }}
     >
       <form action={proxyPath} method="get" className="space-y-4">
@@ -184,10 +190,12 @@ function Submit({ label }: { label: string }) {
   return (
     <button
       type="submit"
-      className="w-full rounded-control px-4 py-3 text-body font-semibold"
+      className="px-4 py-3 text-body font-semibold"
       style={{
         backgroundColor: "var(--brand-accent)",
         color: "var(--brand-on-accent)",
+        borderRadius: "var(--brand-button-radius)",
+        width: "var(--brand-button-width)",
       }}
     >
       {label}

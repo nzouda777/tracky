@@ -247,7 +247,7 @@ const SPACING = [
   ...scale("pt", ["padding-top"], ["5"]),
   ...scale("pb", ["padding-bottom"], ["7"]),
   ...scale("mt", ["margin-top"], ["0.5", "1.5", "3", "4", "5", "9", "12"]),
-  ...scale("mb", ["margin-bottom"], ["3"]),
+  ...scale("mb", ["margin-bottom"], ["3", "9"]),
   ...scale("gap", ["gap"], ["2", "3", "3.5"]),
   ...scale("gap-x", ["column-gap"], ["3", "4", "6"]),
   ...scale("gap-y", ["row-gap"], ["0.5", "1", "2"]),

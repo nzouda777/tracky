@@ -95,7 +95,7 @@ const SECTIONS: Array<{ id: SectionId; label: string; summary: string }> = [
   { id: "identity", label: "Identity", summary: "Logo and store name" },
   { id: "content", label: "Page copy", summary: "Titles, help banner, footer" },
   { id: "faq", label: "FAQ", summary: "Questions shown under the timeline" },
-  { id: "layout", label: "Sections", summary: "What appears on the page" },
+  { id: "layout", label: "Layout", summary: "Shape, width and what appears" },
 ];
 
 /**
@@ -552,7 +552,119 @@ export function BrandingEditor({
               </Panel>
 
               <Panel id="layout" current={section}>
-                <div className="space-y-3">
+                <div className="space-y-5">
+                  {/* Alignment first: it is the single change that decides
+                      whether the page reads as part of the merchant's theme
+                      or as a panel dropped into it. */}
+                  <Field label="Alignment" htmlFor="brand-align">
+                    <Select
+                      id="brand-align"
+                      name="contentAlignment"
+                      value={draft.contentAlignment}
+                      onChange={(e) =>
+                        set(
+                          "contentAlignment",
+                          e.currentTarget.value === "left" ? "left" : "center",
+                        )
+                      }
+                    >
+                      <option value="center">Centred</option>
+                      <option value="left">Left aligned</option>
+                    </Select>
+                  </Field>
+
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    <Field
+                      label="Content width (px)"
+                      htmlFor="brand-width"
+                      hint="420–960"
+                    >
+                      <Input
+                        id="brand-width"
+                        name="contentWidth"
+                        type="number"
+                        min={420}
+                        max={960}
+                        value={draft.contentWidth}
+                        onChange={(e) =>
+                          set("contentWidth", Number(e.currentTarget.value))
+                        }
+                      />
+                    </Field>
+
+                    <Field
+                      label="Card corners (px)"
+                      htmlFor="brand-card-radius"
+                      hint="0–32"
+                    >
+                      <Input
+                        id="brand-card-radius"
+                        name="cardRadius"
+                        type="number"
+                        min={0}
+                        max={32}
+                        value={draft.cardRadius}
+                        onChange={(e) =>
+                          set("cardRadius", Number(e.currentTarget.value))
+                        }
+                      />
+                    </Field>
+
+                    <Field
+                      label="Button corners (px)"
+                      htmlFor="brand-button-radius"
+                      hint="0–40"
+                    >
+                      <Input
+                        id="brand-button-radius"
+                        name="buttonRadius"
+                        type="number"
+                        min={0}
+                        max={40}
+                        value={draft.buttonRadius}
+                        onChange={(e) =>
+                          set("buttonRadius", Number(e.currentTarget.value))
+                        }
+                      />
+                    </Field>
+                  </div>
+
+                  <ColorField
+                    label="Section band"
+                    name="sectionBackground"
+                    value={draft.sectionBackground ?? ""}
+                    onChange={(value: string) =>
+                      set("sectionBackground", value || null)
+                    }
+                    optional
+                    hint="A tint behind the tracking card, so it lifts off the page. Leave blank for none."
+                  />
+
+                  <div className="space-y-3 border-t border-ink-100 pt-4">
+                    <Checkbox
+                      id="brand-button-full"
+                      name="buttonFullWidth"
+                      label="Full-width button"
+                      description="The button fills the card, so it reads as the page's one action."
+                      checked={draft.buttonFullWidth}
+                      onChange={(e) =>
+                        set("buttonFullWidth", e.currentTarget.checked)
+                      }
+                    />
+                    <Checkbox
+                      id="brand-show-store-name"
+                      name="showStoreName"
+                      label="Repeat the store name or logo"
+                      description="Off by default: on your storefront the theme's own header is directly above this."
+                      checked={draft.showStoreName}
+                      onChange={(e) =>
+                        set("showStoreName", e.currentTarget.checked)
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-5 space-y-3 border-t border-ink-100 pt-4">
                   <Checkbox
                     id="brand-show-summary"
                     name="showOrderSummary"
@@ -694,34 +806,58 @@ function relativeLuminance(hex: string): number | null {
   return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
 }
 
+/**
+ * A colour, as a swatch and a hex field.
+ *
+ * The form value is carried by the *text* input, not the swatch. An
+ * `input[type=color]` has no empty state — left blank it posts `#000000` —
+ * so an optional colour submitted through it would silently become black
+ * rather than "unset".
+ */
 function ColorField({
   label,
   name,
   value,
   onChange,
+  optional,
+  hint,
 }: {
   label: string;
   name: string;
   value: string;
   onChange: (value: string) => void;
+  /** Blank is allowed and means "none". */
+  optional?: boolean;
+  hint?: string;
 }) {
   return (
-    <Field label={label} htmlFor={`brand-${name}`}>
+    <Field label={label} htmlFor={`brand-${name}`} hint={hint}>
       <div className="flex items-center gap-2">
         <Input
-          id={`brand-${name}`}
-          name={name}
           type="color"
-          value={value}
+          aria-label={`${label} colour picker`}
+          value={value || "#ffffff"}
           onChange={(e) => onChange(e.currentTarget.value)}
           className="h-10 w-14 shrink-0 p-1"
         />
         <Input
-          aria-label={`${label} hex value`}
+          id={`brand-${name}`}
+          name={name}
           value={value}
+          placeholder={optional ? "None" : undefined}
           onChange={(e) => onChange(e.currentTarget.value)}
           className="font-mono text-xs"
         />
+        {optional && value ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => onChange("")}
+          >
+            Clear
+          </Button>
+        ) : null}
       </div>
     </Field>
   );

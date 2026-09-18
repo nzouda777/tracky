@@ -53,29 +53,47 @@ export function TrackingPage({
   const storeName = store.name ?? store.shopDomain;
 
   return (
-    <div id={SCOPE_ID} className="tracking-root min-h-dvh">
+    <div
+      id={SCOPE_ID}
+      className="tracking-root min-h-dvh"
+      // The band the widget sits in. Equal to the page background unless the
+      // store set one, in which case the card lifts off it.
+      style={{ backgroundColor: "var(--brand-section)" }}
+    >
       <BrandingStyle branding={branding} scopeId={SCOPE_ID} />
 
-      <div className="mx-auto w-full max-w-[40rem] px-5 py-9 sm:py-12">
-        <header>
-          {branding.logoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={branding.logoUrl}
-              alt={storeName}
-              className="h-9 w-auto object-contain"
-            />
-          ) : (
-            <p
-              className="type-display text-h2"
-              style={{ color: "var(--brand-accent)" }}
-            >
-              {storeName}
-            </p>
-          )}
-        </header>
+      <div
+        className="mx-auto w-full px-5 py-9 sm:py-12"
+        style={{
+          maxWidth: "var(--brand-width)",
+          textAlign: "var(--brand-align)" as "left" | "center",
+        }}
+      >
+        {/* Off by default. Embedded in a theme, the merchant's own header is
+            directly above this, and repeating the brand is the clearest sign
+            of an app bolted onto a shop rather than part of it. */}
+        {branding.showStoreName ? (
+          <header className="mb-9">
+            {branding.logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={branding.logoUrl}
+                alt={storeName}
+                className="h-9 w-auto object-contain"
+                style={{ marginInline: "var(--brand-logo-inline)" }}
+              />
+            ) : (
+              <p
+                className="type-display text-h2"
+                style={{ color: "var(--brand-accent)" }}
+              >
+                {storeName}
+              </p>
+            )}
+          </header>
+        ) : null}
 
-        <main className="mt-9 space-y-9">
+        <main className="space-y-9">
           {view ? (
             <OrderView
               view={view}

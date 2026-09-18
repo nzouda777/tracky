@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 
 import { requireOwner } from "@/lib/auth/session";
-import { brandingSettings } from "@/lib/db";
+import { brandingSettings, type ContentAlignment } from "@/lib/db";
 import { guard, type ActionResult } from "./result";
 
 const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
@@ -27,6 +27,13 @@ function clampInt(
   const value = Number(formData.get(field));
   if (!Number.isFinite(value)) return fallback;
   return Math.min(Math.max(Math.round(value), min), max);
+}
+
+/** An optional colour: blank clears it, anything malformed is ignored. */
+function optionalColour(formData: FormData, field: string): string | null {
+  const value = String(formData.get(field) ?? "").trim();
+  if (!value) return null;
+  return HEX.test(value) ? value : null;
 }
 
 /** Only http(s) URLs are accepted, so a logo field cannot carry `javascript:`. */
@@ -78,6 +85,21 @@ export async function updateBrandingAction(
       faq: readFaq(formData),
       showOrderSummary: formData.get("showOrderSummary") === "on",
       showAddressEditing: formData.get("showAddressEditing") === "on",
+
+      // --- Layout ---------------------------------------------------------
+      // Every one of these ends up in a stylesheet on a customer-facing page,
+      // so each is clamped to a range that cannot produce a broken layout —
+      // a 4000px column or a negative radius is not a style, it is a bug the
+      // merchant cannot see until someone tries to track an order.
+      contentAlignment: (formData.get("contentAlignment") === "left"
+        ? "left"
+        : "center") as ContentAlignment,
+      showStoreName: formData.get("showStoreName") === "on",
+      contentWidth: clampInt(formData, "contentWidth", 640, 420, 960),
+      cardRadius: clampInt(formData, "cardRadius", 14, 0, 32),
+      buttonRadius: clampInt(formData, "buttonRadius", 10, 0, 40),
+      buttonFullWidth: formData.get("buttonFullWidth") === "on",
+      sectionBackground: optionalColour(formData, "sectionBackground"),
       updatedAt: new Date(),
     };
 
