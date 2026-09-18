@@ -17,6 +17,7 @@ import {
   BRANDING_FALLBACK,
   mutedOn,
   readableOn,
+  resolveFontStack,
 } from "@/components/tracking/branding";
 import type { BrandingSettings, Store } from "@/lib/db";
 import { applyMergeFields, type MergeContext } from "./merge";
@@ -49,8 +50,6 @@ import { applyMergeFields, type MergeContext } from "./merge";
 
 const PAPER = "#F1F2EF";
 const MONO = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
-const EMAIL_FALLBACK_FONT =
-  "Archivo, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
 
 /** Parses `#rgb` / `#rrggbb`, or nothing. */
 function parseHex(value: string): [number, number, number] | null {
@@ -88,21 +87,6 @@ function mix(fg: string, bg: string, weight: number): string {
         .padStart(2, "0"),
     )
     .join("")}`;
-}
-
-/**
- * The store's font stack, made safe for email.
- *
- * On the web the default stack starts with `var(--font-archivo)`, which
- * next/font fills in. An email client has no such variable and some drop the
- * entire declaration when they meet one, leaving the message in Times. So the
- * variable is swapped for the family's real name and the rest of the stack is
- * kept as the fallback it already was.
- */
-function emailFont(stack: string | null | undefined): string {
-  if (!stack?.trim()) return EMAIL_FALLBACK_FONT;
-  const resolved = stack.replace(/var\(\s*--font-archivo\s*\)/g, "Archivo");
-  return /var\(/.test(resolved) ? EMAIL_FALLBACK_FONT : resolved;
 }
 
 // ---------------------------------------------------------------------------
@@ -185,7 +169,7 @@ function EmailLayout({
   const surface = branding?.backgroundColor ?? BRANDING_FALLBACK.backgroundColor;
   const text = branding?.textColor ?? BRANDING_FALLBACK.textColor;
   const link = branding?.accentColor ?? BRANDING_FALLBACK.accentColor;
-  const font = emailFont(branding?.fontFamily);
+  const font = resolveFontStack(branding?.fontFamily);
   const size = branding?.baseFontSize ?? 16;
   const storeName = store.name ?? store.shopDomain;
 

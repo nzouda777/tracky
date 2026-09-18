@@ -167,6 +167,41 @@ export function mutedOn(text: string, surface: string): string {
  * store's own text and surface colours rather than fixed greys, so they stay
  * in the same family as whatever the store picked.
  */
+/**
+ * The font stack, made safe outside our own pages.
+ *
+ * The default stack starts with `var(--font-archivo)`, a custom property
+ * next/font defines on our documents. Anywhere else — an email client, or the
+ * tracking page embedded in a merchant's Shopify theme — that property does
+ * not exist, so the whole `font-family` declaration is invalid and the text
+ * silently inherits whatever the surrounding page uses. On a serif theme that
+ * is how our page ends up in Georgia.
+ *
+ * So the variable is swapped for the family's real name, and a stack still
+ * carrying an unknowable custom property falls back entirely.
+ */
+export const PORTABLE_FONT_FALLBACK =
+  "Archivo, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+
+export function resolveFontStack(stack: string | null | undefined): string {
+  if (!stack?.trim()) return PORTABLE_FONT_FALLBACK;
+  const resolved = stack.replace(/var\(\s*--font-archivo\s*\)/g, "Archivo");
+  return /var\(/.test(resolved) ? PORTABLE_FONT_FALLBACK : resolved;
+}
+
+/**
+ * A value safe to drop into a declaration inside this scoped block.
+ *
+ * The font stack is free text an owner typed. A `}` in it would close the
+ * block early and let the rest land on whatever follows — which, on the page
+ * embedded in a Shopify theme, is the merchant's own site. Braces also carry
+ * meaning to Liquid, which runs over that page before the browser sees it.
+ * Colours are validated hex elsewhere; this is the one free-form value.
+ */
+function cssValue(value: string): string {
+  return value.replace(/[{}<>;]/g, "").trim() || "inherit";
+}
+
 export function BrandingStyle({
   branding,
   scopeId,
@@ -184,7 +219,7 @@ export function BrandingStyle({
   --brand-surface: ${surface};
   --brand-text: ${text};
   --brand-link: ${branding.accentColor};
-  --brand-font: ${branding.fontFamily};
+  --brand-font: ${cssValue(branding.fontFamily)};
   --brand-scale: ${(branding.baseFontSize / 16).toFixed(4)};
   --brand-heading-size: ${branding.headingFontSize}px;
   --brand-delivered: ${DELIVERED_COLOR};

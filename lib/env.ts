@@ -91,6 +91,21 @@ export const env = {
     get fromName(): string {
       return optional("RESEND_FROM_NAME", "Tracky");
     },
+    /**
+     * Where a customer's reply actually lands.
+     *
+     * Every email tells the customer to reply to it, so the address they
+     * answer has to be a mailbox someone reads. The sending address usually
+     * is not: a transactional domain is typically a subdomain with no MX
+     * records at all, which is exactly what keeps its reputation separate —
+     * and exactly why a reply to it would bounce.
+     *
+     * Unset means replies go to the From address, which is only correct when
+     * that address is itself a real inbox.
+     */
+    get replyTo(): string | null {
+      return read("RESEND_REPLY_TO") ?? null;
+    },
     get configured(): boolean {
       return isConfigured("RESEND_API_KEY", "RESEND_FROM_EMAIL");
     },

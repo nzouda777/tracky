@@ -126,7 +126,7 @@ describe("server-side authorisation", () => {
 
   it("the App Proxy tracking surfaces verify the Shopify signature", () => {
     for (const file of [
-      "app/proxy/track-order/page.tsx",
+      "app/proxy/track-order/route.ts",
       "app/proxy/track-order/address/route.ts",
     ]) {
       expect(read(file)).toContain("authenticateProxyRequest(");
@@ -184,7 +184,7 @@ describe("server-side authorisation", () => {
     // The two pages are the same product to a customer, so they must not
     // disagree about what proves an order is theirs — a surface quietly
     // accepting less than the other is how the weaker one becomes the way in.
-    const proxy = read("app/proxy/track-order/page.tsx");
+    const proxy = read("app/proxy/track-order/route.ts");
     const hosted = read("app/track/[shop]/page.tsx");
 
     for (const page of [proxy, hosted]) {

@@ -74,6 +74,10 @@ export async function dispatchEmailSend(
     const response = await resend.emails.send({
       // Shared platform sending domain for v1; the store name carries the brand.
       from: `${store.name ?? env.resend.fromName} <${env.resend.fromEmail}>`,
+      // Every template invites the customer to reply, so replies have to reach
+      // a mailbox. The sending domain is often a no-MX subdomain chosen for
+      // deliverability, where a reply would simply bounce.
+      ...(env.resend.replyTo ? { replyTo: [env.resend.replyTo] } : {}),
       to: [send.toEmail],
       subject: rendered.subject,
       html: rendered.html,
