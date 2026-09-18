@@ -2,6 +2,12 @@
 
 # dependencies
 /node_modules
+# Shopify extensions install their own dependencies: they are bundled for a
+# different runtime and pin React 18, which the app itself has moved past.
+extensions/*/node_modules
+# Bundle output written by `shopify app build` / `deploy`.
+extensions/*/dist
+extensions/*/manifest.json
 /.pnp
 .pnp.*
 .yarn/*

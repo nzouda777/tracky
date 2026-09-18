@@ -14,6 +14,7 @@ api_version = "2025-07"
 type = "ui_extension"
 name = "Track my order"
 handle = "track-order"
+uid = "fd7c6774-6350-1e2d-c5ba-de384bc5254f867aaacb"
 
   [[extensions.targeting]]
   module = "./src/ThankYou.tsx"
