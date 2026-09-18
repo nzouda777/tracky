@@ -44,9 +44,15 @@ export function EventHistory({
     <section>
       <h2 className="text-h3 font-semibold">Latest update</h2>
 
+      {/* A panel, not prose: its heading, timestamp and note are a record, so
+          they keep their own alignment whatever the page copy above uses. */}
       <div
-        className="mt-3 rounded-panel px-4 py-3.5"
-        style={{ border: "1px solid var(--brand-line)" }}
+        className="mt-3 px-4 py-3.5"
+        style={{
+          border: "1px solid var(--brand-line)",
+          borderRadius: "var(--brand-card-radius)",
+          textAlign: "left",
+        }}
       >
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <h3 className="text-h3 font-semibold">

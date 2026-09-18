@@ -56,19 +56,12 @@ export function TrackingPage({
     <div
       id={SCOPE_ID}
       className="tracking-root min-h-dvh"
-      // The band the widget sits in. Equal to the page background unless the
-      // store set one, in which case the card lifts off it.
-      style={{ backgroundColor: "var(--brand-section)" }}
+      style={{ backgroundColor: "var(--brand-surface)" }}
     >
       <BrandingStyle branding={branding} scopeId={SCOPE_ID} />
 
-      <div
-        className="mx-auto w-full px-5 py-9 sm:py-12"
-        style={{
-          maxWidth: "var(--brand-width)",
-          textAlign: "var(--brand-align)" as "left" | "center",
-        }}
-      >
+      {/* The title block sits on the page's own ground. */}
+      <Column className="pt-9 sm:pt-12">
         {/* Off by default. Embedded in a theme, the merchant's own header is
             directly above this, and repeating the brand is the clearest sign
             of an app bolted onto a shop rather than part of it. */}
@@ -93,8 +86,63 @@ export function TrackingPage({
           </header>
         ) : null}
 
-        <main className="space-y-9">
-          {view ? (
+        {view ? null : (
+          <div className="space-y-3">
+            <h1
+              className="type-display"
+              style={{
+                fontSize: "var(--brand-heading-size)",
+                lineHeight: 1.12,
+              }}
+            >
+              {branding.pageTitle}
+            </h1>
+            {branding.pageSubtitle ? (
+              <div
+                className="mx-auto space-y-1 text-body"
+                style={{ color: "var(--brand-muted)", maxWidth: "46rem" }}
+              >
+                {/* Written as lines, so a store can say the three things this
+                    page usually has to say without them running into one
+                    paragraph. */}
+                {branding.pageSubtitle
+                  .split("\n")
+                  .map((line) => line.trim())
+                  .filter(Boolean)
+                  .map((line, index) => (
+                    <p key={index}>{line}</p>
+                  ))}
+              </div>
+            ) : null}
+          </div>
+        )}
+      </Column>
+
+      {/* The form gets a band of its own, spanning the full width of the
+          block rather than the text column — which is what makes it read as a
+          second section of the shop instead of a box inside the first. It is
+          a direct child of the root for exactly that reason: nested in the
+          column it could only ever be as wide as the paragraph above it. */}
+      {view ? null : (
+        <div
+          className="mt-9 py-9 sm:py-12"
+          style={{ backgroundColor: "var(--brand-section)" }}
+        >
+          <Column>
+            <LookupForm
+              branding={branding}
+              proxyPath={proxyPath}
+              state={lookupStep}
+              mode={lookupMode}
+              error={lookupError}
+            />
+          </Column>
+        </div>
+      )}
+
+      <Column className={view ? "pb-12" : "pt-9 pb-12"}>
+        {view ? (
+          <main className="space-y-9">
             <OrderView
               view={view}
               branding={branding}
@@ -103,41 +151,19 @@ export function TrackingPage({
               addressMessage={addressMessage}
               addressError={addressError}
             />
-          ) : (
-            <>
-              <div className="space-y-1.5">
-                <h1
-                  className="type-display"
-                  style={{ fontSize: "var(--brand-heading-size)" }}
-                >
-                  {branding.pageTitle}
-                </h1>
-                {branding.pageSubtitle ? (
-                  <p
-                    className="text-body"
-                    style={{ color: "var(--brand-muted)" }}
-                  >
-                    {branding.pageSubtitle}
-                  </p>
-                ) : null}
-              </div>
-              <LookupForm
-                proxyPath={proxyPath}
-                state={lookupStep}
-                mode={lookupMode}
-                error={lookupError}
-              />
-            </>
-          )}
+          </main>
+        ) : null}
 
+        <div className="space-y-9">
           {branding.faq.length > 0 ? <Faq items={branding.faq} /> : null}
 
           {branding.helpBannerText ? (
             <aside
-              className="rounded-panel px-4 py-3 text-small"
+              className="px-4 py-3 text-small"
               style={{
                 backgroundColor: "var(--brand-panel)",
                 border: "1px solid var(--brand-line)",
+                borderRadius: "var(--brand-card-radius)",
               }}
             >
               {branding.helpBannerUrl ? (
@@ -153,7 +179,7 @@ export function TrackingPage({
               )}
             </aside>
           ) : null}
-        </main>
+        </div>
 
         <footer
           className="mt-12 border-t pt-5 text-caption"
@@ -164,7 +190,31 @@ export function TrackingPage({
         >
           {branding.footerText || `${storeName} — order tracking`}
         </footer>
-      </div>
+      </Column>
+    </div>
+  );
+}
+
+/**
+ * The text column: one measure and one alignment, shared by every block so
+ * they line up down the page whatever width the store chose.
+ */
+function Column({
+  className,
+  children,
+}: {
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      className={`mx-auto w-full px-5 ${className ?? ""}`}
+      style={{
+        maxWidth: "var(--brand-width)",
+        textAlign: "var(--brand-align)" as "left" | "center",
+      }}
+    >
+      {children}
     </div>
   );
 }
@@ -348,7 +398,7 @@ function Manifest({
     <section>
       <h2 className="text-h3 font-semibold">Manifest</h2>
 
-      <dl className="mt-3">
+      <dl className="mt-3" style={{ textAlign: "left" }}>
         <Row label="Order no.">
           <span className="type-code">{order.orderNumber}</span>
         </Row>

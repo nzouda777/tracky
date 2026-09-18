@@ -205,6 +205,14 @@ const LAYOUT = [
   rule(".items-center", "align-items:center"),
   rule(".items-baseline", "align-items:baseline"),
   rule(".justify-between", "justify-content:space-between"),
+  rule(".justify-center", "justify-content:center"),
+  // Visually hidden, still read aloud: the lone input keeps a real label even
+  // though the prompt above it is what a sighted customer reads.
+  rule(
+    ".sr-only",
+    "position:absolute;width:1px;height:1px;padding:0;margin:-1px;" +
+      "overflow:hidden;clip-path:inset(50%);white-space:nowrap;border-width:0",
+  ),
   rule(".place-items-center", "place-items:center"),
   rule(".relative", "position:relative"),
   rule(".absolute", "position:absolute"),
@@ -244,11 +252,11 @@ const SPACING = [
   ...scale("p", ["padding"], ["5"]),
   ...scale("px", ["padding-left", "padding-right"], ["2.5", "3", "3.5", "4", "5"]),
   ...scale("py", ["padding-top", "padding-bottom"], ["1", "2.5", "3", "3.5", "9"]),
-  ...scale("pt", ["padding-top"], ["5"]),
+  ...scale("pt", ["padding-top"], ["5", "9"]),
   ...scale("pb", ["padding-bottom"], ["7"]),
   ...scale("mt", ["margin-top"], ["0.5", "1.5", "3", "4", "5", "9", "12"]),
   ...scale("mb", ["margin-bottom"], ["3", "9"]),
-  ...scale("gap", ["gap"], ["2", "3", "3.5"]),
+  ...scale("gap", ["gap"], ["2", "2.5", "3", "3.5"]),
   ...scale("gap-x", ["column-gap"], ["3", "4", "6"]),
   ...scale("gap-y", ["row-gap"], ["0.5", "1", "2"]),
 ];
@@ -266,6 +274,7 @@ const SM = [
   rule(".sm\\:p-6", `padding:${SPACE["6"]}`),
   rule(".sm\\:px-1", `padding-left:${SPACE["1"]};padding-right:${SPACE["1"]}`),
   rule(".sm\\:py-12", `padding-top:${SPACE["12"]};padding-bottom:${SPACE["12"]}`),
+  rule(".sm\\:pt-12", `padding-top:${SPACE["12"]}`),
   rule(".sm\\:pb-0", "padding-bottom:0"),
   rule(".sm\\:mt-2\\.5", `margin-top:${SPACE["2.5"]}`),
   rule(".sm\\:gap-0", "gap:0"),

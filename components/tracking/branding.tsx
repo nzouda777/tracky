@@ -17,8 +17,13 @@ export const BRANDING_FALLBACK = {
   accentColor: "#1B2B44",
   fontFamily: "var(--font-archivo), ui-sans-serif, system-ui, sans-serif",
   baseFontSize: 16,
-  headingFontSize: 26,
+  headingFontSize: 42,
   pageTitle: "Track your order",
+  formPrompt: "",
+  formPlaceholder: "",
+  formButtonLabel: "",
+  showFormIcon: true,
+  showButtonArrow: true,
   pageSubtitle: "Enter your details to see the latest delivery update.",
   helpBannerText: "Need help with your order? Contact our support team.",
   logoUrl: null as string | null,
@@ -36,7 +41,7 @@ export const BRANDING_FALLBACK = {
   cardRadius: 14,
   buttonRadius: 10,
   buttonFullWidth: true,
-  sectionBackground: null as string | null,
+  sectionBackground: "#F4F5F3" as string | null,
 } as const;
 
 /** Reserved across every theme: the terminal step, and nothing else. */
@@ -244,6 +249,9 @@ export function BrandingStyle({
   --brand-width: ${branding.contentWidth}px;
   --brand-card-radius: ${branding.cardRadius}px;
   --brand-button-radius: ${branding.buttonRadius}px;
+  /* One height for the field and the button, so they read as a single control
+     stacked rather than two things that happen to be near each other. */
+  --brand-input-height: 3.25rem;
   --brand-button-width: ${branding.buttonFullWidth ? "100%" : "auto"};
   --brand-section: ${branding.sectionBackground || surface};
   /* The card lifts off a tinted band, or sits in it when there is none. */

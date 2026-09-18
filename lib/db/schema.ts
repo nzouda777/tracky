@@ -275,7 +275,12 @@ export const brandingSettings = pgTable(
         "var(--font-archivo), ui-sans-serif, system-ui, sans-serif",
       ),
     baseFontSize: integer("base_font_size").notNull().default(16),
-    headingFontSize: integer("heading_font_size").notNull().default(26),
+    /**
+     * The page's anchor. Large by default: embedded in a theme this heading is
+     * what tells a customer they are on the tracking page and not still on the
+     * product they came from.
+     */
+    headingFontSize: integer("heading_font_size").notNull().default(42),
 
     /** Customer-facing copy on the tracking page. English by default. */
     pageTitle: text("page_title").notNull().default("Track your order"),
@@ -324,7 +329,22 @@ export const brandingSettings = pgTable(
      * The band behind the tracking card, when it should differ from the page.
      * Null means the page background, with no band at all.
      */
-    sectionBackground: text("section_background"),
+    sectionBackground: text("section_background").default("#F4F5F3"),
+
+    // --- The lookup form ----------------------------------------------------
+    //
+    // The form is the whole page until an order is found, so its wording is
+    // not a detail: it is what tells a customer, in the store's own voice,
+    // which single detail to reach for. Blank falls back to copy derived from
+    // the lookup policy, so a store that never touches these still gets a
+    // prompt that matches what the page actually accepts.
+    formPrompt: text("form_prompt").notNull().default(""),
+    formPlaceholder: text("form_placeholder").notNull().default(""),
+    formButtonLabel: text("form_button_label").notNull().default(""),
+    /** A small mark above the prompt, so the card reads as a thing to use. */
+    showFormIcon: boolean("show_form_icon").notNull().default(true),
+    /** The arrow on the button: motion, for the one action on the page. */
+    showButtonArrow: boolean("show_button_arrow").notNull().default(true),
     ...timestamps,
   },
   (table) => [uniqueIndex("branding_settings_store_key").on(table.storeId)],

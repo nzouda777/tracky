@@ -88,13 +88,14 @@ const PRESETS = [
   },
 ] as const;
 
-type SectionId = "theme" | "identity" | "content" | "faq" | "layout";
+type SectionId = "theme" | "identity" | "content" | "form" | "faq" | "layout";
 
 const SECTIONS: Array<{ id: SectionId; label: string; summary: string }> = [
   { id: "theme", label: "Theme", summary: "Colours and typography" },
   { id: "identity", label: "Identity", summary: "Logo and store name" },
   { id: "content", label: "Page copy", summary: "Titles, help banner, footer" },
   { id: "faq", label: "FAQ", summary: "Questions shown under the timeline" },
+  { id: "form", label: "Tracking form", summary: "What the customer is asked" },
   { id: "layout", label: "Layout", summary: "Shape, width and what appears" },
 ];
 
@@ -548,6 +549,84 @@ export function BrandingEditor({
                       </Button>
                     </div>
                   ))}
+                </div>
+              </Panel>
+
+              <Panel id="form" current={section}>
+                <div className="space-y-5">
+                  <p className="text-sm text-ink-600">
+                    Leave any of these blank and the form writes itself from
+                    what the page accepts — today that is the email address
+                    used at checkout.
+                  </p>
+
+                  <Field
+                    label="Prompt"
+                    htmlFor="brand-form-prompt"
+                    hint="The line above the field. One sentence, no question mark needed."
+                  >
+                    <Input
+                      id="brand-form-prompt"
+                      name="formPrompt"
+                      maxLength={160}
+                      placeholder="Enter the email address you used at checkout to get started"
+                      value={draft.formPrompt}
+                      onChange={(e) => set("formPrompt", e.currentTarget.value)}
+                    />
+                  </Field>
+
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field
+                      label="Field placeholder"
+                      htmlFor="brand-form-placeholder"
+                    >
+                      <Input
+                        id="brand-form-placeholder"
+                        name="formPlaceholder"
+                        maxLength={80}
+                        placeholder="you@example.com"
+                        value={draft.formPlaceholder}
+                        onChange={(e) =>
+                          set("formPlaceholder", e.currentTarget.value)
+                        }
+                      />
+                    </Field>
+
+                    <Field label="Button label" htmlFor="brand-form-action">
+                      <Input
+                        id="brand-form-action"
+                        name="formButtonLabel"
+                        maxLength={40}
+                        placeholder="Track my order"
+                        value={draft.formButtonLabel}
+                        onChange={(e) =>
+                          set("formButtonLabel", e.currentTarget.value)
+                        }
+                      />
+                    </Field>
+                  </div>
+
+                  <div className="space-y-3 border-t border-ink-100 pt-4">
+                    <Checkbox
+                      id="brand-form-icon"
+                      name="showFormIcon"
+                      label="Show the parcel mark"
+                      description="A small icon beside the prompt."
+                      checked={draft.showFormIcon}
+                      onChange={(e) =>
+                        set("showFormIcon", e.currentTarget.checked)
+                      }
+                    />
+                    <Checkbox
+                      id="brand-button-arrow"
+                      name="showButtonArrow"
+                      label="Arrow on the button"
+                      checked={draft.showButtonArrow}
+                      onChange={(e) =>
+                        set("showButtonArrow", e.currentTarget.checked)
+                      }
+                    />
+                  </div>
                 </div>
               </Panel>
 

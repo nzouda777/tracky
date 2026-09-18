@@ -61,19 +61,36 @@ describe("the defaults are the embedded look", () => {
     expect(variable(sheet, "brand-section")).toBe("#EEF1F4");
   });
 
+  it("ships with a band, so the card has something to sit on", () => {
+    // The default look puts the form in its own band below the title block.
+    expect(BRANDING_FALLBACK.sectionBackground).toBeTruthy();
+    expect(variable(css(), "brand-section")).toBe(
+      BRANDING_FALLBACK.sectionBackground,
+    );
+  });
+
   it("gives the card its own ground only when there is a band", () => {
-    // With no band the card is a tint of the page. With one, it becomes the
-    // page colour so it lifts off the band instead of sinking into it.
+    // With a band the card takes the page colour, so it lifts off instead of
+    // sinking into it. With none it is a tint of the page it sits on.
     const banded = css({ sectionBackground: "#EEF1F4" } as Partial<Branding>);
     expect(variable(banded, "brand-card")).toBe(
       BRANDING_FALLBACK.backgroundColor,
     );
 
-    const plain = css();
+    const plain = css({ sectionBackground: null } as Partial<Branding>);
     expect(variable(plain, "brand-section")).toBe(
       BRANDING_FALLBACK.backgroundColor,
     );
     expect(variable(plain, "brand-card")).toContain("color-mix");
+  });
+
+  it("falls back to copy that matches what the page accepts", () => {
+    // Blank wording is the normal state, not an error: the form derives its
+    // prompt from the lookup policy so it can never ask for a detail this
+    // surface would refuse.
+    expect(BRANDING_FALLBACK.formPrompt).toBe("");
+    expect(BRANDING_FALLBACK.formPlaceholder).toBe("");
+    expect(BRANDING_FALLBACK.formButtonLabel).toBe("");
   });
 
   it("centres a logo only when the column is centred", () => {

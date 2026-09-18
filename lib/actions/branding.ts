@@ -29,6 +29,19 @@ function clampInt(
   return Math.min(Math.max(Math.round(value), min), max);
 }
 
+/**
+ * Free text the customer will read, capped.
+ *
+ * The cap is not arbitrary: these strings sit on one line of a form inside
+ * somebody's storefront, and a paragraph pasted into a button label does not
+ * look like a long label, it looks like a broken page.
+ */
+function text(formData: FormData, field: string, max: number): string {
+  return String(formData.get(field) ?? "")
+    .trim()
+    .slice(0, max);
+}
+
 /** An optional colour: blank clears it, anything malformed is ignored. */
 function optionalColour(formData: FormData, field: string): string | null {
   const value = String(formData.get(field) ?? "").trim();
@@ -100,6 +113,16 @@ export async function updateBrandingAction(
       buttonRadius: clampInt(formData, "buttonRadius", 10, 0, 40),
       buttonFullWidth: formData.get("buttonFullWidth") === "on",
       sectionBackground: optionalColour(formData, "sectionBackground"),
+
+      // --- The lookup form ------------------------------------------------
+      // Blank is the normal state, not a missing value: the form derives its
+      // own wording from the lookup policy, so an empty field means "say
+      // whatever matches what this page actually accepts".
+      formPrompt: text(formData, "formPrompt", 160),
+      formPlaceholder: text(formData, "formPlaceholder", 80),
+      formButtonLabel: text(formData, "formButtonLabel", 40),
+      showFormIcon: formData.get("showFormIcon") === "on",
+      showButtonArrow: formData.get("showButtonArrow") === "on",
       updatedAt: new Date(),
     };
 

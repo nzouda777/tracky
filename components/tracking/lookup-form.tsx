@@ -1,3 +1,5 @@
+import type { Branding } from "./branding";
+
 /**
  * The customer lookup.
  *
@@ -35,11 +37,21 @@ export function classifyLookup(value: string): "email" | "order" {
 }
 
 export function LookupForm({
+  branding,
   proxyPath,
   state,
   error,
   mode = "two-factor",
 }: {
+  /** Wording and shape come from the store, with fallbacks per lookup mode. */
+  branding: Pick<
+    Branding,
+    | "formPrompt"
+    | "formPlaceholder"
+    | "formButtonLabel"
+    | "showFormIcon"
+    | "showButtonArrow"
+  >;
   proxyPath: string;
   state: LookupStep;
   error?: string | null;
@@ -55,6 +67,30 @@ export function LookupForm({
   const identifying = state.step === "identify";
   const orderOnly = mode === "order-only" && identifying;
   const emailOnly = mode === "email-only" && identifying;
+
+  // What the page says when the store has not written its own. Derived from
+  // the lookup policy rather than fixed, so the prompt can never ask for
+  // something this surface would refuse.
+  const defaults = emailOnly
+    ? {
+        prompt: "Enter the email address you used at checkout to get started",
+        label: "Email address",
+        placeholder: "you@example.com",
+        action: "Track my order",
+      }
+    : orderOnly
+      ? {
+          prompt: "Enter your order number to get started",
+          label: "Order number",
+          placeholder: "#1042",
+          action: "Track my order",
+        }
+      : {
+          prompt: "Enter your order number or email address to get started",
+          label: "Order number or email address",
+          placeholder: "#1042 or you@example.com",
+          action: "Continue",
+        };
 
   return (
     <section
@@ -88,13 +124,19 @@ export function LookupForm({
 
         {state.step === "identify" ? (
           <>
+            {/* The prompt, not a field label: one line telling the customer
+                the single thing to reach for. A label above a lone input
+                restates what the placeholder already says. */}
+            <div className="flex items-center gap-2.5">
+              {branding.showFormIcon ? <ParcelMark /> : null}
+              <p className="text-body" style={{ color: "var(--brand-text)" }}>
+                {branding.formPrompt.trim() || defaults.prompt}
+              </p>
+            </div>
+
             <div className="space-y-1.5">
-              <label htmlFor="q" className="block text-small font-medium">
-                {emailOnly
-                  ? "Email address"
-                  : orderOnly
-                    ? "Order number"
-                    : "Order number or email address"}
+              <label htmlFor="q" className="sr-only">
+                {defaults.label}
               </label>
               <input
                 id="q"
@@ -109,26 +151,16 @@ export function LookupForm({
                 autoComplete={emailOnly ? "email" : "off"}
                 spellCheck={false}
                 placeholder={
-                  emailOnly
-                    ? "you@example.com"
-                    : orderOnly
-                      ? "#1042"
-                      : "#1042 or you@example.com"
+                  branding.formPlaceholder.trim() || defaults.placeholder
                 }
-                className="w-full rounded-control px-3.5 py-3 text-body"
-                style={fieldStyle}
+                className="w-full px-4 text-body"
+                style={{ ...fieldStyle, height: "var(--brand-input-height)" }}
               />
-              <p className="text-caption" style={{ color: "var(--brand-muted)" }}>
-                {emailOnly
-                  ? "The address you used at checkout. We will show your most recent order."
-                  : orderOnly
-                    ? "It is at the top of your order confirmation email."
-                    : "Whichever you have to hand. We will ask for the other next."}
-              </p>
             </div>
 
             <Submit
-              label={emailOnly || orderOnly ? "Track my order" : "Continue"}
+              label={branding.formButtonLabel.trim() || defaults.action}
+              arrow={branding.showButtonArrow}
             />
           </>
         ) : (
@@ -162,15 +194,15 @@ export function LookupForm({
                 autoComplete={state.kind === "email" ? "off" : "email"}
                 spellCheck={false}
                 placeholder={state.kind === "email" ? "#1042" : "you@example.com"}
-                className="w-full rounded-control px-3.5 py-3 text-body"
-                style={fieldStyle}
+                className="w-full px-4 text-body"
+                style={{ ...fieldStyle, height: "var(--brand-input-height)" }}
               />
               <p className="text-caption" style={{ color: "var(--brand-muted)" }}>
                 We ask for both so nobody else can see your delivery address.
               </p>
             </div>
 
-            <Submit label="Find my order" />
+            <Submit label="Find my order" arrow={branding.showButtonArrow} />
 
             <a
               href={proxyPath}
@@ -186,19 +218,64 @@ export function LookupForm({
   );
 }
 
-function Submit({ label }: { label: string }) {
+/**
+ * A parcel under a magnifier: the page's subject, at the size of a bullet.
+ *
+ * Inline SVG rather than an icon font or an image, because this markup is
+ * served into a merchant's theme where neither is guaranteed to arrive.
+ */
+function ParcelMark() {
+  return (
+    <svg
+      className="size-5 shrink-0"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="var(--brand-accent)"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <path d="M20 8.5 12 12 4 8.5 12 5z" />
+      <path d="M4 8.5v7l8 3.5" />
+      <path d="M20 8.5v3" />
+      <circle cx="17.5" cy="16.5" r="3" />
+      <path d="m20 19 2 2" />
+    </svg>
+  );
+}
+
+function Submit({ label, arrow }: { label: string; arrow?: boolean }) {
   return (
     <button
       type="submit"
-      className="px-4 py-3 text-body font-semibold"
+      className="inline-flex items-center justify-center gap-2 px-4 text-body font-semibold"
       style={{
         backgroundColor: "var(--brand-accent)",
         color: "var(--brand-on-accent)",
         borderRadius: "var(--brand-button-radius)",
         width: "var(--brand-button-width)",
+        height: "var(--brand-input-height)",
       }}
     >
       {label}
+      {arrow ? (
+        <svg
+          className="size-3.5 shrink-0"
+          viewBox="0 0 16 16"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path d="M2 8h11" />
+          <path d="m9 4 4 4-4 4" />
+        </svg>
+      ) : null}
     </button>
   );
 }
