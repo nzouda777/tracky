@@ -48,7 +48,7 @@ export function RouteLine({ timeline }: { timeline: TimelineEntry[] }) {
             className="flex gap-3.5 sm:min-w-0 sm:flex-1 sm:flex-col sm:gap-0"
           >
             <div className="flex flex-col items-center sm:w-full sm:flex-row">
-              <Road live={roadIn} invisible={isFirst} />
+              <Road live={roadIn} invisible={isFirst} lead />
 
               <Waypoint state={state} delivered={delivered} />
 
@@ -89,8 +89,29 @@ export function RouteLine({ timeline }: { timeline: TimelineEntry[] }) {
  *
  * One element serves both orientations: a left border makes the vertical rail
  * on a phone, a top border the horizontal line on a wide screen.
+ *
+ * `lead` is the half that arrives at the waypoint, and it is why this takes a
+ * prop at all. On a wide screen both halves grow, which is what centres the
+ * waypoint in its cell. On a phone the same rule centred the waypoint in a row
+ * whose height is set by the label beside it — so a step carrying a second
+ * line ("In progress") pushed its own marker 11px below the word it marks, and
+ * every step after it inherited the drift. The arriving half is therefore
+ * fixed on a phone and only the departing half grows, which pins each marker
+ * to the first line of its label.
  */
-function Road({ live, invisible }: { live: boolean; invisible: boolean }) {
+function Road({
+  live,
+  invisible,
+  lead,
+}: {
+  live: boolean;
+  invisible: boolean;
+  lead?: boolean;
+}) {
+  // Half a line of text above the marker's own half: together they put the
+  // marker's centre on the label's first baseline box.
+  const vertical = lead ? "h-px shrink-0" : "min-h-3 flex-1";
+
   // An invisible road still has to hold the horizontal layout together — it is
   // the half-segment that keeps the first and last waypoints centred in their
   // cells — but on the vertical rail it must collapse, or the first waypoint
@@ -99,7 +120,7 @@ function Road({ live, invisible }: { live: boolean; invisible: boolean }) {
     return (
       <span
         aria-hidden
-        className="w-0 shrink-0 sm:h-0 sm:w-auto sm:flex-1 sm:border-t-2 sm:border-transparent"
+        className={`w-0 shrink-0 sm:h-0 sm:w-auto sm:flex-1 sm:border-t-2 sm:border-transparent ${lead ? "" : "flex-1"}`}
       />
     );
   }
@@ -107,7 +128,7 @@ function Road({ live, invisible }: { live: boolean; invisible: boolean }) {
   return (
     <span
       aria-hidden
-      className="w-0 min-h-3 flex-1 border-l-2 sm:h-0 sm:min-h-0 sm:w-auto sm:border-l-0 sm:border-t-2"
+      className={`w-0 border-l-2 sm:h-0 sm:min-h-0 sm:w-auto sm:flex-1 sm:border-l-0 sm:border-t-2 ${vertical}`}
       style={{
         borderColor: live ? "var(--brand-text)" : "var(--brand-line)",
         borderStyle: live ? "solid" : "dotted",

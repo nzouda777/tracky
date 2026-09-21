@@ -93,6 +93,31 @@ describe("the defaults are the embedded look", () => {
     expect(BRANDING_FALLBACK.formButtonLabel).toBe("");
   });
 
+  it("scales the heading down on a phone", () => {
+    // The stored size is a choice made looking at a desktop. Applied literally
+    // it is most of the width of a 390px screen, which is what "stretched on
+    // mobile" looks like. It becomes the ceiling of a clamp instead.
+    const sheet = css({ headingFontSize: 42 } as Partial<Branding>);
+    const heading = variable(sheet, "brand-heading-size") ?? "";
+
+    expect(heading).toMatch(/^clamp\(/);
+    expect(heading).toContain("42px");
+    expect(heading).toContain("vw");
+
+    // The floor is smaller than the ceiling, and never below readable.
+    const floor = Number(heading.match(/clamp\((\d+)px/)?.[1]);
+    expect(floor).toBeGreaterThanOrEqual(24);
+    expect(floor).toBeLessThan(42);
+  });
+
+  it("leaves an already-small heading alone", () => {
+    // A heading at or below the floor has nothing to scale down to, and a
+    // clamp whose ends meet is just noise in the stylesheet.
+    expect(
+      variable(css({ headingFontSize: 22 } as Partial<Branding>), "brand-heading-size"),
+    ).toBe("22px");
+  });
+
   it("centres a logo only when the column is centred", () => {
     expect(variable(css(), "brand-logo-inline")).toBe("auto");
     expect(

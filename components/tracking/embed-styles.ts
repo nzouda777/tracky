@@ -224,6 +224,8 @@ const LAYOUT = [
   rule(".min-w-0", "min-width:0"),
   rule(".max-w-\\[40rem\\]", "max-width:40rem"),
   rule(".min-h-3", "min-height:.75rem"),
+  // Half a line above a waypoint marker on the vertical rail — see route-line.
+  rule(".h-px", "height:1px"),
   rule(".h-9", "height:2.25rem"),
   rule(".object-contain", "object-fit:contain"),
   rule(".cursor-pointer", "cursor:pointer"),
@@ -253,7 +255,7 @@ const SPACING = [
   ...scale("px", ["padding-left", "padding-right"], ["2.5", "3", "3.5", "4", "5"]),
   ...scale("py", ["padding-top", "padding-bottom"], ["1", "2.5", "3", "3.5", "9"]),
   ...scale("pt", ["padding-top"], ["5", "9"]),
-  ...scale("pb", ["padding-bottom"], ["7"]),
+  ...scale("pb", ["padding-bottom"], ["7", "12"]),
   ...scale("mt", ["margin-top"], ["0.5", "1.5", "3", "4", "5", "9", "12"]),
   ...scale("mb", ["margin-bottom"], ["3", "9"]),
   ...scale("gap", ["gap"], ["2", "2.5", "3", "3.5"]),

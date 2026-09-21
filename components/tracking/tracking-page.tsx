@@ -474,16 +474,33 @@ function Manifest({
 }
 
 /** One manifest line: label left, value right, rule beneath. */
+/**
+ * One manifest line: a label and its value, side by side.
+ *
+ * They used to sit at opposite ends of the row, which reads fine in a narrow
+ * panel and falls apart in a wide one — on an 840px column the order number
+ * ended up 699px from the words "Order no.", far enough that the eye cannot
+ * pair them. The label now holds a fixed measure and the value starts right
+ * after it, so the pair stays legible at any column width the store picks.
+ *
+ * The row still wraps: below roughly 26rem the value drops under its label
+ * rather than being squeezed into a few characters.
+ */
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div
-      className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-1 border-b py-2.5 text-small last:border-b-0"
+      className="flex flex-wrap items-baseline gap-x-6 gap-y-1 border-b py-2.5 text-small last:border-b-0"
       style={{ borderColor: "var(--brand-line)" }}
     >
-      <dt className="shrink-0" style={{ color: "var(--brand-muted)" }}>
+      <dt
+        className="shrink-0"
+        style={{ color: "var(--brand-muted)", width: "8.5rem" }}
+      >
         {label}
       </dt>
-      <dd className="min-w-0 text-right">{children}</dd>
+      <dd className="min-w-0 flex-1" style={{ textAlign: "left" }}>
+        {children}
+      </dd>
     </div>
   );
 }

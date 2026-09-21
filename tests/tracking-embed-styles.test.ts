@@ -1,6 +1,10 @@
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
+
+import { TrackingPage } from "@/components/tracking/tracking-page";
+import { resolveBranding } from "@/components/tracking/branding";
 
 import {
   TRACKING_EMBED_CSS,
@@ -54,7 +58,158 @@ function asSelector(name: string): string {
   return `.${name.replace(/([:.[\]])/g, "\\$1")}`;
 }
 
+/**
+ * Every class the components actually emit, for both states of the page.
+ *
+ * Reading the source for `className="…"` misses anything built at runtime —
+ * a template literal, a ternary, a variable holding a class list. That gap is
+ * not theoretical: it let `h-px` ship with no rule behind it, invisible
+ * everywhere except on a phone, on a storefront. Rendering the page and
+ * reading the markup back catches whatever the components really produce.
+ */
+function renderedClasses(): Map<string, string> {
+  const store = {
+    id: "s",
+    name: "Northside Supply",
+    shopDomain: "n.myshopify.com",
+  } as never;
+
+  const stage = (
+    id: string,
+    name: string,
+    position: number,
+    extra: Record<string, unknown> = {},
+  ) => ({
+    id,
+    storeId: "s",
+    key: id,
+    name,
+    description: "",
+    position,
+    icon: "circle",
+    color: "#2563eb",
+    isTerminal: false,
+    triggersFulfillment: false,
+    locksAddressEditing: false,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...extra,
+  });
+
+  const stages = [
+    stage("placed", "Order Placed", 0),
+    stage("out", "Out for Delivery", 1),
+    stage("delivered", "Delivered", 2, { isTerminal: true }),
+  ];
+
+  const order = {
+    id: "o1",
+    storeId: "s",
+    shopifyOrderId: "1",
+    orderNumber: "#1042",
+    customerName: "Sarah Jenkins",
+    customerEmail: "sarah@example.com",
+    customerPhone: null,
+    shippingAddress: { address1: "12 Bourke Street", city: "Melbourne" },
+    lineItems: [{ title: "Bamboo Cutlery Set", quantity: 2, price: "19.99" }],
+    orderDate: new Date("2026-08-27T06:26:00Z"),
+    total: "39.98",
+    currency: "AUD",
+    currentStageId: "out",
+    fulfillmentStatus: "unfulfilled",
+    shopifyFulfillmentId: null,
+    fulfilledAt: null,
+    fulfillmentError: null,
+    assignedDriverName: "Sam",
+    trackingToken: "tok",
+    cancelledAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  const view = {
+    order,
+    stage: stages[1],
+    timeline: stages.map((entry, index) => ({
+      stage: entry,
+      state: index === 0 ? "done" : index === 1 ? "current" : "upcoming",
+    })),
+    events: [
+      {
+        event: {
+          id: "e1",
+          storeId: "s",
+          orderId: "o1",
+          stageId: "out",
+          occurredAt: new Date("2026-08-28T09:00:00Z"),
+          note: "With our driver now.",
+          createdByUserId: null,
+          source: "agency",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        stage: stages[1],
+      },
+    ],
+    lastUpdate: null,
+    proof: null,
+    canEditAddress: true,
+  };
+  view.lastUpdate = view.events[0] as never;
+
+  const branding = resolveBranding({
+    faq: [{ question: "When will it arrive?", answer: "Soon." }],
+    helpBannerText: "Need help?",
+    showStoreName: true,
+  } as never);
+
+  const owners = new Map<string, string>();
+
+  for (const [label, current] of [
+    ["lookup", null],
+    ["order", view],
+  ] as const) {
+    const html = renderToStaticMarkup(
+      TrackingPage({
+        branding,
+        store,
+        view: current as never,
+        proxyPath: "/apps/track-order",
+        lookupStep: { step: "identify" },
+        lookupMode: "email-only",
+        access: "none",
+        lookupError: null,
+        addressMessage: null,
+        addressError: null,
+      }) as never,
+    );
+
+    for (const match of html.matchAll(/class="([^"]*)"/g)) {
+      for (const name of match[1].split(/\s+/).filter(Boolean)) {
+        if (!owners.has(name)) owners.set(name, `rendered (${label})`);
+      }
+    }
+  }
+
+  return owners;
+}
+
 describe("the embedded stylesheet covers what the components use", () => {
+  it("defines every class the rendered page actually emits", () => {
+    const missing: string[] = [];
+
+    for (const [name, where] of renderedClasses()) {
+      if (!TRACKING_EMBED_CSS.includes(asSelector(name))) {
+        missing.push(`${name} (${where})`);
+      }
+    }
+
+    expect(
+      missing,
+      `These classes reach the storefront with no rule behind them:\n  ${missing.join("\n  ")}`,
+    ).toEqual([]);
+  });
+
   it("defines every class the tracking components render", () => {
     const missing: string[] = [];
 

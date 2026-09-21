@@ -205,6 +205,31 @@ export function resolveFontStack(stack: string | null | undefined): string {
 }
 
 /**
+ * The page title, sized for the screen it lands on.
+ *
+ * The stored value is a choice made while looking at a desktop, and applying
+ * it literally is what makes a phone look wrong: 42px is a title on a 1400px
+ * page and most of the width of a 390px one. So the number becomes the upper
+ * bound of a `clamp`, scaling down to a floor as the viewport narrows —
+ * which is what the reference this was modelled on does.
+ *
+ * The curve is pinned to two real widths: the floor at 390px (a phone) and
+ * the merchant's own size at 900px (a laptop), interpolating between.
+ */
+function fluidHeading(size: number): string {
+  const max = Math.max(16, size);
+  const min = Math.max(24, Math.round(max * 0.62));
+  if (min >= max) return `${max}px`;
+
+  // value = intercept + slope·vw, solved so value(390px) = min and
+  // value(900px) = max.
+  const slope = (max - min) / 5.1;
+  const intercept = min - ((max - min) * 390) / 510;
+
+  return `clamp(${min}px, ${intercept.toFixed(2)}px + ${slope.toFixed(3)}vw, ${max}px)`;
+}
+
+/**
  * A value safe to drop into a declaration inside this scoped block.
  *
  * The font stack is free text an owner typed. A `}` in it would close the
@@ -236,7 +261,7 @@ export function BrandingStyle({
   --brand-link: ${branding.accentColor};
   --brand-font: ${cssValue(branding.fontFamily)};
   --brand-scale: ${(branding.baseFontSize / 16).toFixed(4)};
-  --brand-heading-size: ${branding.headingFontSize}px;
+  --brand-heading-size: ${fluidHeading(branding.headingFontSize)};
   --brand-delivered: ${DELIVERED_COLOR};
   --brand-on-accent: ${readableOn(branding.primaryColor, text)};
   --brand-muted: ${mutedOn(text, surface)};
