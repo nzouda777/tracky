@@ -38,10 +38,44 @@ function embedSize(name: string): string | null {
   return rule?.[1].match(/font-size:([^;]+)/)?.[1].trim() ?? null;
 }
 
-/** `.875rem` and `0.875rem` are the same number written two ways. */
-function rem(value: string): number {
-  return Number.parseFloat(value.replace("rem", ""));
+/**
+ * A size as the pixels it resolves to.
+ *
+ * The two sheets deliberately use different units. On our own domain the page
+ * is styled in rem, where the root is ours and 1rem is 16px. In a theme it is
+ * styled in px, because the root belongs to the merchant and a theme that sets
+ * `html { font-size: 62.5% }` would otherwise render the whole page at 62.5%.
+ * Comparing the numbers as written would fail on that difference alone.
+ */
+function px(value: string): number {
+  const amount = Number.parseFloat(value);
+  return value.includes("rem") ? amount * 16 : amount;
 }
+
+describe("the embedded sheet never uses a unit the theme controls", () => {
+  it("states every size in absolute units", () => {
+    // `rem` is a fraction of the *root* font size, and the root belongs to the
+    // merchant. A theme with `html { font-size: 62.5% }` — a common one —
+    // renders every rem we emit at 62.5%: 17px body text as 10.6px, a 14px
+    // caption as 8.75px, every gap and padding shrinking with them. It looks
+    // perfect in any preview served from our own domain and wrong on every
+    // storefront, which is the only place this sheet is used.
+    // Only the declarations: `.max-w-\[40rem\]` is a class *name* the
+    // components write, not a length the browser resolves.
+    const declarations = [...TRACKING_EMBED_CSS.matchAll(/\{([^}]*)\}/g)]
+      .flatMap((block) => block[1].match(/[\d.]+rem/g) ?? []);
+    expect(
+      declarations,
+      `these resolve against the merchant's root font size: ${declarations.join(", ")}`,
+    ).toEqual([]);
+  });
+
+  it("states the font family on the elements, not only the root", () => {
+    // Inheritance loses to any rule the theme writes, so a bare
+    // `h1 { font-family }` in their stylesheet takes our headings.
+    expect(TRACKING_EMBED_CSS).toMatch(/h1[^{]*\{font-family:var\(--brand-font\)/);
+  });
+});
 
 describe("the two stylesheets agree on the scale", () => {
   it("covers the classes the page actually sets", () => {
@@ -65,8 +99,10 @@ describe("the two stylesheets agree on the scale", () => {
       const embedded = embedSize(name);
       if (embedded === null) {
         disagreements.push(`${name}: missing from the embedded sheet`);
-      } else if (rem(embedded) !== rem(size)) {
-        disagreements.push(`${name}: ${size} on our domain, ${embedded} in a theme`);
+      } else if (px(embedded) !== px(size)) {
+        disagreements.push(
+          `${name}: ${size} (${px(size)}px) on our domain, ${embedded} (${px(embedded)}px) in a theme`,
+        );
       }
     }
 
@@ -78,6 +114,6 @@ describe("the two stylesheets agree on the scale", () => {
     // page is read by customers, often on a phone.
     const small = globalScale().get("text-small");
     expect(small).toBeTruthy();
-    expect(rem(small!)).toBeGreaterThanOrEqual(1);
+    expect(px(small!)).toBeGreaterThanOrEqual(16);
   });
 });

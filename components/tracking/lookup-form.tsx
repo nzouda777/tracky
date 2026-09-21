@@ -105,7 +105,9 @@ export function LookupForm({
         borderRadius: "var(--brand-card-radius)",
         // The form is the one thing on an empty tracking page, so it keeps its
         // own measure rather than running the full width of a wide column.
-        maxWidth: "34rem",
+        // px, not rem: a theme that redefines the root font size would
+        // otherwise shrink this measure along with everything else.
+        maxWidth: "544px",
         textAlign: "left",
       }}
     >

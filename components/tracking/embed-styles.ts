@@ -27,22 +27,36 @@ export const TRACKING_SCOPE_ID = "tracky-tracking";
 
 const S = `#${TRACKING_SCOPE_ID}`;
 
-/** Tailwind's spacing scale, in rem, for the steps this page uses. */
+/**
+ * Tailwind's spacing scale, in **pixels**.
+ *
+ * Not rem, and this is the most important decision in the file. A `rem` is a
+ * fraction of the *root* font size, and the root belongs to the merchant's
+ * theme, not to us. Plenty of themes ship `html { font-size: 62.5% }` — the
+ * old trick that makes 1rem equal 10px so designers can think in tens. On such
+ * a theme every rem we emit renders at 62.5% of its intended size: 17px body
+ * text arrives as 10.6px, a 14px caption as 8.75px, and every gap and padding
+ * shrinks to match.
+ *
+ * None of that shows in a preview served from our own domain, where the root
+ * is 16px and the page looks exactly as drawn. It is wrong only on the
+ * storefront — the one place this stylesheet is ever used.
+ */
 const SPACE: Record<string, string> = {
   "0": "0",
-  "0.5": "0.125rem",
-  "1": "0.25rem",
-  "1.5": "0.375rem",
-  "2": "0.5rem",
-  "2.5": "0.625rem",
-  "3": "0.75rem",
-  "3.5": "0.875rem",
-  "4": "1rem",
-  "5": "1.25rem",
-  "6": "1.5rem",
-  "7": "1.75rem",
-  "9": "2.25rem",
-  "12": "3rem",
+  "0.5": "2px",
+  "1": "4px",
+  "1.5": "6px",
+  "2": "8px",
+  "2.5": "10px",
+  "3": "12px",
+  "3.5": "14px",
+  "4": "16px",
+  "5": "20px",
+  "6": "24px",
+  "7": "28px",
+  "9": "36px",
+  "12": "48px",
 };
 
 /**
@@ -122,6 +136,15 @@ const RESET = [
   // on headings — uppercase, widely tracked — and both inherit. Without this
   // the page's own headings arrive in the theme's voice rather than the
   // store's branding, which is the thing the customer is supposed to see.
+  // The family is stated on each text element rather than left to inheritance,
+  // because inheritance loses to any rule the theme writes. A plain
+  // `h1 { font-family: … }` in their stylesheet beats a family inherited from
+  // our root, and the page arrives half in the store's display face and half
+  // in ours — which is what the storefront was actually showing.
+  rule(
+    "h1,h2,h3,p,dl,dt,dd,ol,ul,li,figure,address,label,summary,time,a,span,div,button,input",
+    "font-family:var(--brand-font)",
+  ),
   rule(
     "h1,h2,h3,p,dl,dd,ol,ul,figure,address",
     "margin:0;padding:0;font-size:inherit;font-weight:inherit;font-style:normal;" +
@@ -158,7 +181,7 @@ const IDENTITY = [
     "background-color:var(--brand-surface);" +
       "color:var(--brand-text);" +
       "font-family:var(--brand-font);" +
-      "font-size:calc(1rem * var(--brand-scale,1));" +
+      "font-size:calc(16px * var(--brand-scale,1));" +
       "line-height:1.5",
   ),
   rootRule(".min-h-dvh", "min-height:auto"),
@@ -185,12 +208,12 @@ const TYPE = [
   // Mirrored in `app/globals.css` under `.tracking-root`, which styles the
   // same page on our own domain. `tests/tracking-type-scale.test.ts` fails if
   // the two drift apart.
-  rule(".text-caption", "font-size:.875rem;line-height:1.25rem;font-weight:500"),
-  rule(".text-small", "font-size:1rem;line-height:1.5rem"),
-  rule(".text-body", "font-size:1.0625rem;line-height:1.75rem"),
-  rule(".text-h3", "font-size:1.1875rem;line-height:1.625rem"),
-  rule(".text-h2", "font-size:1.4375rem;line-height:1.875rem"),
-  rule(".text-h1", "font-size:1.75rem;line-height:2.125rem"),
+  rule(".text-caption", "font-size:14px;line-height:20px;font-weight:500"),
+  rule(".text-small", "font-size:16px;line-height:24px"),
+  rule(".text-body", "font-size:17px;line-height:28px"),
+  rule(".text-h3", "font-size:19px;line-height:26px"),
+  rule(".text-h2", "font-size:23px;line-height:30px"),
+  rule(".text-h1", "font-size:28px;line-height:34px"),
   rule(".font-medium", "font-weight:500"),
   rule(".font-semibold", "font-weight:600"),
   rule(".text-center", "text-align:center"),
@@ -229,11 +252,11 @@ const LAYOUT = [
   rule(".w-auto", "width:auto"),
   rule(".w-0", "width:0"),
   rule(".min-w-0", "min-width:0"),
-  rule(".max-w-\\[40rem\\]", "max-width:40rem"),
-  rule(".min-h-3", "min-height:.75rem"),
+  rule(".max-w-\\[40rem\\]", "max-width:640px"),
+  rule(".min-h-3", "min-height:12px"),
   // Half a line above a waypoint marker on the vertical rail — see route-line.
   rule(".h-px", "height:1px"),
-  rule(".h-9", "height:2.25rem"),
+  rule(".h-9", "height:36px"),
   rule(".object-contain", "object-fit:contain"),
   rule(".cursor-pointer", "cursor:pointer"),
   rule(".rounded-full", "border-radius:9999px"),
@@ -276,7 +299,7 @@ const SPACE_Y = ["1", "1.5", "3", "4", "9"].map((step) =>
 );
 
 // ---------------------------------------------------------------------------
-// `sm:` — Tailwind's 40rem breakpoint
+// `sm:` — Tailwind's 640px breakpoint
 // ---------------------------------------------------------------------------
 
 const SM = [
@@ -320,6 +343,6 @@ export const TRACKING_EMBED_CSS = [
   ...BORDERS,
   ...SPACING,
   ...SPACE_Y,
-  `@media (min-width:40rem){${SM.join("")}}`,
+  `@media (min-width:640px){${SM.join("")}}`,
   REDUCED_MOTION,
 ].join("");

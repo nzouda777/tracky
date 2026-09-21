@@ -100,7 +100,13 @@ export function TrackingPage({
             {branding.pageSubtitle ? (
               <div
                 className="mx-auto space-y-1 text-body"
-                style={{ color: "var(--brand-muted)", maxWidth: "46rem" }}
+                style={{
+                  color: "var(--brand-muted)",
+                  maxWidth: "736px",
+                  // Follows the page instead of centring itself, which put the
+                  // intro 180px right of the heading above it.
+                  marginInline: "var(--brand-inline)",
+                }}
               >
                 {/* Written as lines, so a store can say the three things this
                     page usually has to say without them running into one
@@ -483,7 +489,7 @@ function Manifest({
  * pair them. The label now holds a fixed measure and the value starts right
  * after it, so the pair stays legible at any column width the store picks.
  *
- * The row still wraps: below roughly 26rem the value drops under its label
+ * The row still wraps: below roughly 420px the value drops under its label
  * rather than being squeezed into a few characters.
  */
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
@@ -494,7 +500,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
     >
       <dt
         className="shrink-0"
-        style={{ color: "var(--brand-muted)", width: "8.5rem" }}
+        style={{ color: "var(--brand-muted)", width: "136px" }}
       >
         {label}
       </dt>

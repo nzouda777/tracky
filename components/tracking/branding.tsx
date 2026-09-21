@@ -276,7 +276,7 @@ export function BrandingStyle({
   --brand-button-radius: ${branding.buttonRadius}px;
   /* One height for the field and the button, so they read as a single control
      stacked rather than two things that happen to be near each other. */
-  --brand-input-height: 3.25rem;
+  --brand-input-height: 52px;
   --brand-button-width: ${branding.buttonFullWidth ? "100%" : "auto"};
   --brand-section: ${branding.sectionBackground || surface};
   /* The card lifts off a tinted band, or sits in it when there is none. */
