@@ -94,8 +94,12 @@ export function LookupForm({
 
   return (
     <section
-      className="mx-auto p-5 sm:p-6"
+      className="p-5 sm:p-6"
       style={{
+        // Follows the page rather than centring itself: on a left-aligned
+        // page a self-centred card breaks the one vertical edge every other
+        // block shares.
+        marginInline: "var(--brand-inline)",
         backgroundColor: "var(--brand-card)",
         border: "1px solid var(--brand-line)",
         borderRadius: "var(--brand-card-radius)",

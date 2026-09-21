@@ -178,12 +178,19 @@ const IDENTITY = [
 ];
 
 const TYPE = [
-  rule(".text-caption", "font-size:.8125rem;line-height:1.125rem;font-weight:500"),
-  rule(".text-small", "font-size:.875rem;line-height:1.375rem"),
-  rule(".text-body", "font-size:1rem;line-height:1.625rem"),
-  rule(".text-h3", "font-size:1.0625rem;line-height:1.5rem"),
-  rule(".text-h2", "font-size:1.3125rem;line-height:1.75rem"),
-  rule(".text-h1", "font-size:1.625rem;line-height:2rem"),
+  // The customer-facing scale. The app's own is built for a dense back office
+  // — 14px rows, 13px captions — and the public page inherited it, which set a
+  // page people read on a phone in the sizes of an admin table.
+  //
+  // Mirrored in `app/globals.css` under `.tracking-root`, which styles the
+  // same page on our own domain. `tests/tracking-type-scale.test.ts` fails if
+  // the two drift apart.
+  rule(".text-caption", "font-size:.875rem;line-height:1.25rem;font-weight:500"),
+  rule(".text-small", "font-size:1rem;line-height:1.5rem"),
+  rule(".text-body", "font-size:1.0625rem;line-height:1.75rem"),
+  rule(".text-h3", "font-size:1.1875rem;line-height:1.625rem"),
+  rule(".text-h2", "font-size:1.4375rem;line-height:1.875rem"),
+  rule(".text-h1", "font-size:1.75rem;line-height:2.125rem"),
   rule(".font-medium", "font-weight:500"),
   rule(".font-semibold", "font-weight:600"),
   rule(".text-center", "text-align:center"),
@@ -255,7 +262,7 @@ const SPACING = [
   ...scale("px", ["padding-left", "padding-right"], ["2.5", "3", "3.5", "4", "5"]),
   ...scale("py", ["padding-top", "padding-bottom"], ["1", "2.5", "3", "3.5", "9"]),
   ...scale("pt", ["padding-top"], ["5", "9"]),
-  ...scale("pb", ["padding-bottom"], ["7", "12"]),
+  ...scale("pb", ["padding-bottom"], ["7", "9", "12"]),
   ...scale("mt", ["margin-top"], ["0.5", "1.5", "3", "4", "5", "9", "12"]),
   ...scale("mb", ["margin-bottom"], ["3", "9"]),
   ...scale("gap", ["gap"], ["2", "2.5", "3", "3.5"]),
@@ -278,6 +285,7 @@ const SM = [
   rule(".sm\\:py-12", `padding-top:${SPACE["12"]};padding-bottom:${SPACE["12"]}`),
   rule(".sm\\:pt-12", `padding-top:${SPACE["12"]}`),
   rule(".sm\\:pb-0", "padding-bottom:0"),
+  rule(".sm\\:mb-0", "margin-bottom:0"),
   rule(".sm\\:mt-2\\.5", `margin-top:${SPACE["2.5"]}`),
   rule(".sm\\:gap-0", "gap:0"),
   rule(".sm\\:grid-cols-2", "grid-template-columns:repeat(2,minmax(0,1fr))"),

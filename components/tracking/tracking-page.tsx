@@ -73,7 +73,7 @@ export function TrackingPage({
                 src={branding.logoUrl}
                 alt={storeName}
                 className="h-9 w-auto object-contain"
-                style={{ marginInline: "var(--brand-logo-inline)" }}
+                style={{ marginInline: "var(--brand-inline)" }}
               />
             ) : (
               <p

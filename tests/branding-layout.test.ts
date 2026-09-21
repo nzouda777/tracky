@@ -118,10 +118,13 @@ describe("the defaults are the embedded look", () => {
     ).toBe("22px");
   });
 
-  it("centres a logo only when the column is centred", () => {
-    expect(variable(css(), "brand-logo-inline")).toBe("auto");
+  it("lets blocks with their own measure follow the page's alignment", () => {
+    // The logo and the lookup card have a width of their own, so they need
+    // telling where to sit. Centring themselves regardless is what put the
+    // card 130px to the right of every heading on a left-aligned page.
+    expect(variable(css(), "brand-inline")).toBe("auto");
     expect(
-      variable(css({ contentAlignment: "left" } as Partial<Branding>), "brand-logo-inline"),
+      variable(css({ contentAlignment: "left" } as Partial<Branding>), "brand-inline"),
     ).toBe("0");
   });
 });

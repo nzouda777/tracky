@@ -280,8 +280,9 @@ export function BrandingStyle({
   --brand-button-width: ${branding.buttonFullWidth ? "100%" : "auto"};
   --brand-section: ${branding.sectionBackground || surface};
   /* The card lifts off a tinted band, or sits in it when there is none. */
-  /* A centred column centres its logo too; a left-aligned one does not. */
-  --brand-logo-inline: ${branding.contentAlignment === "center" ? "auto" : "0"};
+  /* Blocks with a measure of their own — the logo, the lookup card — follow
+     the page's alignment instead of centring themselves regardless of it. */
+  --brand-inline: ${branding.contentAlignment === "center" ? "auto" : "0"};
   --brand-card: ${branding.sectionBackground ? surface : `color-mix(in srgb, ${text} 4%, ${surface})`};
 }
 `;

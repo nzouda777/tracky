@@ -145,6 +145,45 @@ body {
 }
 
 /* ---------------------------------------------------------------------------
+   The customer-facing type scale.
+
+   The scale in `@theme` above is built for the back office, where density is
+   the point: 14px table rows, 13px captions. The tracking page inherited it,
+   which set a page customers read on a phone in the sizes of an admin table.
+   It gets its own, larger scale — scoped to its own root, so nothing in the
+   back office moves.
+
+   Mirrored in `components/tracking/embed-styles.ts`, which styles the same
+   page inside a Shopify theme. `tests/tracking-type-scale.test.ts` fails if
+   the two drift apart.
+   --------------------------------------------------------------------------- */
+.tracking-root .text-caption {
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  font-weight: 500;
+}
+.tracking-root .text-small {
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+.tracking-root .text-body {
+  font-size: 1.0625rem;
+  line-height: 1.75rem;
+}
+.tracking-root .text-h3 {
+  font-size: 1.1875rem;
+  line-height: 1.625rem;
+}
+.tracking-root .text-h2 {
+  font-size: 1.4375rem;
+  line-height: 1.875rem;
+}
+.tracking-root .text-h1 {
+  font-size: 1.75rem;
+  line-height: 2.125rem;
+}
+
+/* ---------------------------------------------------------------------------
    The one animation in the product that is not a response to an action: the
    active waypoint on the route line, marking what is moving right now.
    --------------------------------------------------------------------------- */

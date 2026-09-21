@@ -55,7 +55,24 @@ export function RouteLine({ timeline }: { timeline: TimelineEntry[] }) {
               <Road live={roadOut} invisible={isLast} />
             </div>
 
-            <div className="min-w-0 pb-7 last:pb-0 sm:mt-2.5 sm:px-1 sm:pb-0 sm:text-center">
+            {/*
+              The space below a step is a margin here, and on the label rather
+              than on the step, for two reasons that both had to be found by
+              measuring.
+
+              `last:` matches `:last-child`, and this block is always the last
+              child of its own step — so a `last:pb-0` here quietly cancelled
+              the spacing on *every* step, which is why the rail read as a
+              cramped list. And padding on the step would not work either: a
+              stretched flex child only spans the content box, so the rail
+              would stop short and leave a gap before the next waypoint. A
+              margin grows the flex line itself, and the rail follows it.
+            */}
+            <div
+              className={`min-w-0 sm:mt-2.5 sm:px-1 sm:text-center ${
+                isLast ? "" : "mb-9 sm:mb-0"
+              }`}
+            >
               <p
                 className="text-small"
                 style={{
