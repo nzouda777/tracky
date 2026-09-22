@@ -28,6 +28,7 @@ function makeStage(overrides: Partial<Stage> = {}): Stage {
     isTerminal: true,
     triggersFulfillment: true,
     locksAddressEditing: false,
+    advancesOnPayment: false,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,

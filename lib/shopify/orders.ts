@@ -20,6 +20,8 @@ export type ShopifyOrderPayload = {
   current_total_price?: string | null;
   total_price?: string | null;
   fulfillment_status?: string | null;
+  /** `paid`, `pending`, `partially_paid`, `refunded`, `voided`, … */
+  financial_status?: string | null;
   customer?: {
     first_name?: string | null;
     last_name?: string | null;

@@ -50,6 +50,7 @@ async function provisionStages(storeId: string): Promise<void> {
       isTerminal: stage.isTerminal ?? false,
       triggersFulfillment: stage.triggersFulfillment ?? false,
       locksAddressEditing: stage.locksAddressEditing ?? false,
+      advancesOnPayment: stage.advancesOnPayment ?? false,
     })),
   );
 }

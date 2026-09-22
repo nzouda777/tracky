@@ -14,6 +14,7 @@ export type DefaultStage = {
   isTerminal?: boolean;
   triggersFulfillment?: boolean;
   locksAddressEditing?: boolean;
+  advancesOnPayment?: boolean;
 };
 
 export const DEFAULT_STAGES: DefaultStage[] = [
@@ -30,6 +31,8 @@ export const DEFAULT_STAGES: DefaultStage[] = [
     description: "Your order has been confirmed and is queued for packing.",
     icon: "check",
     color: "#2563eb",
+    // Reached on its own, when Shopify reports the payment.
+    advancesOnPayment: true,
   },
   {
     key: "processing",

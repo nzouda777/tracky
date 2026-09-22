@@ -4,8 +4,11 @@ import { randomToken } from "@/lib/crypto/secrets";
 import { db, orders, stores, type Order, type Store } from "@/lib/db";
 import { TenantDb } from "@/lib/db/tenant";
 import { cancelPendingSends, scheduleOrderSequence } from "@/lib/email/scheduler";
-import { getFirstStage } from "@/lib/orders/stages";
-import { placeOrderInFirstStage } from "@/lib/orders/transitions";
+import { getFirstStage, getPaidStage, listStages } from "@/lib/orders/stages";
+import {
+  placeOrderInFirstStage,
+  recordStageTransition,
+} from "@/lib/orders/transitions";
 import { mapOrderPayload, type ShopifyOrderPayload } from "./orders";
 import type { WebhookTopic } from "./webhooks";
 
@@ -75,17 +78,73 @@ async function handleOrdersCreate(
   await placeOrderInFirstStage({ tdb, order, firstStage });
   const scheduled = await scheduleOrderSequence({ tdb, order });
 
+  // Most checkouts are paid the moment they are placed, so the create payload
+  // usually already says so. Advancing here rather than waiting for a separate
+  // update means the customer's first email is the confirmation, not a
+  // placeholder they get seconds before the real one.
+  const advanced = await advanceIfPaid({ tdb, order, payload });
+
   return {
     handled: true,
-    detail: `Order ${order.orderNumber} created in "${firstStage.name}"; ${scheduled} delayed email(s) scheduled.`,
+    detail:
+      `Order ${order.orderNumber} created in "${firstStage.name}"; ` +
+      `${scheduled} delayed email(s) scheduled.${advanced ? ` ${advanced}` : ""}`,
   };
 }
 
 /**
- * `orders/updated` — resynchronise the mirrored fields only.
+ * Moves a paid order to the stage the store marked as its paid one.
  *
- * It deliberately does NOT move the order between stages: delivery progress
- * belongs to the agency, not to an edit made in the Shopify admin.
+ * The only transition in the product that no person performs — and it is still
+ * a fact, not a timer: Shopify is telling us the money arrived. Time never
+ * moves an order here.
+ *
+ * Deliberately one-way and never backwards. An order already past that stage
+ * is left alone, so a refund, an edit in the Shopify admin, or a replayed
+ * webhook cannot drag a delivery back to "Confirmed" after the agency has
+ * moved it on.
+ */
+async function advanceIfPaid({
+  tdb,
+  order,
+  payload,
+}: {
+  tdb: TenantDb;
+  order: Order;
+  payload: ShopifyOrderPayload;
+}): Promise<string | null> {
+  if (payload.financial_status?.trim().toLowerCase() !== "paid") return null;
+  if (order.cancelledAt) return null;
+
+  const paidStage = await getPaidStage(tdb);
+  if (!paidStage) return null;
+
+  const all = await listStages(tdb);
+  const position = (id: string | null) =>
+    all.find((stage) => stage.id === id)?.position ?? -1;
+
+  if (position(order.currentStageId) >= paidStage.position) return null;
+
+  const result = await recordStageTransition({
+    tdb,
+    order,
+    stageId: paidStage.id,
+    source: "shopify_webhook",
+    note: null,
+    userId: null,
+  });
+
+  return `Payment confirmed by Shopify, moved to "${result.stage.name}".`;
+}
+
+/**
+ * `orders/updated` — resynchronise the mirrored fields, and nothing else.
+ *
+ * Delivery progress belongs to the agency, not to an edit made in the Shopify
+ * admin, so nothing here moves an order along the route. The one exception is
+ * payment: a checkout captured later than it was placed arrives as an update,
+ * and that is a fact about the order rather than a judgement about where the
+ * parcel is.
  */
 async function handleOrdersUpdated(
   store: Store,
@@ -117,7 +176,14 @@ async function handleOrdersUpdated(
     eq(orders.id, existing.id),
   );
 
-  return { handled: true, detail: `Order ${fields.orderNumber} resynced.` };
+  // Re-read: the row we advance from has to be the one we just wrote.
+  const fresh = (await tdb.findById(orders, existing.id)) ?? existing;
+  const advanced = await advanceIfPaid({ tdb, order: fresh, payload });
+
+  return {
+    handled: true,
+    detail: `Order ${fields.orderNumber} resynced.${advanced ? ` ${advanced}` : ""}`,
+  };
 }
 
 async function handleOrdersCancelled(

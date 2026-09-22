@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { createHmac, randomBytes } from "node:crypto";
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
+
+import * as credentialModule from "@/lib/shopify/credentials";
 
 /**
  * One deployment, many Shopify apps.
@@ -19,15 +21,22 @@ import { beforeAll, describe, expect, it } from "vitest";
 
 const ROOT = process.cwd();
 
-// The credential module encrypts through lib/crypto/secrets, which demands a
-// real 32-byte key. Set before the module is imported, since env is read lazily
-// but the first call happens inside these tests.
-beforeAll(() => {
-  process.env.ENCRYPTION_KEY ??= randomBytes(32).toString("base64");
-});
+/**
+ * The credential module encrypts through `lib/crypto/secrets`, which demands a
+ * real 32-byte key. It is set here, at module scope, because `lib/env.ts`
+ * reads every variable lazily at the point of use rather than on import — so
+ * the key only has to exist before the first call, not before the import.
+ *
+ * That is also why the module is imported statically. Loading it pulls in
+ * Drizzle and the Neon driver, and behind a dynamic `import()` inside the
+ * first test the whole cost was charged to that one test's 5s budget, which it
+ * intermittently blew under a full parallel run. A static import spends it
+ * once, before any timeout is running.
+ */
+process.env.ENCRYPTION_KEY ??= randomBytes(32).toString("base64");
 
 async function credentials() {
-  return import("@/lib/shopify/credentials");
+  return credentialModule;
 }
 
 /** A store row with only the columns the credential layer reads. */

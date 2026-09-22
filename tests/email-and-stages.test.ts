@@ -22,6 +22,7 @@ function stage(overrides: Partial<Stage> & { id: string; position: number }): St
     isTerminal: false,
     triggersFulfillment: false,
     locksAddressEditing: false,
+    advancesOnPayment: false,
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
@@ -190,6 +191,7 @@ describe("address editing lock", () => {
     const noLock = STAGES.map((entry) => ({
       ...entry,
       locksAddressEditing: false,
+    advancesOnPayment: false,
     }));
     expect(
       isAddressEditable({

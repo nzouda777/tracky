@@ -39,7 +39,10 @@ export const DEFAULT_EMAIL_TEMPLATES: DefaultTemplate[] = [
       "<p>Hi {{customer_name}}, thanks for shopping with {{store_name}}.</p>",
       "<p>Your order is confirmed and we have started getting it ready. You can follow every step from the link below, and we will email you as soon as it is on the way.</p>",
     ].join("\n"),
-    trigger: { type: "on_stage", stageKey: "order-placed" },
+    // On `confirmed`, not `order-placed`: that stage is reached on its own the
+    // moment Shopify reports the payment, so the customer's first email is the
+    // confirmation rather than a receipt for something not yet paid for.
+    trigger: { type: "on_stage", stageKey: "confirmed" },
   },
   {
     key: "order-processing",

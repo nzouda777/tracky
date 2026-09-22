@@ -67,12 +67,50 @@ describe("stage transitions are event-driven only", () => {
       // Human actions. Every function in this file starts with a role check
       // (requireOwner / requireAgency / requireStoreAccess).
       "lib/actions/orders.ts",
+      // Verified Shopify webhooks. Not a scheduler: the payload is
+      // signature-checked before it reaches here, and the only transition it
+      // performs is the one below — an order Shopify reports as paid moving to
+      // the stage the store marked as its paid one. The test that follows pins
+      // that it stays tied to that fact.
+      "lib/shopify/handlers.ts",
       // The manual "Sync orders" backfill. Not a scheduler: it only ever runs
       // because an owner pressed a button, and it records the import with
       // `source = shopify_sync` against the order's real Shopify date. The
       // test below pins that it stays behind that guard.
       "lib/shopify/sync.ts",
     ]);
+  });
+
+  /**
+   * The one transition no person performs.
+   *
+   * It is allowed because it is still a fact rather than a judgement: Shopify
+   * is telling us the money arrived. What must never creep in is an advance
+   * that time, a queue or a default triggers — so this pins the gate to the
+   * payment field, and pins the move to being forward-only.
+   */
+  it("the webhook only ever advances a paid order, and never backwards", () => {
+    const handlers = read("lib/shopify/handlers.ts");
+    const fn = handlers.slice(
+      handlers.indexOf("async function advanceIfPaid"),
+      handlers.indexOf("async function handleOrdersUpdated"),
+    );
+
+    expect(fn, "the advance is not gated on the payment").toMatch(
+      /financial_status\?\.trim\(\)\.toLowerCase\(\) !== "paid"/,
+    );
+    // A cancelled order is not advanced by a late payment webhook.
+    expect(fn).toContain("order.cancelledAt");
+    // Forward only: an order already past the paid stage is left alone, so a
+    // replay or a refund cannot drag a delivery back to "Confirmed".
+    expect(fn).toMatch(/>= paidStage\.position/);
+    // Attributed to what actually caused it.
+    expect(fn).toContain('source: "shopify_webhook"');
+
+    // And nothing in it reads a clock.
+    for (const forbidden of ["setTimeout", "delayDays", "Date.now()"]) {
+      expect(fn).not.toContain(forbidden);
+    }
   });
 
   it("the order sync is reachable only from a guarded action", () => {

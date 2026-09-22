@@ -379,6 +379,16 @@ export const stages = pgTable(
     locksAddressEditing: boolean("locks_address_editing")
       .notNull()
       .default(false),
+    /**
+     * Shopify reporting the order as paid advances it to this stage.
+     *
+     * The one automatic transition in the product, and it is still driven by a
+     * real event: Shopify says the money arrived. Nothing here moves an order
+     * because time passed — delivery progress remains something a person
+     * records. A store marks at most one stage with this; the first by
+     * position wins if more are set.
+     */
+    advancesOnPayment: boolean("advances_on_payment").notNull().default(false),
     ...timestamps,
   },
   (table) => [

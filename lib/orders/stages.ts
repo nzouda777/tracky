@@ -86,3 +86,17 @@ export function isAddressEditable({
 
   return currentIndex < lockIndex;
 }
+
+/**
+ * The stage a paid order moves to, if the store has named one.
+ *
+ * Driven by a flag rather than a slug, like every other stage behaviour, so a
+ * store that renames "Confirmed" or builds its own ladder keeps working. When
+ * more than one stage carries the flag the earliest wins — two stages both
+ * claiming to be the paid one is a configuration mistake, not a reason to
+ * refuse the transition.
+ */
+export async function getPaidStage(tdb: TenantDb): Promise<Stage | null> {
+  const all = await tdb.findMany(stages, { orderBy: asc(stages.position) });
+  return all.find((stage) => stage.advancesOnPayment) ?? null;
+}
