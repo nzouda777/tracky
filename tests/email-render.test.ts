@@ -152,3 +152,62 @@ describe("email rendering", () => {
     expect(rendered.html).toContain("Custom footer line");
   });
 });
+
+/**
+ * The sender's postal address.
+ *
+ * Not decoration: anti-spam law requires a commercial message to carry a real
+ * address, and a classifier that cannot find one has been handed a free reason
+ * to file the message as bulk. The store's own emails were landing in Gmail's
+ * spam folder with an empty footer, which is what put this here.
+ *
+ * It has to reach both parts. Some filters score the plain-text alternative
+ * rather than the HTML, so an address present only in the markup is an address
+ * half the graders never see.
+ */
+describe("the postal address in the footer", () => {
+  function branding(postalAddress: string) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return { footerText: "", helpBannerUrl: null, postalAddress } as any;
+  }
+
+  it("prints the address in both the HTML and the text alternative", async () => {
+    const address = "12 Rue Example, 75001 Paris, France";
+    const rendered = await renderEmail({
+      subject: "Hello",
+      body: "<p>Hi</p>",
+      context: sampleMergeContext(store.name),
+      branding: branding(address),
+      store,
+    });
+
+    expect(rendered.html).toContain(address);
+    expect(rendered.text).toContain(address);
+  });
+
+  it("renders nothing at all when the store has not set one", async () => {
+    // An unconfigured store must never be shown an address that is not its
+    // own, nor the blank line where one would have gone.
+    //
+    // Asserting the address is absent would pass even if the block never
+    // rendered at all, so this compares the empty string against the field
+    // being missing entirely: the two have to produce the same bytes. The
+    // renderer is deterministic, which is what makes that comparison legal.
+    const html = (postalAddress?: string) =>
+      renderEmail({
+        subject: "Hello",
+        body: "<p>Hi</p>",
+        context: sampleMergeContext(store.name),
+        branding:
+          postalAddress === undefined
+            ? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              ({ footerText: "", helpBannerUrl: null } as any)
+            : branding(postalAddress),
+        store,
+      }).then((r) => r.html);
+
+    expect(await html("")).toBe(await html(undefined));
+    // And the guard is not vacuous: an address does change the output.
+    expect(await html("12 Rue Example, 75001 Paris")).not.toBe(await html(""));
+  });
+});

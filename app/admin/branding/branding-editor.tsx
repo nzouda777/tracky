@@ -478,6 +478,22 @@ export function BrandingEditor({
                       placeholder={`${storeName} — order tracking`}
                     />
                   </Field>
+
+                  <Field
+                    label="Postal address"
+                    htmlFor="brand-postal"
+                    hint="Printed at the foot of every email. Anti-spam law requires a real address, and the filters read its absence as a signal."
+                  >
+                    <Input
+                      id="brand-postal"
+                      name="postalAddress"
+                      value={draft.postalAddress}
+                      onChange={(e) =>
+                        set("postalAddress", e.currentTarget.value)
+                      }
+                      placeholder="12 Rue Example, 75001 Paris, France"
+                    />
+                  </Field>
                 </div>
               </Panel>
 

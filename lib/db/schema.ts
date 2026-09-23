@@ -292,6 +292,16 @@ export const brandingSettings = pgTable(
       .default("Need help with your order? Contact our support team."),
     helpBannerUrl: text("help_banner_url"),
     footerText: text("footer_text").notNull().default(""),
+    /**
+     * The sender's physical postal address, printed at the foot of every email.
+     *
+     * Required by CAN-SPAM and its equivalents, and read as a trust signal by
+     * the filters: a commercial message with no verifiable address behind it is
+     * one of the cheapest things for a spam classifier to notice. Empty means
+     * the line is simply not rendered, so an unconfigured store is never shown
+     * a placeholder address that is not its own.
+     */
+    postalAddress: text("postal_address").notNull().default(""),
     /** [{ question, answer }] rendered as an accordion. */
     faq: jsonb("faq")
       .notNull()

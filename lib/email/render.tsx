@@ -183,6 +183,7 @@ function EmailLayout({
   const orderNumber = context.order_number?.trim();
   const orderDate = context.order_date?.trim();
   const address = context.shipping_address?.trim();
+  const postalAddress = branding?.postalAddress?.trim();
   const trackingUrl = context.tracking_link?.trim();
 
   const body = trimTrailingMargin(
@@ -424,6 +425,18 @@ function EmailLayout({
                   ? branding.footerText
                   : `You are receiving this email because you placed an order with ${storeName}.`}
               </Text>
+              {postalAddress ? (
+                <Text
+                  style={{
+                    color: mutedOn(text, PAPER),
+                    fontSize: 12,
+                    lineHeight: "18px",
+                    margin: "6px 0 0",
+                  }}
+                >
+                  {postalAddress}
+                </Text>
+              ) : null}
             </Section>
           </Container>
         </Section>

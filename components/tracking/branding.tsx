@@ -29,6 +29,7 @@ export const BRANDING_FALLBACK = {
   logoUrl: null as string | null,
   helpBannerUrl: null as string | null,
   footerText: "",
+  postalAddress: "",
   faq: [] as Array<{ question: string; answer: string }>,
   showOrderSummary: true,
   showAddressEditing: true,

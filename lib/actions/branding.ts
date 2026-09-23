@@ -95,6 +95,7 @@ export async function updateBrandingAction(
       helpBannerText: String(formData.get("helpBannerText") ?? "").trim(),
       helpBannerUrl: safeUrl(formData, "helpBannerUrl"),
       footerText: String(formData.get("footerText") ?? "").trim(),
+      postalAddress: String(formData.get("postalAddress") ?? "").trim(),
       faq: readFaq(formData),
       showOrderSummary: formData.get("showOrderSummary") === "on",
       showAddressEditing: formData.get("showAddressEditing") === "on",
