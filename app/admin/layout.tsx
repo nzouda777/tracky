@@ -1,3 +1,6 @@
+import Link from "next/link";
+
+import { Alert } from "@/components/ui";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { buildAdminNav } from "@/components/admin/nav-config";
 import { getPlatformSession } from "@/lib/auth/platform";
@@ -40,6 +43,19 @@ export default async function AdminLayout({
       nav={nav}
       isPlatformAdmin={Boolean(platform)}
     >
+      {/* On every screen, not just the Stores list. A pause silently swallows
+          customer emails, and a silent cause is the expensive kind to debug. */}
+      {session.store.pausedAt ? (
+        <Alert tone="warning" title="This store is paused" className="mb-4">
+          Orders are still arriving and nothing is disconnected, but no customer
+          email is being sent and no fulfillment is reaching Shopify. Resume it
+          from{" "}
+          <Link href="/admin/stores" className="underline underline-offset-2">
+            Stores
+          </Link>
+          .
+        </Alert>
+      ) : null}
       {children}
     </AdminShell>
   );

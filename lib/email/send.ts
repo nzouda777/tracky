@@ -141,6 +141,10 @@ async function loadSendContext(send: EmailSend): Promise<SendContext> {
     .limit(1);
   if (!store) return { skip: "Store no longer exists." };
   if (store.status !== "active") return { skip: "Store is uninstalled." };
+  // Paused by its owner. Recorded as a skip rather than a failure: nothing
+  // went wrong, and the row stays in the store's history as evidence of what
+  // the customer was not told while the pause was on.
+  if (store.pausedAt) return { skip: "Store is paused." };
 
   if (!send.templateId) return { skip: "Send record has no template." };
   const [template] = await db

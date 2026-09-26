@@ -21,6 +21,7 @@ import { buildTrackingLookupLink } from "@/lib/tracking/links";
 import { formatDate, formatRelative } from "@/lib/utils";
 import { maskSecret } from "@/lib/shopify/credentials";
 import { ConnectStoreForm } from "./connect-store-form";
+import { PauseStoreButton } from "./pause-store-button";
 import { ReconnectButton } from "./reconnect-button";
 import { StoreCredentialsForm } from "./store-credentials-form";
 import { SwitchToStoreButton } from "./switch-to-store-button";
@@ -113,6 +114,13 @@ export default async function StoresPage() {
                         ) : (
                           <Badge tone="danger">Disconnected</Badge>
                         )}
+                        {/* Still connected, deliberately held. Shown next to
+                            the connection badge because the two answer
+                            different questions and a paused store is easy to
+                            mistake for a broken one. */}
+                        {row.store.pausedAt ? (
+                          <Badge tone="warning">Paused</Badge>
+                        ) : null}
                         <Badge tone="neutral">
                           {row.role === "owner" ? "Owner" : "Agency"}
                         </Badge>
@@ -180,11 +188,18 @@ export default async function StoresPage() {
                       <SwitchToStoreButton storeId={row.store.id} />
                     )}
                     {row.role === "owner" && row.store.status === "active" ? (
-                      <ReconnectButton
-                        storeId={row.store.id}
-                        shopDomain={row.store.shopDomain}
-                        subtle
-                      />
+                      <>
+                        <PauseStoreButton
+                          storeId={row.store.id}
+                          shopDomain={row.store.shopDomain}
+                          paused={Boolean(row.store.pausedAt)}
+                        />
+                        <ReconnectButton
+                          storeId={row.store.id}
+                          shopDomain={row.store.shopDomain}
+                          subtle
+                        />
+                      </>
                     ) : null}
                   </div>
                 </div>

@@ -115,6 +115,12 @@ export async function attemptFulfillment({
     };
   }
 
+  // A pause stops everything aimed outward, and a fulfillment is a write into
+  // the merchant's own Shopify admin.
+  if (store.pausedAt) {
+    return { status: "skipped", reason: "This store is paused." };
+  }
+
   try {
     const client = ShopifyAdminClient.forStore(store);
     const orderGid = toGid("Order", order.shopifyOrderId);

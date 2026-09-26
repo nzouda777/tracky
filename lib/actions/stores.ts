@@ -324,6 +324,54 @@ export async function reconnectStoreAction(
   });
 }
 
+/**
+ * Pauses or resumes a store, without touching the Shopify connection.
+ *
+ * The token, the webhooks and the credentials are all left alone: orders keep
+ * arriving and the backoffice keeps working. Only what faces the customer
+ * stops — see the `pausedAt` column for the whole contract.
+ *
+ * The target store comes from the form, so it is authorised on its own rather
+ * than trusted: `requireStoreById` proves this caller owns *that* store. It is
+ * deliberately not scoped to the active store, because pausing one store from
+ * the list should not mean switching to it first.
+ */
+export async function setStorePausedAction(
+  _previous: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  return guard(async (): Promise<ActionResult> => {
+    const storeId = String(formData.get("storeId") ?? "");
+    const paused = String(formData.get("paused") ?? "") === "true";
+
+    const session = await requireStoreById(storeId, ["owner"]);
+
+    // Idempotent on purpose: two clicks, or a stale page, must not report an
+    // error for a state that is already what was asked for.
+    if (Boolean(session.store.pausedAt) === paused) {
+      return {
+        ok: true,
+        message: paused ? "Store is already paused." : "Store is already live.",
+      };
+    }
+
+    await db
+      .update(stores)
+      .set({ pausedAt: paused ? new Date() : null, updatedAt: new Date() })
+      .where(eq(stores.id, storeId));
+
+    revalidatePath("/admin/stores");
+    revalidatePath("/admin");
+
+    return {
+      ok: true,
+      message: paused
+        ? "Store paused. Customer emails and Shopify fulfillments are on hold; orders keep arriving."
+        : "Store resumed. Customer emails and fulfillments are flowing again.",
+    };
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Read model for the Stores screen
 // ---------------------------------------------------------------------------

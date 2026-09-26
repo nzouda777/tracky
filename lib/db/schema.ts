@@ -178,6 +178,20 @@ export const stores = pgTable(
      */
     suspendedAt: timestamp("suspended_at", { withTimezone: true }),
     suspendedReason: text("suspended_reason"),
+    /**
+     * Paused by the store's own owner — a holiday, a stock-out, a quiet spell.
+     *
+     * Deliberately not `suspendedAt` and deliberately not a `status` value.
+     * Both of those are read as access gates in `lib/auth/session.ts`, so
+     * either one would lock the owner out of the very screen holding the
+     * button that undoes it.
+     *
+     * A paused store stays connected and keeps receiving webhooks, so its
+     * orders still arrive and its backoffice still works. What stops is
+     * everything aimed outward: no email reaches a customer, and no
+     * fulfillment is written back to Shopify.
+     */
+    pausedAt: timestamp("paused_at", { withTimezone: true }),
     /** Free-text note only platform operators ever see. */
     internalNote: text("internal_note"),
     ...timestamps,
