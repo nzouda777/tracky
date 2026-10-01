@@ -324,6 +324,13 @@ export const brandingSettings = pgTable(
     showOrderSummary: boolean("show_order_summary").notNull().default(true),
     showAddressEditing: boolean("show_address_editing").notNull().default(true),
 
+    /**
+     * The tracking page's design — an id from lib/tracking/page-designs. Picking
+     * one also fills the colour and shape fields below; this column keeps the
+     * structural layer (type treatment, hero, field style) those cannot hold.
+     */
+    pageDesign: text("page_design").notNull().default("standard"),
+
     // --- Layout -------------------------------------------------------------
     //
     // These exist because the page stopped being a page. Served inside a
@@ -588,6 +595,8 @@ export const emailTemplates = pgTable(
     /** Rich text / HTML with {{merge_variables}}. Rendered by React Email. */
     body: text("body").notNull(),
     previewText: text("preview_text").notNull().default(""),
+    /** Visual shell the body is rendered in — an id from lib/email/designs. */
+    design: text("design").notNull().default("classic"),
     isActive: boolean("is_active").notNull().default(true),
     ...timestamps,
   },

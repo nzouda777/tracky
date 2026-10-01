@@ -6,6 +6,7 @@ import { EditAddressForm } from "./edit-address-form";
 import { EventHistory } from "./event-history";
 import { LookupForm, type LookupMode, type LookupStep } from "./lookup-form";
 import { RouteLine } from "./route-line";
+import { resolvePageDesign } from "@/lib/tracking/page-designs";
 
 const SCOPE_ID = "tracky-tracking";
 
@@ -56,6 +57,7 @@ export function TrackingPage({
     <div
       id={SCOPE_ID}
       className="tracking-root min-h-dvh"
+      data-design={resolvePageDesign(branding.pageDesign)}
       style={{ backgroundColor: "var(--brand-surface)" }}
     >
       <BrandingStyle branding={branding} scopeId={SCOPE_ID} />
@@ -66,7 +68,7 @@ export function TrackingPage({
             directly above this, and repeating the brand is the clearest sign
             of an app bolted onto a shop rather than part of it. */}
         {branding.showStoreName ? (
-          <header className="mb-9">
+          <header className="mb-9" data-part="masthead">
             {branding.logoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -87,7 +89,7 @@ export function TrackingPage({
         ) : null}
 
         {view ? null : (
-          <div className="space-y-3">
+          <div className="space-y-3" data-part="intro">
             <h1
               className="type-display"
               style={{
@@ -99,6 +101,7 @@ export function TrackingPage({
             </h1>
             {branding.pageSubtitle ? (
               <div
+                data-part="subtitle"
                 className="mx-auto space-y-1 text-body"
                 style={{
                   color: "var(--brand-muted)",
@@ -131,6 +134,7 @@ export function TrackingPage({
           column it could only ever be as wide as the paragraph above it. */}
       {view ? null : (
         <div
+          data-part="band"
           className="mt-9 py-9 sm:py-12"
           style={{ backgroundColor: "var(--brand-section)" }}
         >
@@ -165,6 +169,7 @@ export function TrackingPage({
 
           {branding.helpBannerText ? (
             <aside
+              data-part="help"
               className="px-4 py-3 text-small"
               style={{
                 backgroundColor: "var(--brand-panel)",
@@ -188,6 +193,7 @@ export function TrackingPage({
         </div>
 
         <footer
+          data-part="footer"
           className="mt-12 border-t pt-5 text-caption"
           style={{
             borderColor: "var(--brand-line)",
@@ -264,7 +270,7 @@ function OrderView({
 
   return (
     <div className="space-y-9">
-      <section className="space-y-3">
+      <section className="space-y-3" data-part="order-head">
         <h1 className="type-display text-h1">
           Order <span className="type-code">{order.orderNumber}</span>
         </h1>
@@ -343,6 +349,7 @@ function shortenName(name: string | null): string {
 function StatusPill({ stage }: { stage: { name: string; color: string } }) {
   return (
     <span
+      data-part="pill"
       className="inline-flex items-center gap-2 rounded-control px-2.5 py-1 text-caption"
       style={{
         border: "1px solid var(--brand-line)",
@@ -401,8 +408,10 @@ function Manifest({
     : formatAddressLines(address);
 
   return (
-    <section>
-      <h2 className="text-h3 font-semibold">Manifest</h2>
+    <section data-part="manifest">
+      <h2 className="text-h3 font-semibold" data-part="section-title">
+        Manifest
+      </h2>
 
       <dl className="mt-3" style={{ textAlign: "left" }}>
         <Row label="Order no.">
@@ -513,8 +522,10 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 
 function Faq({ items }: { items: Array<{ question: string; answer: string }> }) {
   return (
-    <section>
-      <h2 className="text-h3 font-semibold">Frequently asked questions</h2>
+    <section data-part="faq">
+      <h2 className="text-h3 font-semibold" data-part="section-title">
+        Frequently asked questions
+      </h2>
       <div className="mt-3">
         {items.map((item) => (
           <details

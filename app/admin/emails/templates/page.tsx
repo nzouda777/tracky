@@ -12,20 +12,53 @@ import {
   PageHeader,
 } from "@/components/ui";
 import { requireOwner } from "@/lib/auth/session";
-import { emailSequenceSteps, emailTemplates } from "@/lib/db";
-import { MERGE_VARIABLES } from "@/lib/email/merge";
+import { brandingSettings, emailSequenceSteps, emailTemplates } from "@/lib/db";
+import {
+  DESIGN_SAMPLE,
+  EMAIL_DESIGNS,
+  getEmailDesign,
+  resolveEmailDesign,
+  type EmailDesignId,
+} from "@/lib/email/designs/catalog";
+import { MERGE_VARIABLES, sampleMergeContext } from "@/lib/email/merge";
+import { renderEmail } from "@/lib/email/render";
 import { env } from "@/lib/env";
+import { DesignGallery } from "./design-gallery";
+import { DesignSwatches } from "./design-swatches";
 import { NewTemplateForm } from "./new-template-form";
 
 export const metadata: Metadata = { title: "Email templates" };
 
 export default async function TemplatesPage() {
-  const { tdb } = await requireOwner();
+  const { tdb, store } = await requireOwner();
 
-  const [templates, steps] = await Promise.all([
+  const [templates, steps, branding] = await Promise.all([
     tdb.findMany(emailTemplates, { orderBy: asc(emailTemplates.name) }),
     tdb.findMany(emailSequenceSteps),
+    tdb.findFirst(brandingSettings),
   ]);
+
+  // Every design rendered with this store's own branding, through the same
+  // renderer that sends — so the gallery shows what customers would receive.
+  const context = sampleMergeContext(store.name ?? store.shopDomain);
+  const previews = await Promise.all(
+    EMAIL_DESIGNS.map(async (design) => {
+      const rendered = await renderEmail({
+        ...DESIGN_SAMPLE,
+        design: design.id,
+        context,
+        branding,
+        store,
+      });
+      return { id: design.id, html: rendered.html, subject: rendered.subject };
+    }),
+  );
+
+  const designUsage: Partial<Record<EmailDesignId, number>> = {};
+  for (const template of templates) {
+    const id = resolveEmailDesign(template.design);
+    designUsage[id] = (designUsage[id] ?? 0) + 1;
+  }
 
   const usage = new Map<string, number>();
   for (const step of steps) {
@@ -56,6 +89,18 @@ export default async function TemplatesPage() {
 
       <Card>
         <CardHeader
+          title="Design gallery"
+          description="Ready-made looks for your emails, shown with your logo and colours. Preview one, start a template with it, or restyle every template at once."
+        />
+        <DesignGallery
+          previews={previews}
+          usage={designUsage}
+          templateCount={templates.length}
+        />
+      </Card>
+
+      <Card>
+        <CardHeader
           title="Your templates"
           description={`${templates.length} template${templates.length === 1 ? "" : "s"} in this store.`}
         />
@@ -81,6 +126,12 @@ export default async function TemplatesPage() {
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink-600">
+                      <DesignSwatches
+                        colors={getEmailDesign(template.design).swatches}
+                      />
+                      {getEmailDesign(template.design).name}
+                    </span>
                     {template.isActive ? (
                       <Badge tone="success">Active</Badge>
                     ) : (

@@ -71,6 +71,20 @@
       "when": 1790335165366,
       "tag": "0009_equal_nitro",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1790871704833,
+      "tag": "0010_email_template_design",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1790885085029,
+      "tag": "0011_tracking_page_design",
+      "breakpoints": true
     }
   ]
 }

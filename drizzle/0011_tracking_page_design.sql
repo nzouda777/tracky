@@ -1,0 +1,1 @@
+ALTER TABLE "branding_settings" ADD COLUMN "page_design" text DEFAULT 'standard' NOT NULL;

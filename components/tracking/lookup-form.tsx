@@ -94,6 +94,7 @@ export function LookupForm({
 
   return (
     <section
+      data-part="card"
       className="p-5 sm:p-6"
       style={{
         // Follows the page rather than centring itself: on a left-aligned
@@ -159,6 +160,7 @@ export function LookupForm({
                 placeholder={
                   branding.formPlaceholder.trim() || defaults.placeholder
                 }
+                data-part="field"
                 className="w-full px-4 text-body"
                 style={{ ...fieldStyle, height: "var(--brand-input-height)" }}
               />
@@ -200,6 +202,7 @@ export function LookupForm({
                 autoComplete={state.kind === "email" ? "off" : "email"}
                 spellCheck={false}
                 placeholder={state.kind === "email" ? "#1042" : "you@example.com"}
+                data-part="field"
                 className="w-full px-4 text-body"
                 style={{ ...fieldStyle, height: "var(--brand-input-height)" }}
               />
@@ -256,6 +259,7 @@ function Submit({ label, arrow }: { label: string; arrow?: boolean }) {
   return (
     <button
       type="submit"
+      data-part="button"
       className="inline-flex items-center justify-center gap-2 px-4 text-body font-semibold"
       style={{
         backgroundColor: "var(--brand-accent)",

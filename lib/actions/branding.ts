@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireOwner } from "@/lib/auth/session";
 import { brandingSettings, type ContentAlignment } from "@/lib/db";
+import { resolvePageDesign } from "@/lib/tracking/page-designs";
 import { guard, type ActionResult } from "./result";
 
 const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
@@ -124,6 +125,7 @@ export async function updateBrandingAction(
       formButtonLabel: text(formData, "formButtonLabel", 40),
       showFormIcon: formData.get("showFormIcon") === "on",
       showButtonArrow: formData.get("showButtonArrow") === "on",
+      pageDesign: resolvePageDesign(formData.get("pageDesign")),
       updatedAt: new Date(),
     };
 

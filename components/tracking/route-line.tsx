@@ -28,7 +28,7 @@ export function RouteLine({ timeline }: { timeline: TimelineEntry[] }) {
   if (timeline.length === 0) return null;
 
   return (
-    <ol className="flex flex-col sm:flex-row sm:items-start">
+    <ol className="flex flex-col sm:flex-row sm:items-start" data-part="route">
       {timeline.map((entry, index) => {
         const { stage, state } = entry;
         const isFirst = index === 0;

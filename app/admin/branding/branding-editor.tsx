@@ -17,6 +17,12 @@ import type { Branding } from "@/components/tracking/branding";
 import { buildSampleView } from "@/components/tracking/sample-view";
 import { TrackingPage } from "@/components/tracking/tracking-page";
 import { updateBrandingAction } from "@/lib/actions/branding";
+import {
+  getPageDesign,
+  resolvePageDesign,
+  type PageDesign,
+} from "@/lib/tracking/page-designs";
+import { PageDesignPicker } from "./page-design-picker";
 import { ResetBrandingForm } from "./reset-branding-form";
 import type { ActionResult } from "@/lib/actions/result";
 import type { Stage } from "@/lib/db";
@@ -88,9 +94,14 @@ const PRESETS = [
   },
 ] as const;
 
-type SectionId = "theme" | "identity" | "content" | "form" | "faq" | "layout";
+type SectionId = "design" | "theme" | "identity" | "content" | "form" | "faq" | "layout";
 
 const SECTIONS: Array<{ id: SectionId; label: string; summary: string }> = [
+  {
+    id: "design",
+    label: "Design",
+    summary: "A ready-made look for the whole tracking page",
+  },
   { id: "theme", label: "Theme", summary: "Colours and typography" },
   { id: "identity", label: "Identity", summary: "Logo and store name" },
   { id: "content", label: "Page copy", summary: "Titles, help banner, footer" },
@@ -126,7 +137,8 @@ export function BrandingEditor({
 }) {
   const [draft, setDraft] = useState<Branding>(branding);
   const [faq, setFaq] = useState(branding.faq ?? []);
-  const [section, setSection] = useState<SectionId>("theme");
+  const [section, setSection] = useState<SectionId>("design");
+  const [keepColours, setKeepColours] = useState(false);
   const [logoError, setLogoError] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const logoRef = useRef<HTMLInputElement>(null);
@@ -154,6 +166,32 @@ export function BrandingEditor({
       backgroundColor: preset.backgroundColor,
       textColor: preset.textColor,
       secondaryColor: preset.secondaryColor,
+    }));
+  }
+
+  /**
+   * A design is a starting point: it sets the page's structural layer and
+   * fills the colour and shape fields, which all stay editable. "Keep my
+   * colours" leaves the palette alone so an established brand can try a new
+   * shape without losing its own colours.
+   */
+  function applyDesign(design: PageDesign) {
+    const { primaryColor, accentColor, backgroundColor, textColor, secondaryColor, sectionBackground, ...shape } =
+      design.preset;
+    setDraft((current) => ({
+      ...current,
+      ...shape,
+      ...(keepColours
+        ? {}
+        : {
+            primaryColor,
+            accentColor,
+            backgroundColor,
+            textColor,
+            secondaryColor,
+            sectionBackground,
+          }),
+      pageDesign: design.id,
     }));
   }
 
@@ -222,6 +260,34 @@ export function BrandingEditor({
               </p>
 
               {/* Every panel stays mounted so nothing is dropped on submit. */}
+              <Panel id="design" current={section}>
+                <div className="space-y-4">
+                  <input
+                    type="hidden"
+                    name="pageDesign"
+                    value={resolvePageDesign(draft.pageDesign)}
+                  />
+                  <PageDesignPicker
+                    value={resolvePageDesign(draft.pageDesign)}
+                    onPick={applyDesign}
+                  />
+                  <p className="text-sm text-ink-600">
+                    {getPageDesign(draft.pageDesign).description}
+                  </p>
+                  <Checkbox
+                    id="brand-keep-colours"
+                    label="Keep my current colours"
+                    description="Switch the design's type and shapes without touching your palette."
+                    checked={keepColours}
+                    onChange={(e) => setKeepColours(e.currentTarget.checked)}
+                  />
+                  <p className="text-xs text-ink-400">
+                    Picking a design fills the Theme and Layout settings — fine-tune
+                    anything there afterwards, then save.
+                  </p>
+                </div>
+              </Panel>
+
               <Panel id="theme" current={section}>
                 <div className="space-y-5">
                   <div>

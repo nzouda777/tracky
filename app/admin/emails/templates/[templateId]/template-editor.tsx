@@ -22,6 +22,13 @@ import {
 } from "@/lib/actions/emails";
 import type { ActionResult } from "@/lib/actions/result";
 import type { EmailTemplate } from "@/lib/db";
+import {
+  getEmailDesign,
+  resolveEmailDesign,
+  type EmailDesignId,
+} from "@/lib/email/designs/catalog";
+import { cn } from "@/lib/utils";
+import { DesignPicker } from "../design-picker";
 
 /**
  * Template editor with a live preview.
@@ -33,6 +40,10 @@ export function TemplateEditor({ template }: { template: EmailTemplate }) {
   const [subject, setSubject] = useState(template.subject);
   const [body, setBody] = useState(template.body);
   const [previewText, setPreviewText] = useState(template.previewText);
+  const [design, setDesign] = useState<EmailDesignId>(
+    resolveEmailDesign(template.design),
+  );
+  const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
 
   const [preview, setPreview] = useState<{
     subject: string;
@@ -61,14 +72,16 @@ export function TemplateEditor({ template }: { template: EmailTemplate }) {
       startPreview(async () => {
         try {
           setPreviewError(null);
-          setPreview(await previewTemplateAction({ subject, body, previewText }));
+          setPreview(
+            await previewTemplateAction({ subject, body, previewText, design }),
+          );
         } catch {
           setPreviewError("The preview could not be rendered.");
         }
       });
     }, 500);
     return () => clearTimeout(timer);
-  }, [subject, body, previewText]);
+  }, [subject, body, previewText, design]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -107,6 +120,13 @@ export function TemplateEditor({ template }: { template: EmailTemplate }) {
                 onChange={(event) => setSubject(event.currentTarget.value)}
                 required
               />
+            </Field>
+
+            <Field
+              label="Design"
+              hint={getEmailDesign(design).description}
+            >
+              <DesignPicker value={design} onChange={setDesign} />
             </Field>
 
             <Field label="Preview text" htmlFor="edit-preview-text">
@@ -192,7 +212,12 @@ export function TemplateEditor({ template }: { template: EmailTemplate }) {
               onClick={() =>
                 startPreview(async () => {
                   setPreview(
-                    await previewTemplateAction({ subject, body, previewText }),
+                    await previewTemplateAction({
+                      subject,
+                      body,
+                      previewText,
+                      design,
+                    }),
                   );
                 })
               }
@@ -218,13 +243,46 @@ export function TemplateEditor({ template }: { template: EmailTemplate }) {
             </p>
           </div>
 
-          <div className="overflow-hidden rounded-lg border border-ink-200">
-            <iframe
-              title="Email preview"
-              srcDoc={preview?.html ?? ""}
-              className="h-[32rem] w-full bg-white"
-              sandbox=""
-            />
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-xs font-medium text-ink-600">
+              {getEmailDesign(design).name} design
+            </span>
+            <div className="inline-flex rounded-control bg-ink-100 p-0.5 text-xs font-semibold">
+              {(["desktop", "mobile"] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => setDevice(option)}
+                  aria-pressed={device === option}
+                  className={cn(
+                    "rounded-[calc(var(--radius-control)-2px)] px-3 py-1 capitalize transition",
+                    device === option
+                      ? "bg-white text-ink-900 shadow-sm"
+                      : "text-ink-500 hover:text-ink-900",
+                  )}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex justify-center rounded-lg bg-ink-100 p-2">
+            <div
+              className={cn(
+                "w-full overflow-hidden bg-white transition-all duration-300",
+                device === "mobile"
+                  ? "max-w-[375px] rounded-[1.75rem] border-8 border-ink-900"
+                  : "rounded-md border border-ink-200",
+              )}
+            >
+              <iframe
+                title="Email preview"
+                srcDoc={preview?.html ?? ""}
+                className="h-[36rem] w-full bg-white"
+                sandbox=""
+              />
+            </div>
           </div>
 
           <p className="text-xs text-ink-400" aria-live="polite">

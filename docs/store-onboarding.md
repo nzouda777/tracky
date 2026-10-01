@@ -7,6 +7,12 @@ This is the runbook for **each new store**. It assumes the platform itself is
 already deployed — that is [`deployment.md`](deployment.md), done once. What a
 store owner does afterwards, day to day, is [`admin-guide.md`](admin-guide.md).
 
+If the store is going on a **Shopify app you have not used before**, do
+[`new-shopify-app.md`](new-shopify-app.md) first. The App Proxy and the
+thank-you extension belong to the app, not to the store, and a store on a fresh
+app inherits neither. `npm run apps:inventory` says which app each store runs
+on and whether that app was ever set up here.
+
 Throughout, `<app>` is your deployment's origin, e.g.
 `https://tracky-ordertrack.site`, and `<shop>` is a store's myshopify host,
 e.g. `md09z6-1w.myshopify.com`.
@@ -46,7 +52,10 @@ more, so adding one never needs a redeploy.
 
 ## 1. The Shopify app
 
-Skip to step 2 if you are reusing an app that still has room.
+Skip to step 2 if you are reusing an app that still has room — and confirm with
+`npm run apps:inventory` that it is one this repo holds a configuration for, or
+the thank-you block will be missing. Creating and wiring a new app has its own
+runbook: [`new-shopify-app.md`](new-shopify-app.md).
 
 In the [Partner dashboard](https://partners.shopify.com): **Apps → Create app
 → Create app manually**.

@@ -41,8 +41,10 @@ export function EventHistory({
     : null;
 
   return (
-    <section>
-      <h2 className="text-h3 font-semibold">Latest update</h2>
+    <section data-part="events">
+      <h2 className="text-h3 font-semibold" data-part="section-title">
+        Latest update
+      </h2>
 
       {/* A panel, not prose: its heading, timestamp and note are a record, so
           they keep their own alignment whatever the page copy above uses. */}

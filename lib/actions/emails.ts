@@ -2,6 +2,7 @@
 
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 
 import { requireOwner } from "@/lib/auth/session";
 import {
@@ -12,6 +13,12 @@ import {
   stages,
   type EmailTemplate,
 } from "@/lib/db";
+import {
+  DESIGN_SAMPLE,
+  getEmailDesign,
+  isEmailDesign,
+  resolveEmailDesign,
+} from "@/lib/email/designs/catalog";
 import { dispatchEmailSend } from "@/lib/email/send";
 import { findUnknownMergeTokens } from "@/lib/email/merge";
 import { guard, type ActionResult } from "./result";
@@ -41,6 +48,7 @@ function readTemplateForm(formData: FormData) {
     subject: String(formData.get("subject") ?? "").trim(),
     previewText: String(formData.get("previewText") ?? "").trim(),
     body: String(formData.get("body") ?? "").trim(),
+    design: resolveEmailDesign(formData.get("design")),
     isActive: formData.get("isActive") === "on",
   };
 }
@@ -128,6 +136,7 @@ export async function duplicateTemplateAction(
       subject: existing.subject,
       previewText: existing.previewText,
       body: existing.body,
+      design: existing.design,
       isActive: false,
     });
 
@@ -159,6 +168,76 @@ export async function deleteTemplateAction(
     await tdb.deleteById(emailTemplates, templateId);
     revalidateEmails();
     return { ok: true, message: `Template "${existing.name}" deleted.` };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Designs
+// ---------------------------------------------------------------------------
+
+/**
+ * Starts a new template in a design from the gallery and opens it in the
+ * editor. It is created inactive: a template nobody has read yet should never
+ * be the one a sequence step picks up.
+ */
+export async function createTemplateFromDesignAction(
+  _previous: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  let createdId: string | null = null;
+
+  const result = await guard(async (): Promise<ActionResult> => {
+    const { tdb } = await requireOwner();
+    const raw = formData.get("design");
+    if (!isEmailDesign(raw)) return { error: "Choose a design." };
+
+    const created = await tdb.insertOne(emailTemplates, {
+      key: null,
+      name: `${getEmailDesign(raw).name} template`,
+      subject: DESIGN_SAMPLE.subject,
+      previewText: DESIGN_SAMPLE.previewText,
+      body: DESIGN_SAMPLE.body,
+      design: raw,
+      isActive: false,
+    });
+    createdId = created.id;
+
+    revalidateEmails();
+    return { ok: true };
+  });
+
+  // Outside `guard`: redirect() throws, and it should reach the framework.
+  if (createdId) redirect(`/admin/emails/templates/${createdId}`);
+  return result;
+}
+
+/** Restyles every template in the store at once. The copy is untouched. */
+export async function applyDesignToAllTemplatesAction(
+  _previous: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  return guard(async (): Promise<ActionResult> => {
+    const { tdb } = await requireOwner();
+    const raw = formData.get("design");
+    if (!isEmailDesign(raw)) return { error: "Choose a design." };
+
+    const templates = await tdb.findMany(emailTemplates);
+    await Promise.all(
+      templates.map((template) =>
+        template.design === raw
+          ? Promise.resolve(null)
+          : tdb.updateById(emailTemplates, template.id, {
+              design: raw,
+              updatedAt: new Date(),
+            }),
+      ),
+    );
+
+    revalidateEmails();
+    return {
+      ok: true,
+      message: `${getEmailDesign(raw).name} applied to ${templates.length} template${templates.length === 1 ? "" : "s"}.`,
+    };
   });
 }
 
@@ -509,6 +588,7 @@ export async function previewTemplateAction(input: {
   subject: string;
   body: string;
   previewText?: string;
+  design?: string;
 }): Promise<{ subject: string; html: string; unknownTokens: string[] }> {
   const { tdb, store } = await requireOwner();
 
@@ -523,6 +603,7 @@ export async function previewTemplateAction(input: {
     subject: input.subject,
     body: input.body,
     previewText: input.previewText,
+    design: input.design,
     context,
     branding,
     store,

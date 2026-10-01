@@ -1,4 +1,5 @@
 import type { BrandingSettings } from "@/lib/db";
+import { pageDesignCss } from "@/lib/tracking/page-designs";
 
 /**
  * The default theme for customer-facing surfaces.
@@ -43,6 +44,7 @@ export const BRANDING_FALLBACK = {
   buttonRadius: 10,
   buttonFullWidth: true,
   sectionBackground: "#F4F5F3" as string | null,
+  pageDesign: "standard",
 } as const;
 
 /** Reserved across every theme: the terminal step, and nothing else. */
@@ -286,6 +288,7 @@ export function BrandingStyle({
   --brand-inline: ${branding.contentAlignment === "center" ? "auto" : "0"};
   --brand-card: ${branding.sectionBackground ? surface : `color-mix(in srgb, ${text} 4%, ${surface})`};
 }
+${pageDesignCss(branding.pageDesign, `#${scopeId}`)}
 `;
   return <style dangerouslySetInnerHTML={{ __html: css }} />;
 }

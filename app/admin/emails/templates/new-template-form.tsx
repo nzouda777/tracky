@@ -6,6 +6,8 @@ import { Alert, Checkbox, Field, Input, Textarea } from "@/components/ui";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { createTemplateAction } from "@/lib/actions/emails";
 import type { ActionResult } from "@/lib/actions/result";
+import { DEFAULT_EMAIL_DESIGN } from "@/lib/email/designs/catalog";
+import { DesignPicker } from "./design-picker";
 
 const STARTER_BODY = `<p>Hi {{customer_name}},</p>
 <p>Here is an update on order <strong>{{order_number}}</strong>.</p>
@@ -78,6 +80,10 @@ export function NewTemplateForm() {
           className="font-mono text-xs"
           required
         />
+      </Field>
+
+      <Field label="Design" hint="The look of the email around your copy. You can change it at any time.">
+        <DesignPicker defaultValue={DEFAULT_EMAIL_DESIGN} />
       </Field>
 
       <Checkbox

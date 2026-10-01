@@ -52,6 +52,7 @@ export async function dispatchEmailSend(
       subject: template.subject,
       body: template.body,
       previewText: template.previewText,
+      design: template.design,
       branding,
       store,
       context: buildMergeContext({
