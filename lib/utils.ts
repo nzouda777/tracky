@@ -124,3 +124,21 @@ export function formatAddressOneLine(
   const lines = formatAddressLines(address);
   return lines.length > 0 ? lines.join(", ") : "—";
 }
+
+/**
+ * A store's monogram: the first letters of its first two words, so
+ * "Northside Supply" gives "NS". Shared by the Maison page and email so the
+ * two always draw the same mark.
+ */
+export function monogramOf(name: string): string {
+  const words = name
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+  if (words.length === 0) return "?";
+  return words
+    .slice(0, 2)
+    .map((word) => Array.from(word)[0])
+    .join("")
+    .toUpperCase();
+}

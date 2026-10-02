@@ -198,6 +198,7 @@ export function buildEmailModel({
   context: MergeContext;
 }): EmailModel {
   const storeName = store.name ?? store.shopDomain;
+  const address = context.shipping_address?.trim() ?? "";
 
   return {
     storeName,
@@ -215,7 +216,10 @@ export function buildEmailModel({
     stage: context.current_stage?.trim() ?? "",
     orderNumber: context.order_number?.trim() ?? "",
     orderDate: context.order_date?.trim() ?? "",
-    address: context.shipping_address?.trim() ?? "",
+    // The merge field reads "—" when there is no address, which is right in
+    // a sentence and wrong as a fact: layouts check for a value and would
+    // print "Delivery: —". Treated as absent here, once, for every design.
+    address: address === "—" ? "" : address,
     trackingUrl: context.tracking_link?.trim() ?? "",
     helpUrl: branding?.helpBannerUrl?.trim() ?? "",
     postalAddress: branding?.postalAddress?.trim() ?? "",

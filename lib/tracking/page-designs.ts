@@ -28,6 +28,7 @@
 export const PAGE_DESIGNS = [
   {
     id: "standard",
+    layout: "column",
     name: "Standard",
     tagline: "The original, calm run sheet",
     description:
@@ -50,6 +51,7 @@ export const PAGE_DESIGNS = [
   },
   {
     id: "athletic",
+    layout: "column",
     name: "Athletic",
     tagline: "Loud, black and confident",
     description:
@@ -72,6 +74,7 @@ export const PAGE_DESIGNS = [
   },
   {
     id: "editorial",
+    layout: "column",
     name: "Editorial",
     tagline: "Serif, centred, unhurried",
     description:
@@ -95,6 +98,7 @@ export const PAGE_DESIGNS = [
   },
   {
     id: "noir",
+    layout: "column",
     name: "Noir",
     tagline: "Dark luxury",
     description:
@@ -117,6 +121,7 @@ export const PAGE_DESIGNS = [
   },
   {
     id: "minimal",
+    layout: "column",
     name: "Minimal",
     tagline: "Precise, product-led",
     description:
@@ -140,6 +145,7 @@ export const PAGE_DESIGNS = [
   },
   {
     id: "spotlight",
+    layout: "column",
     name: "Spotlight",
     tagline: "Your brand colour, front and centre",
     description:
@@ -160,9 +166,154 @@ export const PAGE_DESIGNS = [
       sectionBackground: null,
     },
   },
+  {
+    id: "showroom",
+    layout: "split",
+    name: "Showroom",
+    tagline: "Split screen, brand panel",
+    description:
+      "The page splits in two: a full-height panel in your brand colour holds the headline and progress, the details scroll beside it. Stacks on phones.",
+    swatches: ["#0F3D3E", "#FFFFFF", "#F2B705"],
+    preset: {
+      primaryColor: "#0F3D3E",
+      accentColor: "#0F3D3E",
+      backgroundColor: "#FFFFFF",
+      textColor: "#111418",
+      secondaryColor: "#F2B705",
+      fontFamily: "var(--font-archivo), ui-sans-serif, system-ui, sans-serif",
+      headingFontSize: 48,
+      contentAlignment: "left",
+      cardRadius: 16,
+      buttonRadius: 12,
+      buttonFullWidth: true,
+      sectionBackground: null,
+    },
+  },
+  {
+    id: "ticket",
+    layout: "ticket",
+    name: "Boarding pass",
+    tagline: "The order as a ticket",
+    description:
+      "The order is drawn as a boarding pass: order date, destination, status, a tear line and a barcode stub, above the full journey.",
+    swatches: ["#EEF1F5", "#1D3557", "#E63946"],
+    preset: {
+      primaryColor: "#1D3557",
+      accentColor: "#1D3557",
+      backgroundColor: "#EEF1F5",
+      textColor: "#14213D",
+      secondaryColor: "#E63946",
+      fontFamily:
+        "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+      headingFontSize: 40,
+      contentAlignment: "center",
+      cardRadius: 18,
+      buttonRadius: 12,
+      buttonFullWidth: true,
+      sectionBackground: "#FFFFFF",
+    },
+  },
+  {
+    id: "journey",
+    layout: "journey",
+    name: "Journey",
+    tagline: "Progress first, dashboard feel",
+    description:
+      "A giant status headline with a segmented progress bar, numbered step cards instead of a line, and the order facts as tiles.",
+    swatches: ["#FFFFFF", "#2563EB", "#0F172A"],
+    preset: {
+      primaryColor: "#2563EB",
+      accentColor: "#2563EB",
+      backgroundColor: "#FFFFFF",
+      textColor: "#0F172A",
+      secondaryColor: "#22C55E",
+      fontFamily:
+        "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+      headingFontSize: 44,
+      contentAlignment: "left",
+      cardRadius: 16,
+      buttonRadius: 12,
+      buttonFullWidth: true,
+      sectionBackground: "#F8FAFC",
+    },
+  },
+  {
+    id: "atelier",
+    layout: "atelier",
+    name: "Atelier",
+    tagline: "Fashion-house index",
+    description:
+      "An oversized Didone wordmark over tiny uppercase type. The steps become a numbered index between hairlines, beside the status on desktop.",
+    swatches: ["#FFFFFF", "#000000", "#6B6B6B"],
+    preset: {
+      primaryColor: "#000000",
+      accentColor: "#000000",
+      backgroundColor: "#FFFFFF",
+      textColor: "#000000",
+      secondaryColor: "#000000",
+      fontFamily: "Helvetica Neue, Helvetica, Arial, sans-serif",
+      headingFontSize: 40,
+      contentAlignment: "left",
+      cardRadius: 0,
+      buttonRadius: 0,
+      buttonFullWidth: true,
+      sectionBackground: null,
+    },
+  },
+  {
+    id: "beaute",
+    layout: "beaute",
+    name: "Beauté",
+    tagline: "Graphic stripes, bold and upbeat",
+    description:
+      "A black bar with your store name over a stripe band, a bold centred headline and a stat strip with the order's key facts.",
+    swatches: ["#000000", "#FFFFFF", "#E4007C"],
+    preset: {
+      primaryColor: "#000000",
+      accentColor: "#000000",
+      backgroundColor: "#FFFFFF",
+      textColor: "#000000",
+      secondaryColor: "#E4007C",
+      fontFamily: "Helvetica Neue, Helvetica, Arial, sans-serif",
+      headingFontSize: 44,
+      contentAlignment: "center",
+      cardRadius: 0,
+      buttonRadius: 0,
+      buttonFullWidth: true,
+      sectionBackground: "#F6F6F6",
+    },
+  },
+  {
+    id: "maison",
+    layout: "maison",
+    name: "Maison",
+    tagline: "A letter from a luxury house",
+    description:
+      "A gold monogram and a double-framed card on cream, serif small capitals, and the order opened like a letter addressed to your customer.",
+    swatches: ["#F7F3EC", "#B89B5E", "#3B2A1E"],
+    preset: {
+      primaryColor: "#3B2A1E",
+      accentColor: "#3B2A1E",
+      backgroundColor: "#F7F3EC",
+      textColor: "#3B2A1E",
+      secondaryColor: "#B89B5E",
+      fontFamily: "Georgia, 'Times New Roman', Times, serif",
+      headingFontSize: 34,
+      contentAlignment: "center",
+      cardRadius: 0,
+      buttonRadius: 0,
+      buttonFullWidth: true,
+      sectionBackground: "#FFFDF9",
+    },
+  },
 ] as const;
 
+/**
+ * The page's skeleton. `column` is one centred column restyled by CSS; the
+ * others are different markup — see `components/tracking/layouts.tsx`.
+ */
 export type PageDesign = (typeof PAGE_DESIGNS)[number];
+export type PageLayout = PageDesign["layout"];
 export type PageDesignId = PageDesign["id"];
 
 export const DEFAULT_PAGE_DESIGN: PageDesignId = "standard";
@@ -186,16 +337,50 @@ export function getPageDesign(value: unknown): PageDesign {
 
 const GROTESK = "'Helvetica Neue',Helvetica,Arial,sans-serif";
 const SERIF = "Georgia,'Times New Roman',Times,serif";
+const DIDONE = "Didot,'Bodoni 72','Bodoni MT','Playfair Display',Georgia,serif";
+
+/** Small uppercase type, the voice of Atelier and Maison. */
+const TINY_CAPS =
+  "font-size:11px;line-height:16px;letter-spacing:0.12em;text-transform:uppercase";
+
+/** A field reduced to its baseline. */
+const UNDERLINED =
+  "border-width:0 0 1px !important;border-radius:0 !important;" +
+  "background:transparent !important;padding-left:0 !important";
 
 /** `[data-part="x"]` — the hooks `tracking-page.tsx` and friends carry. */
 const P = (part: string) => `[data-part="${part}"]`;
 
 /**
- * Rules per design, with `&` standing for the scoped root. Kept as
- * `[selector, body]` pairs so each selector can have the scope distributed
- * across its comma list — `& a,b` would otherwise leak `b` onto the theme.
+ * Two-column breakpoint, in px of the page's own width.
+ *
+ * A container query, not a media query: the page is also shown in the
+ * branding editor's narrow preview pane and can be embedded in a narrow theme
+ * column, and in both the viewport is far wider than the page. Measuring the
+ * viewport there squeezed the desktop grid into a few hundred pixels.
  */
-const LAYERS: Record<PageDesignId, Array<[string, string]>> = {
+const WIDE = "(min-width:900px)";
+
+/**
+ * A rule, with `&` standing for the scoped root. Kept as `[selector, body]`
+ * so each selector can have the scope distributed across its comma list —
+ * `& a,b` would otherwise leak `b` onto the theme. An optional third element
+ * wraps the rule in a container query on the page root.
+ */
+type LayerRule = [selector: string, body: string, query?: string];
+
+/**
+ * Re-points the page's colour variables for a block filled with the brand
+ * colour, so every component inside recolours itself without knowing.
+ */
+const ON_ACCENT =
+  "background:var(--brand-accent);color:var(--brand-on-accent);" +
+  "--brand-text:var(--brand-on-accent);" +
+  "--brand-muted:color-mix(in srgb,var(--brand-on-accent) 74%,var(--brand-accent));" +
+  "--brand-line:color-mix(in srgb,var(--brand-on-accent) 26%,var(--brand-accent));" +
+  "--brand-panel:color-mix(in srgb,var(--brand-on-accent) 12%,var(--brand-accent))";
+
+const LAYERS: Record<PageDesignId, LayerRule[]> = {
   standard: [],
 
   athletic: [
@@ -352,6 +537,267 @@ const LAYERS: Record<PageDesignId, Array<[string, string]>> = {
     ],
     [`& ${P("help")}`, "border:0 !important;border-radius:20px !important;background:var(--brand-wash) !important"],
   ],
+
+  // --- Showroom: two panels -------------------------------------------------
+  showroom: [
+    ["& .type-display", "font-weight:800;letter-spacing:-0.035em"],
+    [`& ${P("split-panel")}`, ON_ACCENT + ";padding:40px 24px 44px"],
+    [`& ${P("split-main")}`, "padding:40px 24px 56px"],
+    [`& ${P("split-panel")} ${P("masthead")}`, "margin-bottom:24px !important"],
+    [`& ${P("split-panel")} ${P("masthead")} p`, "color:var(--brand-on-accent) !important"],
+    [`& ${P("split-title")}`, "font-size:var(--brand-heading-size);line-height:1.02"],
+    [`& ${P("progress")}`, "display:flex;gap:6px;margin-top:14px"],
+    [`& ${P("progress")} > span`, "flex:1 1 0%;height:6px;border-radius:999px;background:var(--brand-line)"],
+    [`& ${P("progress")} > span[data-on]`, "background:var(--brand-on-accent)"],
+    [
+      `& ${P("card")}`,
+      "max-width:none !important;box-shadow:0 1px 2px rgba(0,0,0,0.05),0 10px 30px rgba(0,0,0,0.06)",
+    ],
+    [`& ${P("pill")}`, "border-radius:999px !important"],
+    [
+      `& ${P("split")}`,
+      "display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);min-height:680px",
+      WIDE,
+    ],
+    [`& ${P("split-panel")}`, "padding:64px 56px", WIDE],
+    [`& ${P("split-inner")}`, "position:sticky;top:48px", WIDE],
+    [`& ${P("split-main")}`, "padding:64px 56px 72px;max-width:760px", WIDE],
+  ],
+
+  // --- Boarding pass --------------------------------------------------------
+  ticket: [
+    ["& .type-display", "font-weight:800;letter-spacing:-0.03em"],
+    [
+      `& ${P("ticket")}`,
+      "position:relative;background:var(--brand-section);border-radius:var(--brand-card-radius);" +
+        "box-shadow:0 1px 2px rgba(0,0,0,0.06),0 18px 40px rgba(20,33,61,0.10);text-align:left",
+    ],
+    [
+      `& ${P("ticket-head")}`,
+      ON_ACCENT +
+        ";display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 24px;" +
+        "border-radius:var(--brand-card-radius) var(--brand-card-radius) 0 0;" +
+        "font-size:13px;font-weight:700;letter-spacing:0.14em;text-transform:uppercase",
+    ],
+    [`& ${P("ticket-body")}`, "padding:24px"],
+    [`& ${P("ticket-route")}`, "display:flex;align-items:center;gap:12px"],
+    [`& ${P("ticket-route")} > div`, "flex:1 1 0%;min-width:0"],
+    [`& ${P("ticket-route")} > div:last-child`, "text-align:right"],
+    [
+      `& ${P("ticket-label")}`,
+      "display:block;font-size:11px;font-weight:700;letter-spacing:0.14em;" +
+        "text-transform:uppercase;color:var(--brand-muted)",
+    ],
+    [
+      `& ${P("ticket-value")}`,
+      "display:block;font-size:22px;font-weight:800;letter-spacing:-0.02em;line-height:1.2",
+    ],
+    [`& ${P("ticket-status")}`, "margin:24px 0;padding:18px 0;border-top:1px solid var(--brand-line);border-bottom:1px solid var(--brand-line)"],
+    [`& ${P("ticket-tear")}`, "position:relative;margin:4px 0;border-top:2px dashed var(--brand-line)"],
+    [
+      `& ${P("ticket-notch")}`,
+      "position:absolute;top:-15px;width:28px;height:28px;border-radius:999px;background:var(--brand-surface)",
+    ],
+    [
+      `& ${P("ticket-stub")}`,
+      "display:flex;align-items:center;justify-content:space-between;gap:16px;padding:18px 24px 22px",
+    ],
+    [
+      `& ${P("barcode")}`,
+      "flex:1 1 0%;max-width:260px;height:46px;background:repeating-linear-gradient(90deg," +
+        "var(--brand-text) 0 2px,transparent 2px 4px,var(--brand-text) 4px 5px,transparent 5px 8px," +
+        "var(--brand-text) 8px 11px,transparent 11px 13px)",
+    ],
+    [
+      `& ${P("ticket")} ${P("card")}`,
+      "background:transparent !important;border:0 !important;max-width:none !important;" +
+        "margin:0 !important;padding:24px !important",
+    ],
+    [`& ${P("pill")}`, "border-radius:999px !important"],
+  ],
+
+  // --- Journey --------------------------------------------------------------
+  journey: [
+    ["& .type-display", "font-weight:800;letter-spacing:-0.035em"],
+    [`& ${P("journey-title")}`, "font-size:var(--brand-heading-size);line-height:1.04"],
+    [`& ${P("progress")}`, "display:flex;gap:6px;margin-top:20px"],
+    [`& ${P("progress")} > span`, "flex:1 1 0%;height:10px;border-radius:999px;background:var(--brand-line)"],
+    [`& ${P("progress")} > span[data-on]`, "background:var(--brand-accent)"],
+    [`& ${P("steps")}`, "display:grid;gap:10px"],
+    [
+      `& ${P("step")}`,
+      "display:flex;align-items:center;gap:14px;padding:14px 16px;" +
+        "border:1px solid var(--brand-line);border-radius:var(--brand-card-radius)",
+    ],
+    [
+      `& ${P("step")}[data-state="current"]`,
+      ON_ACCENT +
+        ";border-color:transparent;box-shadow:0 12px 28px color-mix(in srgb,var(--brand-accent) 28%,transparent)",
+    ],
+    [`& ${P("step")}[data-state="upcoming"]`, "opacity:0.6"],
+    [
+      `& ${P("step-number")}`,
+      "flex-shrink:0;display:grid;place-items:center;width:36px;height:36px;border-radius:999px;" +
+        "background:var(--brand-panel);font-weight:800;font-variant-numeric:tabular-nums",
+    ],
+    [
+      `& ${P("step")}[data-state="complete"] ${P("step-number")}`,
+      "background:var(--brand-text);color:var(--brand-surface)",
+    ],
+    [`& ${P("step-state")}`, "margin-left:auto;font-size:13px;font-weight:700;color:var(--brand-muted)"],
+    [`& ${P("journey-split")}`, "display:grid;gap:36px"],
+    [`& ${P("journey-hero")}`, "display:flex;flex-direction:column;gap:28px"],
+    [`& ${P("manifest")} dl`, "display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px"],
+    [
+      `& ${P("manifest")} dl > div`,
+      "display:block !important;border:0 !important;background:var(--brand-section);" +
+        "border-radius:var(--brand-card-radius);padding:14px 16px !important",
+    ],
+    [`& ${P("manifest")} dl > div:last-child`, "grid-column:1 / -1"],
+    [
+      `& ${P("manifest")} dt`,
+      "width:auto !important;font-size:12px;font-weight:700;letter-spacing:0.08em;" +
+        "text-transform:uppercase;margin-bottom:4px",
+    ],
+    [`& ${P("events")} > div`, "border-radius:var(--brand-card-radius) !important"],
+    [
+      `& ${P("card")}`,
+      "max-width:none !important;border:0 !important;" +
+        "box-shadow:0 1px 2px rgba(0,0,0,0.05),0 14px 36px rgba(15,23,42,0.08)",
+    ],
+    [`& ${P("pill")}`, "border-radius:999px !important"],
+    [
+      `& ${P("journey-hero")}`,
+      "display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:48px;align-items:center",
+      WIDE,
+    ],
+    [
+      `& ${P("journey-split")}`,
+      "grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start",
+      WIDE,
+    ],
+  ],
+
+  // --- Atelier: type only ---------------------------------------------------
+  atelier: [
+    [
+      "& .type-display",
+      `font-family:${DIDONE};font-variation-settings:normal;font-weight:400;` +
+        "text-transform:uppercase;letter-spacing:0.02em",
+    ],
+    [`& ${P("atelier")}`, "max-width:1180px;margin:0 auto;padding:48px 20px 56px"],
+    [
+      `& ${P("atelier-wordmark")}`,
+      "font-size:calc(var(--brand-heading-size) * 1.6);line-height:0.95;text-align:center;" +
+        "letter-spacing:0.04em;padding-bottom:40px;margin-bottom:48px;border-bottom:1px solid var(--brand-text)",
+    ],
+    [`& ${P("atelier-grid")}`, "display:grid;gap:48px"],
+    [`& ${P("atelier-title")}`, "font-size:var(--brand-heading-size);line-height:1.02"],
+    [`& ${P("atelier-small")}`, TINY_CAPS],
+    [`& ${P("subtitle")}`, `${TINY_CAPS};letter-spacing:0.06em;max-width:360px !important`],
+    [`& ${P("section-title")}`, `${TINY_CAPS};font-weight:600;letter-spacing:0.16em`],
+    [`& ${P("card")}`, "border:0 !important;background:transparent !important;padding:0 !important;max-width:none !important"],
+    [`& ${P("field")}`, UNDERLINED],
+    [`& ${P("button")}`, `${TINY_CAPS};font-size:12px;font-weight:600;letter-spacing:0.22em`],
+    [`& ${P("index")}`, "border-bottom:1px solid var(--brand-text)"],
+    [
+      `& ${P("index-row")}`,
+      `${TINY_CAPS};display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:16px;` +
+        "padding:14px 0;border-top:1px solid var(--brand-text)",
+    ],
+    [`& ${P("index-row")}[data-state="current"]`, "font-weight:700"],
+    [`& ${P("index-row")}[data-state="upcoming"]`, "color:var(--brand-muted)"],
+    [`& ${P("manifest")} dl > div`, "border-color:var(--brand-text) !important"],
+    [`& ${P("manifest")} dt`, `${TINY_CAPS};padding-top:2px`],
+    [`& ${P("events")} > div`, "border-radius:0 !important"],
+    [`& ${P("help")}`, "background:transparent !important;border-width:1px 0 !important;border-radius:0 !important;padding-left:0 !important"],
+    [`& ${P("footer")}`, `${TINY_CAPS};border-color:var(--brand-text) !important`],
+    [
+      `& ${P("atelier-grid")}`,
+      "grid-template-columns:minmax(0,4fr) minmax(0,7fr);gap:96px;align-items:start",
+      WIDE,
+    ],
+    [`& ${P("atelier-aside")}`, "position:sticky;top:48px", WIDE],
+  ],
+
+  // --- Beauté: stripes and a stat strip -------------------------------------
+  beaute: [
+    [
+      "& .type-display",
+      `font-family:${GROTESK};font-variation-settings:normal;font-weight:800;letter-spacing:-0.02em`,
+    ],
+    [
+      `& ${P("beaute-bar")}`,
+      "background:var(--brand-text);color:var(--brand-surface);text-align:center;padding:22px 20px;" +
+        "font-size:22px;font-weight:800;letter-spacing:0.18em;text-transform:uppercase",
+    ],
+    [`& ${P("beaute-bar")}[data-logo]`, "background:var(--brand-surface);padding:18px 20px"],
+    [
+      `& ${P("stripes")}`,
+      "height:14px;background:repeating-linear-gradient(90deg,var(--brand-text) 0 24px,var(--brand-surface) 24px 48px)",
+    ],
+    [
+      `& ${P("beaute-eyebrow")}`,
+      "color:var(--brand-signal);font-size:13px;font-weight:800;letter-spacing:0.12em;text-transform:uppercase",
+    ],
+    [`& ${P("beaute-title")}`, "font-size:var(--brand-heading-size);line-height:1.05"],
+    [
+      `& ${P("stats")}`,
+      "display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;" +
+        "background:var(--brand-section);padding:20px 12px;text-align:center",
+    ],
+    [
+      `& ${P("stat")} dt`,
+      "font-size:11px;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;" +
+        "color:var(--brand-muted);margin-bottom:4px",
+    ],
+    [`& ${P("stat")} dd`, "font-size:15px;font-weight:700;line-height:1.3"],
+    [`& ${P("card")}`, "border:0 !important;background:var(--brand-section) !important"],
+    [`& ${P("button")}`, "text-transform:uppercase;font-weight:800;letter-spacing:0.12em;font-size:14px"],
+    [`& ${P("section-title")}`, "text-transform:uppercase;font-weight:800;letter-spacing:0.06em;font-size:15px"],
+    [`& ${P("manifest")}`, "border-top:3px solid var(--brand-text);padding-top:16px"],
+    [`& ${P("events")}`, "border-top:3px solid var(--brand-text);padding-top:16px"],
+    [`& ${P("help")}`, "border:0 !important;border-radius:0 !important;text-align:center;font-weight:700"],
+    [`& ${P("footer")}`, "border-top-width:0 !important;text-align:center;margin-top:0 !important"],
+  ],
+
+  // --- Maison: the letter -----------------------------------------------------
+  maison: [
+    [
+      "& .type-display",
+      `font-family:${SERIF};font-variation-settings:normal;font-weight:400;` +
+        "text-transform:uppercase;letter-spacing:0.06em",
+    ],
+    [
+      `& ${P("monogram")}`,
+      `display:grid;place-items:center;width:64px;height:64px;border-radius:999px;` +
+        `border:1px solid var(--brand-signal);font-family:${SERIF};font-size:22px;letter-spacing:0.08em`,
+    ],
+    [`& ${P("caps")}`, `font-family:${SERIF};${TINY_CAPS};letter-spacing:0.3em;color:var(--brand-muted)`],
+    [`& ${P("frame")}`, "border:1px solid var(--brand-signal);padding:6px;background:var(--brand-section)"],
+    [
+      `& ${P("frame-inner")}`,
+      "border:1px solid var(--brand-signal);padding:44px 22px 40px;text-align:center;" +
+        "display:flex;flex-direction:column;align-items:center;gap:20px",
+    ],
+    [`& ${P("maison-title")}`, "font-size:var(--brand-heading-size);line-height:1.2"],
+    [`& ${P("gold-rule")}`, "display:block;width:40px;border-top:1px solid var(--brand-signal)"],
+    [`& ${P("letter")}`, `font-family:${SERIF};font-style:italic;font-size:17px;line-height:1.6`],
+    [`& ${P("letter")} ${P("subtitle")}`, "font-size:17px"],
+    [`& ${P("frame-body")}`, "align-self:stretch;text-align:left;margin-top:12px"],
+    [`& ${P("card")}`, "border:0 !important;background:transparent !important;padding:0 !important;max-width:none !important"],
+    [`& ${P("field")}`, UNDERLINED],
+    [`& ${P("button")}`, `font-family:${SERIF};text-transform:uppercase;letter-spacing:0.28em;font-size:12px;font-weight:400`],
+    [
+      `& ${P("section-title")}`,
+      `font-family:${SERIF};font-weight:400;${TINY_CAPS};letter-spacing:0.3em;text-align:center`,
+    ],
+    [`& ${P("manifest")} dl > div`, "border-color:color-mix(in srgb,var(--brand-signal) 45%,transparent) !important"],
+    [`& ${P("events")} > div`, "border-radius:0 !important"],
+    [`& ${P("help")}`, `background:transparent !important;border:0 !important;text-align:center;font-family:${SERIF};font-style:italic`],
+    [`& ${P("footer")}`, `font-family:${SERIF};font-style:italic;text-align:center;border-color:var(--brand-signal) !important`],
+    [`& ${P("frame-inner")}`, "padding:60px 56px 52px", WIDE],
+  ],
 };
 
 /**
@@ -363,13 +809,27 @@ export function pageDesignCss(design: unknown, scope: string): string {
   const id = resolvePageDesign(design);
   const root = `${scope}[data-design="${id}"]`;
 
-  return LAYERS[id]
-    .map(([selector, body]) => {
-      const scoped = selector
-        .split(",")
-        .map((part) => part.trim().replace(/^&/, root))
-        .join(",");
-      return `${scoped}{${body}}`;
-    })
-    .join("");
+  const rules = LAYERS[id];
+
+  // The root is the container its own responsive rules measure. A container
+  // no longer takes its width from its content, so it is given the full width
+  // outright — in a theme's shrink-to-fit wrapper it would otherwise collapse.
+  const container = rules.some(([, , query]) => query)
+    ? `${root}{container-type:inline-size;width:100%}`
+    : "";
+
+  return (
+    container +
+    rules
+      .map(([selector, body, query]) => {
+        const scoped = selector
+          .split(",")
+          .map((part) => part.trim().replace(/^&/, root))
+          .join(",");
+        return query
+          ? `@container ${query}{${scoped}{${body}}}`
+          : `${scoped}{${body}}`;
+      })
+      .join("")
+  );
 }

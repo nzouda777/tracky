@@ -1,6 +1,12 @@
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 
+import { resolveBranding } from "@/components/tracking/branding";
 import { TRACKING_SCOPE_ID } from "@/components/tracking/embed-styles";
+import { buildSampleView } from "@/components/tracking/sample-view";
+import { TrackingPage } from "@/components/tracking/tracking-page";
+import type { Stage } from "@/lib/db";
 import {
   PAGE_DESIGNS,
   pageDesignCss,
@@ -18,7 +24,9 @@ describe("tracking page designs", () => {
   it.each(PAGE_DESIGNS.map((design) => design.id))(
     "keeps every %s selector inside the page and its own design",
     (id) => {
-      const css = pageDesignCss(id, scope);
+      // Container queries wrap whole rules; unwrap them so the selectors inside
+      // are checked like any other.
+      const css = pageDesignCss(id, scope).replace(/@(media|container)[^{]+\{([^{}]+\{[^}]*\})\}/g, "$2");
       const selectors = [...css.matchAll(/([^{}]+)\{[^}]*\}/g)].flatMap(
         (match) => match[1].split(","),
       );
@@ -56,6 +64,118 @@ describe("tracking page designs", () => {
       expect(preset.cardRadius).toBeLessThanOrEqual(32);
       expect(preset.buttonRadius).toBeLessThanOrEqual(40);
       expect(preset.headingFontSize).toBeLessThanOrEqual(48);
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The designed layouts rearrange the page, so each one is rendered for real.
+// ---------------------------------------------------------------------------
+
+const stages = ["Order placed", "Confirmed", "Processing", "Delivered"].map(
+  (name, position) =>
+    ({
+      id: `s${position}`,
+      storeId: "s",
+      key: name.toLowerCase().replace(/ /g, "-"),
+      name,
+      description: "",
+      position,
+      icon: "circle",
+      color: "#888888",
+      isTerminal: position === 3,
+      triggersFulfillment: false,
+      locksAddressEditing: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    }) as unknown as Stage,
+);
+
+function renderPage(
+  design: string,
+  options: {
+    order: boolean;
+    access?: "verified" | "order-number";
+    cancelled?: boolean;
+    showStoreName?: boolean;
+  },
+): string {
+  const branding = {
+    ...resolveBranding(null),
+    pageDesign: design,
+    showStoreName: options.showStoreName ?? false,
+  };
+  const view = options.order ? buildSampleView(stages) : null;
+  if (view && options.cancelled) view.order.cancelledAt = new Date();
+  return renderToStaticMarkup(
+    createElement(TrackingPage, {
+      branding,
+      store: { name: "Northside Supply", shopDomain: "n.myshopify.com" },
+      view,
+      proxyPath: "/apps/track-order",
+      lookupStep: { step: "identify" },
+      access: options.access ?? "verified",
+    }),
+  );
+}
+
+describe("designed tracking layouts", () => {
+  it.each(PAGE_DESIGNS.map((design) => design.id))(
+    "renders the %s design for the lookup and for an order",
+    (id) => {
+      const lookup = renderPage(id, { order: false });
+      expect(lookup).toContain(`data-design="${id}"`);
+      expect(lookup).toContain('name="q"');
+
+      const order = renderPage(id, { order: true });
+      expect(order).toContain("#1042");
+      expect(order).toContain("Confirmed");
+      expect(order).toContain("12 Bourke Street");
+    },
+  );
+
+  it.each(PAGE_DESIGNS.map((design) => design.id))(
+    "never shows an unverified visitor the street address in %s",
+    (id) => {
+      const html = renderPage(id, { order: true, access: "order-number" });
+      expect(html).not.toContain("12 Bourke Street");
+      expect(html).not.toContain("Sarah Jenkins");
+      expect(html).toContain("Sarah J.");
+    },
+  );
+
+  /** The page's markup alone; its `<style>` names every part too. */
+  const markup = (html: string) => html.replace(/<style[\s\S]*?<\/style>/g, "");
+
+  const designed = PAGE_DESIGNS.filter((design) => design.layout !== "column").map(
+    (design) => design.id,
+  );
+
+  it.each(designed)("headlines a cancelled order as cancelled in %s", (id) => {
+    const html = markup(renderPage(id, { order: true, cancelled: true }));
+    expect(html).toContain("Order cancelled");
+    expect(html).toContain("This order was cancelled.");
+    // The stage it was cancelled at is never presented as "now".
+    expect(html).not.toMatch(/>Now</);
+    expect(html).not.toContain('data-part="progress"');
+  });
+
+  it.each(["atelier", "beaute", "maison"])(
+    "keeps the store's brand mark off %s unless the store name is shown",
+    (id) => {
+      const hidden = markup(renderPage(id, { order: true }));
+      expect(hidden).not.toContain('data-part="beaute-bar"');
+      expect(hidden).not.toContain('data-part="monogram"');
+      expect(hidden).not.toMatch(/data-part="atelier-wordmark">Northside/);
+
+      const shown = markup(renderPage(id, { order: true, showStoreName: true }));
+      expect(shown).toMatch(/data-part="(beaute-bar|monogram|atelier-wordmark)"[^>]*>(Northside|NS)/);
+    },
+  );
+
+  it("gives every designed layout an h1 on the order view", () => {
+    for (const id of designed) {
+      expect(renderPage(id, { order: true })).toMatch(/<h1[\s>]/);
     }
   });
 });

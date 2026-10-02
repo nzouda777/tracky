@@ -5,8 +5,9 @@ import { BrandingStyle, type Branding } from "./branding";
 import { EditAddressForm } from "./edit-address-form";
 import { EventHistory } from "./event-history";
 import { LookupForm, type LookupMode, type LookupStep } from "./lookup-form";
+import { getPageDesign } from "@/lib/tracking/page-designs";
+import { DesignedLayout, type OrderParts } from "./layouts";
 import { RouteLine } from "./route-line";
-import { resolvePageDesign } from "@/lib/tracking/page-designs";
 
 const SCOPE_ID = "tracky-tracking";
 
@@ -52,41 +53,74 @@ export function TrackingPage({
   addressError?: string | null;
 }) {
   const storeName = store.name ?? store.shopDomain;
+  const design = getPageDesign(branding.pageDesign);
+
+  // A design with its own skeleton gets the same pieces — the form, the route,
+  // the manifest — and arranges them itself. Every rule about what may be
+  // shown (an unverified visitor, a locked address) lives in those pieces, so
+  // no layout can show more than the column does.
+  if (design.layout !== "column") {
+    return (
+      <div
+        id={SCOPE_ID}
+        className="tracking-root min-h-dvh"
+        data-design={design.id}
+        data-layout={design.layout}
+        style={{ backgroundColor: "var(--brand-surface)" }}
+      >
+        <BrandingStyle branding={branding} scopeId={SCOPE_ID} />
+        <DesignedLayout
+          layout={design.layout}
+          storeName={storeName}
+          brand={{
+            show: branding.showStoreName,
+            logoUrl: branding.logoUrl?.trim() || null,
+          }}
+          masthead={<Masthead branding={branding} storeName={storeName} />}
+          title={branding.pageTitle}
+          subtitle={<Subtitle text={branding.pageSubtitle} />}
+          lookup={
+            view ? null : (
+              <LookupForm
+                branding={branding}
+                proxyPath={proxyPath}
+                state={lookupStep}
+                mode={lookupMode}
+                error={lookupError}
+              />
+            )
+          }
+          order={
+            view
+              ? orderParts({
+                  view,
+                  branding,
+                  proxyPath,
+                  access,
+                  addressMessage,
+                  addressError,
+                })
+              : null
+          }
+          extras={<Extras branding={branding} />}
+          footer={<PageFooter branding={branding} storeName={storeName} />}
+        />
+      </div>
+    );
+  }
 
   return (
     <div
       id={SCOPE_ID}
       className="tracking-root min-h-dvh"
-      data-design={resolvePageDesign(branding.pageDesign)}
+      data-design={design.id}
       style={{ backgroundColor: "var(--brand-surface)" }}
     >
       <BrandingStyle branding={branding} scopeId={SCOPE_ID} />
 
       {/* The title block sits on the page's own ground. */}
       <Column className="pt-9 sm:pt-12">
-        {/* Off by default. Embedded in a theme, the merchant's own header is
-            directly above this, and repeating the brand is the clearest sign
-            of an app bolted onto a shop rather than part of it. */}
-        {branding.showStoreName ? (
-          <header className="mb-9" data-part="masthead">
-            {branding.logoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={branding.logoUrl}
-                alt={storeName}
-                className="h-9 w-auto object-contain"
-                style={{ marginInline: "var(--brand-inline)" }}
-              />
-            ) : (
-              <p
-                className="type-display text-h2"
-                style={{ color: "var(--brand-accent)" }}
-              >
-                {storeName}
-              </p>
-            )}
-          </header>
-        ) : null}
+        <Masthead branding={branding} storeName={storeName} />
 
         {view ? null : (
           <div className="space-y-3" data-part="intro">
@@ -99,30 +133,7 @@ export function TrackingPage({
             >
               {branding.pageTitle}
             </h1>
-            {branding.pageSubtitle ? (
-              <div
-                data-part="subtitle"
-                className="mx-auto space-y-1 text-body"
-                style={{
-                  color: "var(--brand-muted)",
-                  maxWidth: "736px",
-                  // Follows the page instead of centring itself, which put the
-                  // intro 180px right of the heading above it.
-                  marginInline: "var(--brand-inline)",
-                }}
-              >
-                {/* Written as lines, so a store can say the three things this
-                    page usually has to say without them running into one
-                    paragraph. */}
-                {branding.pageSubtitle
-                  .split("\n")
-                  .map((line) => line.trim())
-                  .filter(Boolean)
-                  .map((line, index) => (
-                    <p key={index}>{line}</p>
-                  ))}
-              </div>
-            ) : null}
+            <Subtitle text={branding.pageSubtitle} />
           </div>
         )}
       </Column>
@@ -164,44 +175,9 @@ export function TrackingPage({
           </main>
         ) : null}
 
-        <div className="space-y-9">
-          {branding.faq.length > 0 ? <Faq items={branding.faq} /> : null}
+        <Extras branding={branding} />
 
-          {branding.helpBannerText ? (
-            <aside
-              data-part="help"
-              className="px-4 py-3 text-small"
-              style={{
-                backgroundColor: "var(--brand-panel)",
-                border: "1px solid var(--brand-line)",
-                borderRadius: "var(--brand-card-radius)",
-              }}
-            >
-              {branding.helpBannerUrl ? (
-                <a
-                  href={branding.helpBannerUrl}
-                  className="font-medium underline underline-offset-2"
-                  style={{ color: "var(--brand-link)" }}
-                >
-                  {branding.helpBannerText}
-                </a>
-              ) : (
-                <span>{branding.helpBannerText}</span>
-              )}
-            </aside>
-          ) : null}
-        </div>
-
-        <footer
-          data-part="footer"
-          className="mt-12 border-t pt-5 text-caption"
-          style={{
-            borderColor: "var(--brand-line)",
-            color: "var(--brand-muted)",
-          }}
-        >
-          {branding.footerText || `${storeName} — order tracking`}
-        </footer>
+        <PageFooter branding={branding} storeName={storeName} />
       </Column>
     </div>
   );
@@ -233,33 +209,36 @@ function Column({
 
 // ---------------------------------------------------------------------------
 
-function OrderView({
-  view,
-  branding,
-  proxyPath,
-  access,
-  addressMessage,
-  addressError,
-}: {
+type OrderInput = {
   view: PublicOrderView;
   branding: Branding;
   proxyPath: string;
   access: LookupAccess;
   addressMessage?: string | null;
   addressError?: string | null;
-}) {
+};
+
+/**
+ * The order's pieces, built once and shared by every layout.
+ *
+ * Opened with a guessable order number and nothing else (`unverified`),
+ * delivery progress is still shown in full — that is what the visitor came
+ * for, and it is the same information the shop puts in its emails. What is
+ * held back is everything that would make walking `#1001`, `#1002`, `#1003`
+ * worth someone's time: the full name, the street address, and the
+ * address-change form, which carries the order's token in a hidden field and
+ * would therefore hand over write access along with it.
+ */
+function orderParts({
+  view,
+  branding,
+  proxyPath,
+  access,
+  addressMessage,
+  addressError,
+}: OrderInput): OrderParts {
   const { order, stage, timeline, events, proof, canEditAddress } = view;
 
-  /**
-   * Opened with a guessable order number and nothing else.
-   *
-   * Delivery progress is still shown in full — that is what the visitor came
-   * for, and it is the same information the shop puts in its emails. What is
-   * held back is everything that would make walking `#1001`, `#1002`, `#1003`
-   * worth someone's time: the full name, the street address, and the
-   * address-change form, which carries the order's token in a hidden field and
-   * would therefore hand over write access along with it.
-   */
   const unverified = access === "order-number";
   const verifyHref = `${proxyPath}?verify=1&q=${encodeURIComponent(order.orderNumber)}`;
 
@@ -267,61 +246,85 @@ function OrderView({
     (entry) => entry.state === "current" && entry.stage.isTerminal,
   );
   const settled = Boolean(proof) || reachedEnd || Boolean(order.cancelledAt);
+  const currentIndex = timeline.findIndex((entry) => entry.state === "current");
 
-  return (
-    <div className="space-y-9">
-      <section className="space-y-3" data-part="order-head">
-        <h1 className="type-display text-h1">
-          Order <span className="type-code">{order.orderNumber}</span>
-        </h1>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          {stage ? <StatusPill stage={stage} /> : null}
-          <p className="text-small" style={{ color: "var(--brand-muted)" }}>
-            {unverified
-              ? shortenName(order.customerName)
-              : (order.customerName ?? "—")}
-          </p>
-        </div>
-      </section>
-
-      {order.cancelledAt ? (
-        <div
-          className="rounded-panel px-4 py-3 text-small"
-          style={{
-            border:
-              "1px solid color-mix(in srgb, #C4462F 40%, var(--brand-surface))",
-            color: "#8F2F1F",
-          }}
-        >
-          <p className="font-semibold">This order was cancelled.</p>
-          <p className="mt-0.5">
-            Cancelled on {formatDate(order.cancelledAt)}. If you were expecting
-            it, reply to your order confirmation and we will look into it.
-          </p>
-        </div>
-      ) : null}
-
-      <RouteLine timeline={timeline} />
-
-      {!settled ? <WaitingIndicator /> : null}
-
-      <EventHistory events={events} proof={proof} />
-
+  return {
+    orderNumber: order.orderNumber,
+    customer: unverified
+      ? shortenName(order.customerName)
+      : order.customerName?.trim() || "—",
+    stageName: stage?.name ?? null,
+    placed: formatDate(order.orderDate),
+    // City only, whatever the access: the manifest shows as much to an
+    // unverified visitor, so a layout quoting it reveals nothing new.
+    city: order.shippingAddress?.city?.trim() || null,
+    timeline,
+    currentIndex,
+    delivered: reachedEnd,
+    cancelled: Boolean(order.cancelledAt),
+    pill: stage ? <StatusPill stage={stage} /> : null,
+    cancelledNotice: order.cancelledAt ? (
+      <div
+        className="rounded-panel px-4 py-3 text-small"
+        style={{
+          border:
+            "1px solid color-mix(in srgb, #C4462F 40%, var(--brand-surface))",
+          color: "#8F2F1F",
+        }}
+      >
+        <p className="font-semibold">This order was cancelled.</p>
+        <p className="mt-0.5">
+          Cancelled on {formatDate(order.cancelledAt)}. If you were expecting
+          it, reply to your order confirmation and we will look into it.
+        </p>
+      </div>
+    ) : null,
+    route: <RouteLine timeline={timeline} />,
+    waiting: settled ? null : <WaitingIndicator />,
+    events: <EventHistory events={events} proof={proof} />,
+    manifest: (
       <Manifest
         order={order}
         branding={branding}
         unverified={unverified}
         verifyHref={verifyHref}
       />
-
-      {unverified || !canEditAddress ? null : (
+    ),
+    editAddress:
+      unverified || !canEditAddress ? null : (
         <EditAddressForm
           proxyPath={proxyPath}
           order={order}
           message={addressMessage}
           error={addressError}
         />
-      )}
+      ),
+  };
+}
+
+function OrderView(input: OrderInput) {
+  const parts = orderParts(input);
+
+  return (
+    <div className="space-y-9">
+      <section className="space-y-3" data-part="order-head">
+        <h1 className="type-display text-h1">
+          Order <span className="type-code">{parts.orderNumber}</span>
+        </h1>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          {parts.pill}
+          <p className="text-small" style={{ color: "var(--brand-muted)" }}>
+            {parts.customer}
+          </p>
+        </div>
+      </section>
+
+      {parts.cancelledNotice}
+      {parts.route}
+      {parts.waiting}
+      {parts.events}
+      {parts.manifest}
+      {parts.editAddress}
     </div>
   );
 }
@@ -546,5 +549,129 @@ function Faq({ items }: { items: Array<{ question: string; answer: string }> }) 
         ))}
       </div>
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Shared blocks — used by the column and by every designed layout
+// ---------------------------------------------------------------------------
+
+function Masthead({
+  branding,
+  storeName,
+}: {
+  branding: Branding;
+  storeName: string;
+}) {
+  return (
+    <>
+      {/* Off by default. Embedded in a theme, the merchant's own header is
+          directly above this, and repeating the brand is the clearest sign
+          of an app bolted onto a shop rather than part of it. */}
+      {branding.showStoreName ? (
+        <header className="mb-9" data-part="masthead">
+          {branding.logoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={branding.logoUrl}
+              alt={storeName}
+              className="h-9 w-auto object-contain"
+              style={{ marginInline: "var(--brand-inline)" }}
+            />
+          ) : (
+            <p
+              className="type-display text-h2"
+              style={{ color: "var(--brand-accent)" }}
+            >
+              {storeName}
+            </p>
+          )}
+        </header>
+      ) : null}
+    </>
+  );
+}
+
+function Subtitle({ text }: { text: string }) {
+  return (
+    <>
+      {text ? (
+        <div
+          data-part="subtitle"
+          className="mx-auto space-y-1 text-body"
+          style={{
+            color: "var(--brand-muted)",
+            maxWidth: "736px",
+            // Follows the page instead of centring itself, which put the
+            // intro 180px right of the heading above it.
+            marginInline: "var(--brand-inline)",
+          }}
+        >
+          {/* Written as lines, so a store can say the three things this
+              page usually has to say without them running into one
+              paragraph. */}
+          {text
+            .split("\n")
+            .map((line) => line.trim())
+            .filter(Boolean)
+            .map((line, index) => (
+              <p key={index}>{line}</p>
+            ))}
+        </div>
+      ) : null}
+    </>
+  );
+}
+
+function Extras({ branding }: { branding: Branding }) {
+  return (
+    <div className="space-y-9">
+      {branding.faq.length > 0 ? <Faq items={branding.faq} /> : null}
+
+      {branding.helpBannerText ? (
+        <aside
+          data-part="help"
+          className="px-4 py-3 text-small"
+          style={{
+            backgroundColor: "var(--brand-panel)",
+            border: "1px solid var(--brand-line)",
+            borderRadius: "var(--brand-card-radius)",
+          }}
+        >
+          {branding.helpBannerUrl ? (
+            <a
+              href={branding.helpBannerUrl}
+              className="font-medium underline underline-offset-2"
+              style={{ color: "var(--brand-link)" }}
+            >
+              {branding.helpBannerText}
+            </a>
+          ) : (
+            <span>{branding.helpBannerText}</span>
+          )}
+        </aside>
+      ) : null}
+    </div>
+  );
+}
+
+function PageFooter({
+  branding,
+  storeName,
+}: {
+  branding: Branding;
+  storeName: string;
+}) {
+  return (
+    <footer
+      data-part="footer"
+      className="mt-12 border-t pt-5 text-caption"
+      style={{
+        borderColor: "var(--brand-line)",
+        color: "var(--brand-muted)",
+      }}
+    >
+      {branding.footerText || `${storeName} — order tracking`}
+    </footer>
   );
 }

@@ -59,6 +59,54 @@ export const EMAIL_DESIGNS = [
       "A bold hero card filled with your brand colour, then a crisp white card for the details. Friendly and vivid.",
     swatches: ["#1B2B44", "#FFFFFF", "#EEF0F3"],
   },
+  {
+    id: "atelier",
+    name: "Atelier",
+    tagline: "Fashion-house restraint",
+    description:
+      "An oversized Didone wordmark over tiny uppercase type, hairline rules and an underlined link. Pure black on white.",
+    swatches: ["#FFFFFF", "#000000", "#6B6B6B"],
+  },
+  {
+    id: "beaute",
+    name: "Beauté",
+    tagline: "Graphic stripes, bold and upbeat",
+    description:
+      "A black masthead over a black-and-white stripe band, a bold headline, a stat strip and a solid black button.",
+    swatches: ["#000000", "#FFFFFF", "#F6F6F6"],
+  },
+  {
+    id: "maison",
+    name: "Maison",
+    tagline: "A letter from a luxury house",
+    description:
+      "A gold monogram, a double-framed card on cream, serif small capitals and a deep brown button.",
+    swatches: ["#F7F3EC", "#B89B5E", "#3B2A1E"],
+  },
+  {
+    id: "showroom",
+    name: "Showroom",
+    tagline: "Split hero, brand panel",
+    description:
+      "The top splits in two: a solid block of your brand colour with the status, the order facts beside it. A thick brand rule runs down the message.",
+    swatches: ["#0F3D3E", "#FFFFFF", "#111418"],
+  },
+  {
+    id: "ticket",
+    name: "Boarding pass",
+    tagline: "The order as a ticket",
+    description:
+      "Your message, then the order drawn as a boarding pass: date to destination, the status set large, a perforation and a barcode stub.",
+    swatches: ["#EEF1F5", "#1D3557", "#FFFFFF"],
+  },
+  {
+    id: "journey",
+    name: "Journey",
+    tagline: "Progress first, app-like",
+    description:
+      "A giant status headline over a three-part progress tracker, then the order facts as rounded tiles. Reads like an app notification.",
+    swatches: ["#FFFFFF", "#2563EB", "#F1F5F9"],
+  },
 ] as const;
 
 export type EmailDesign = (typeof EMAIL_DESIGNS)[number];
