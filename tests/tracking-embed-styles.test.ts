@@ -304,3 +304,16 @@ describe("nothing on the page reaches Liquid as a tag", () => {
     expect(out).not.toContain("<p>{{b}}</p>");
   });
 });
+
+describe("a theme's own class rules cannot move the page's boxes", () => {
+  // Themes reuse Tailwind's names for their own purposes. Dawn's
+  // `.grid { margin-bottom: 2rem }` reached every route waypoint and lifted it
+  // 10px above the road on a live storefront. The scoped reset zeroes the box
+  // spacing on every element, so a theme rule can only touch a property one of
+  // our own classes sets — and there, the id-scoped class outranks it.
+  it("zeroes margin, padding and gaps on every element in the scope", () => {
+    expect(TRACKING_EMBED_CSS).toContain(
+      `#${TRACKING_SCOPE_ID} *{margin:0;padding:0;row-gap:normal;column-gap:normal}`,
+    );
+  });
+});

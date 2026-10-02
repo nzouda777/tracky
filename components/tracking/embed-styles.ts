@@ -132,6 +132,17 @@ const RESET = [
   ),
   `${S} *{border-width:0;border-style:solid;border-color:var(--brand-line,currentColor)}`,
 
+  // Spacing too, on every element. Our class names are Tailwind's, and themes
+  // define some of the same names for their own purposes — Dawn and its many
+  // descendants ship `.grid { margin-bottom: 2rem; column-gap: …; row-gap: … }`.
+  // Our `.grid` sets `display` and nothing else, so the theme's margin landed
+  // on every route waypoint (which uses `grid` to centre its disc) and lifted
+  // it 10px above the road on a live storefront. With the box spacing zeroed
+  // here, a theme's rule can only reach a property our own class also sets,
+  // and the id in this selector outranks it. Our utilities (id + class) still
+  // win over this reset, so every spacing the page asks for survives.
+  `${S} *{margin:0;padding:0;row-gap:normal;column-gap:normal}`,
+
   // `text-transform` and `letter-spacing` are in here because themes set them
   // on headings — uppercase, widely tracked — and both inherit. Without this
   // the page's own headings arrive in the theme's voice rather than the
