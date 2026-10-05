@@ -19,7 +19,13 @@ import {
   parseOrderFilters,
   type OrderSearchParams,
 } from "@/lib/orders/filters";
-import { listDriverNames, listOrders } from "@/lib/orders/queries";
+import {
+  countOrdersByStage,
+  listDriverNames,
+  listOrders,
+} from "@/lib/orders/queries";
+import { phaseLabel, phaseOf } from "@/lib/stages/defaults";
+import { PipelineOverview } from "./pipeline-overview";
 import { formatDate, formatMoney, formatRelative } from "@/lib/utils";
 import { OrderFilters } from "./order-filters";
 import { BulkEmailBar } from "./bulk-email-bar";
@@ -36,10 +42,12 @@ export default async function OrdersPage({
   const { tdb } = await requireOwner();
   const params = await searchParams;
 
-  const [allStages, drivers] = await Promise.all([
+  const [allStages, drivers, buckets] = await Promise.all([
     tdb.findMany(stages, { orderBy: asc(stages.position) }),
     listDriverNames(tdb),
+    countOrdersByStage(tdb),
   ]);
+  const stepOf = new Map(allStages.map((stage, index) => [stage.id, index + 1]));
 
   // One reading of the query string, shared by the table and the filter bar,
   // so the two can never describe different queries.
@@ -61,6 +69,12 @@ export default async function OrdersPage({
             : `${total} order${total === 1 ? "" : "s"} synced from Shopify.`
         }
         action={<SyncOrdersButton compact />}
+      />
+
+      <PipelineOverview
+        buckets={buckets}
+        activePhase={filters.phase}
+        activeStageId={filters.stageId}
       />
 
       <OrderFilters
@@ -127,6 +141,13 @@ export default async function OrdersPage({
                     <Td>
                       <div className="flex flex-col items-start gap-1">
                         <StageBadge stage={stage} />
+                        {stage ? (
+                          <span className="text-xs text-ink-500">
+                            Step {stepOf.get(stage.id)} of {allStages.length}
+                            {" · "}
+                            {phaseLabel(phaseOf(stage))}
+                          </span>
+                        ) : null}
                         {hasProof ? (
                           <span className="text-xs text-emerald-700">
                             Delivery confirmed

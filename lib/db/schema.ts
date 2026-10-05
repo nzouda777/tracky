@@ -400,6 +400,11 @@ export const stages = pgTable(
     position: integer("position").notNull(),
     icon: text("icon").notNull().default("circle"),
     color: text("color").notNull().default("#2563eb"),
+    /**
+     * Which of the four progress-bar phases this stage belongs to: `placed`,
+     * `processing`, `transit` or `delivered` (see `STAGE_PHASES`).
+     */
+    phase: text("phase").notNull().default("processing"),
     /** Final stage of the journey, e.g. "Delivered". */
     isTerminal: boolean("is_terminal").notNull().default(false),
     /** Reaching this stage pushes a Shopify fulfillment (with proof). */

@@ -306,6 +306,30 @@ export const PAGE_DESIGNS = [
       sectionBackground: "#FFFDF9",
     },
   },
+  {
+    id: "classic",
+    layout: "classic",
+    name: "Classic",
+    tagline: "A carrier's tracking card",
+    description:
+      "A white tracking card with the four-phase progress bar, a green last update and a full timeline of every step — the familiar parcel-carrier page.",
+    swatches: ["#FFFFFF", "#F7F8F8", "#111111"],
+    preset: {
+      primaryColor: "#111111",
+      accentColor: "#111111",
+      backgroundColor: "#FFFFFF",
+      textColor: "#111111",
+      secondaryColor: "#888888",
+      fontFamily:
+        "Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif",
+      headingFontSize: 28,
+      contentAlignment: "left",
+      cardRadius: 16,
+      buttonRadius: 10,
+      buttonFullWidth: false,
+      sectionBackground: "#F7F8F8",
+    },
+  },
 ] as const;
 
 /**
@@ -797,6 +821,84 @@ const LAYERS: Record<PageDesignId, LayerRule[]> = {
     [`& ${P("help")}`, `background:transparent !important;border:0 !important;text-align:center;font-family:${SERIF};font-style:italic`],
     [`& ${P("footer")}`, `font-family:${SERIF};font-style:italic;text-align:center;border-color:var(--brand-signal) !important`],
     [`& ${P("frame-inner")}`, "padding:60px 56px 52px", WIDE],
+  ],
+
+  // --- Classic: the carrier's tracking card -----------------------------------
+  classic: [
+    [
+      "& .type-display",
+      "font-variation-settings:normal;font-weight:700;letter-spacing:-0.01em",
+    ],
+    [`& ${P("classic")}`, "background:var(--brand-section);min-height:100%"],
+    [
+      `& ${P("classic-header")}`,
+      "background:var(--brand-surface);border-bottom:1px solid var(--brand-line);padding:18px 0",
+    ],
+    [`& ${P("classic-inner")}`, "max-width:680px;margin:0 auto;padding-left:16px;padding-right:16px"],
+    [`& main${P("classic-inner")}`, "padding-top:28px;padding-bottom:40px"],
+    [`& ${P("classic-header")} ${P("masthead")}`, "margin-bottom:12px !important"],
+    [`& ${P("classic-title")}`, "font-size:20px;line-height:28px"],
+    [
+      `& ${P("classic-card")}, & ${P("classic-search")}`,
+      "background:var(--brand-surface);border-radius:var(--brand-card-radius);padding:24px 20px;" +
+        "box-shadow:0 1px 2px rgba(0,0,0,0.04),0 8px 28px rgba(0,0,0,0.06)",
+    ],
+    [
+      `& ${P("classic-meta")}`,
+      "display:flex;justify-content:space-between;align-items:flex-start;gap:24px",
+    ],
+    [
+      `& ${P("classic-label")}`,
+      "margin:0 0 1px;font-size:10px;letter-spacing:0.08em;text-transform:uppercase;color:var(--brand-muted)",
+    ],
+    [`& ${P("classic-value")}`, "margin:0;font-size:16px;font-weight:700"],
+    [
+      `& ${P("classic-heading")}`,
+      "margin:0 0 4px;padding-bottom:8px;border-bottom:1px solid var(--brand-line);" +
+        "font-size:11px;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;color:var(--brand-muted)",
+    ],
+
+    // The summary as label-left, value-right rows, under the "Order" heading.
+    [`& ${P("classic-section")} ${P("manifest")} > ${P("section-title")}`, "display:none"],
+    [`& ${P("classic-section")} ${P("manifest")} dl`, "margin-top:0 !important"],
+    [
+      `& ${P("classic-section")} ${P("manifest")} dl > div`,
+      "justify-content:space-between;flex-wrap:nowrap !important;padding:8px 0 !important;" +
+        "font-size:13px;border-color:color-mix(in srgb,var(--brand-line) 60%,var(--brand-surface)) !important",
+    ],
+    [`& ${P("classic-section")} ${P("manifest")} dt`, "width:auto !important;font-weight:500"],
+    [
+      `& ${P("classic-section")} ${P("manifest")} dd`,
+      "flex:0 1 auto !important;text-align:right !important;font-weight:600",
+    ],
+
+    // The search row: the prompt above, field and button side by side.
+    [`& ${P("classic-search")} ${P("subtitle")}`, "margin:0 !important;font-size:14px"],
+    [
+      `& ${P("classic-search")} ${P("card")}`,
+      "border:0 !important;background:transparent !important;padding:0 !important;max-width:none !important",
+    ],
+    [
+      `& ${P("classic-search")} ${P("field")}`,
+      "border-radius:12px !important;border:1px solid var(--brand-line) !important;background:var(--brand-surface) !important",
+    ],
+    [`& ${P("classic-search")} ${P("button")}`, "border-radius:10px !important;padding-left:22px !important;padding-right:22px !important"],
+    [`& ${P("faq")}, & ${P("help")}`, "background:var(--brand-surface);border-radius:var(--brand-card-radius);padding:20px !important"],
+    [`& ${P("faq")} ${P("section-title")}`, "font-size:18px"],
+    [`& ${P("footer")}`, "margin-top:0 !important;text-align:center;border-top-width:0 !important"],
+    [`& ${P("classic-card")}, & ${P("classic-search")}`, "padding:28px 32px", WIDE],
+    [
+      `& ${P("classic-search")} form`,
+      "display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:8px;row-gap:14px;align-items:end",
+      "(min-width:560px)",
+    ],
+    [`& ${P("classic-search")} form > *`, "grid-column:1 / -1;margin-top:0 !important", "(min-width:560px)"],
+    [
+      `& ${P("classic-search")} form > div:has(> ${P("field")})`,
+      "grid-column:1",
+      "(min-width:560px)",
+    ],
+    [`& ${P("classic-search")} form > ${P("button")}`, "grid-column:2;width:auto !important", "(min-width:560px)"],
   ],
 };
 

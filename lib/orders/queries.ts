@@ -29,6 +29,7 @@ import {
   type Stage,
 } from "@/lib/db";
 import type { TenantDb } from "@/lib/db/tenant";
+import { phaseOf, type StagePhase } from "@/lib/stages/defaults";
 
 export type FulfillmentFilter = (typeof fulfillmentStatusEnum.enumValues)[number];
 
@@ -55,6 +56,8 @@ export type OrderListFilters = {
   /** Matches order number, customer name or customer email. */
   search?: string;
   stageId?: string;
+  /** Orders whose current stage belongs to this progress-bar phase. */
+  phase?: StagePhase;
   /** Hide orders that have reached a terminal stage. */
   onlyActive?: boolean;
   /** Only orders that have reached a terminal stage. */
@@ -89,6 +92,7 @@ export type OrderListRow = {
 function buildFilter(
   filters: OrderListFilters,
   terminalStageIds: string[],
+  allStages: Stage[] = [],
 ): SQL | undefined {
   const conditions: Array<SQL | undefined> = [];
 
@@ -106,6 +110,14 @@ function buildFilter(
 
   if (filters.stageId) {
     conditions.push(eq(orders.currentStageId, filters.stageId));
+  }
+
+  if (filters.phase) {
+    const ids = allStages
+      .filter((stage) => phaseOf(stage) === filters.phase)
+      .map((stage) => stage.id);
+    // No stage in that phase means no order can be in it.
+    conditions.push(ids.length > 0 ? inArray(orders.currentStageId, ids) : sql`false`);
   }
 
   if (filters.driver?.trim()) {
@@ -187,7 +199,7 @@ export async function listOrders(
     .map((stage) => stage.id);
   const stageById = new Map(allStages.map((stage) => [stage.id, stage]));
 
-  const where = buildFilter(filters, terminalStageIds);
+  const where = buildFilter(filters, terminalStageIds, allStages);
 
   const [{ value: total }] = await tdb.raw
     .select({ value: count() })

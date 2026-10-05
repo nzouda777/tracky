@@ -51,9 +51,9 @@ export function AdvanceStageForm({
           <option value="" disabled>
             Choose a status…
           </option>
-          {stages.map((stage) => (
+          {stages.map((stage, index) => (
             <option key={stage.id} value={stage.id}>
-              {stage.name}
+              {index + 1}. {stage.name}
               {stage.id === currentStageId ? " (current)" : ""}
               {stage.isTerminal ? " — use Mark as delivered" : ""}
             </option>

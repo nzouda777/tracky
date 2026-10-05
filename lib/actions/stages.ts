@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 
 import { requireOwner } from "@/lib/auth/session";
 import { orderStageHistory, orders, stages } from "@/lib/db";
+import { DEFAULT_STAGES, isStagePhase } from "@/lib/stages/defaults";
 import { slugify } from "@/lib/utils";
 import { guard, type ActionResult } from "./result";
 
@@ -51,6 +52,12 @@ async function uniqueKey(
   return `${base}-${Date.now()}`;
 }
 
+/** The posted phase, if it is one of the four; otherwise `fallback`. */
+function readPhase(formData: FormData, fallback: string): string {
+  const value = formData.get("phase");
+  return isStagePhase(value) ? value : fallback;
+}
+
 export async function createStageAction(
   _previous: ActionResult,
   formData: FormData,
@@ -70,6 +77,7 @@ export async function createStageAction(
       position: await nextPosition(store.id, tdb),
       icon: String(formData.get("icon") ?? "circle"),
       color: String(formData.get("color") ?? "#2563eb"),
+      phase: readPhase(formData, "processing"),
       isTerminal: formData.get("isTerminal") === "on",
       triggersFulfillment: formData.get("triggersFulfillment") === "on",
       locksAddressEditing: formData.get("locksAddressEditing") === "on",
@@ -99,6 +107,7 @@ export async function updateStageAction(
       description: String(formData.get("description") ?? "").trim(),
       icon: String(formData.get("icon") ?? stage.icon),
       color: String(formData.get("color") ?? stage.color),
+      phase: readPhase(formData, stage.phase),
       isTerminal: formData.get("isTerminal") === "on",
       triggersFulfillment: formData.get("triggersFulfillment") === "on",
       locksAddressEditing: formData.get("locksAddressEditing") === "on",
@@ -226,5 +235,84 @@ export async function seedDefaultStagesAction(): Promise<ActionResult> {
 
     revalidateStages();
     return { ok: true, message: "Default stages restored." };
+  });
+}
+
+/**
+ * Brings an existing store's stages up to the full default delivery sequence.
+ *
+ * Additive and safe on a live store:
+ *  - a default stage whose key already exists is updated in place (name,
+ *    wording, icon, phase) — its id, and so every order's history, is kept;
+ *  - a missing default stage is created;
+ *  - a stage the owner made themselves is never touched or deleted. It keeps
+ *    its place right after the default stage that preceded it.
+ *
+ * Positions are then rewritten so the sequence reads in delivery order.
+ */
+export async function installFullSequenceAction(): Promise<ActionResult> {
+  return guard(async (): Promise<ActionResult> => {
+    const { tdb } = await requireOwner();
+    const existing = await tdb.findMany(stages, {
+      orderBy: asc(stages.position),
+    });
+    const byKey = new Map(existing.map((stage) => [stage.key, stage]));
+    const defaultKeys = new Set(DEFAULT_STAGES.map((stage) => stage.key));
+
+    // Custom stages, grouped under the default stage they followed.
+    const followers = new Map<string | null, string[]>();
+    let anchor: string | null = null;
+    for (const stage of existing) {
+      if (defaultKeys.has(stage.key)) {
+        anchor = stage.key;
+        continue;
+      }
+      followers.set(anchor, [...(followers.get(anchor) ?? []), stage.id]);
+    }
+
+    const orderedIds: string[] = [...(followers.get(null) ?? [])];
+    let created = 0;
+
+    for (const preset of DEFAULT_STAGES) {
+      const values = {
+        name: preset.name,
+        description: preset.description,
+        icon: preset.icon,
+        color: preset.color,
+        phase: preset.phase,
+        isTerminal: preset.isTerminal ?? false,
+        triggersFulfillment: preset.triggersFulfillment ?? false,
+        locksAddressEditing: preset.locksAddressEditing ?? false,
+        advancesOnPayment: preset.advancesOnPayment ?? false,
+      };
+
+      const found = byKey.get(preset.key);
+      if (found) {
+        await tdb.updateById(stages, found.id, { ...values, updatedAt: new Date() });
+        orderedIds.push(found.id);
+      } else {
+        const row = await tdb.insertOne(stages, {
+          ...values,
+          key: preset.key,
+          position: existing.length + created,
+        });
+        created += 1;
+        orderedIds.push(row.id);
+      }
+
+      orderedIds.push(...(followers.get(preset.key) ?? []));
+    }
+
+    await Promise.all(
+      orderedIds.map((id, index) =>
+        tdb.updateById(stages, id, { position: index }),
+      ),
+    );
+
+    revalidateStages();
+    return {
+      ok: true,
+      message: `Full delivery sequence installed: ${created} stage${created === 1 ? "" : "s"} added, ${DEFAULT_STAGES.length - created} updated.`,
+    };
   });
 }

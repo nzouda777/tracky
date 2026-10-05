@@ -6,7 +6,7 @@ import { Alert, Checkbox, Field, Input, Select, Textarea } from "@/components/ui
 import { SubmitButton } from "@/components/ui/submit-button";
 import { createStageAction } from "@/lib/actions/stages";
 import type { ActionResult } from "@/lib/actions/result";
-import { STAGE_ICONS } from "@/lib/stages/defaults";
+import { STAGE_ICONS, STAGE_PHASES } from "@/lib/stages/defaults";
 
 export function NewStageForm() {
   const formRef = useRef<HTMLFormElement>(null);
@@ -58,15 +58,31 @@ export function NewStageForm() {
         <Textarea id="new-stage-description" name="description" rows={2} />
       </Field>
 
-      <Field label="Icon" htmlFor="new-stage-icon">
-        <Select id="new-stage-icon" name="icon" defaultValue="circle">
-          {STAGE_ICONS.map((icon) => (
-            <option key={icon} value={icon}>
-              {icon}
-            </option>
-          ))}
-        </Select>
-      </Field>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Icon" htmlFor="new-stage-icon">
+          <Select id="new-stage-icon" name="icon" defaultValue="circle">
+            {STAGE_ICONS.map((icon) => (
+              <option key={icon} value={icon}>
+                {icon}
+              </option>
+            ))}
+          </Select>
+        </Field>
+
+        <Field
+          label="Progress bar phase"
+          htmlFor="new-stage-phase"
+          hint="Which of the four steps of the customer's progress bar this stage lights up."
+        >
+          <Select id="new-stage-phase" name="phase" defaultValue="transit">
+            {STAGE_PHASES.map((phase) => (
+              <option key={phase.id} value={phase.id}>
+                {phase.label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+      </div>
 
       <fieldset className="space-y-3">
         <legend className="text-sm font-medium text-ink-800">Behaviour</legend>

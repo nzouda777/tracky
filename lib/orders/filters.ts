@@ -1,3 +1,4 @@
+import { isStagePhase } from "@/lib/stages/defaults";
 import {
   isOrderSort,
   type FulfillmentFilter,
@@ -18,6 +19,7 @@ import {
 export type OrderSearchParams = {
   q?: string;
   stage?: string;
+  phase?: string;
   status?: string;
   fulfillment?: string;
   driver?: string;
@@ -100,6 +102,7 @@ export function parseOrderFilters(
   return {
     search: params.q?.trim() || undefined,
     stageId: params.stage || undefined,
+    phase: isStagePhase(params.phase) ? params.phase : undefined,
     onlyActive: status === "active",
     onlyCompleted: status === "completed",
     onlyCancelled: status === "cancelled",
@@ -130,6 +133,7 @@ export function countActiveFilters(params: OrderSearchParams): number {
   const narrowing: Array<string | undefined> = [
     params.q?.trim(),
     params.stage,
+    params.phase,
     params.status,
     params.fulfillment,
     params.driver,

@@ -103,9 +103,9 @@ export function OrderFilters({
               onChange={(event) => apply({ stage: event.currentTarget.value })}
             >
               <option value="">All stages</option>
-              {stages.map((stage) => (
+              {stages.map((stage, index) => (
                 <option key={stage.id} value={stage.id}>
-                  {stage.name}
+                  {index + 1}. {stage.name}
                 </option>
               ))}
             </Select>

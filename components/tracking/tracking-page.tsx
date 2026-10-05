@@ -8,6 +8,7 @@ import { LookupForm, type LookupMode, type LookupStep } from "./lookup-form";
 import { getPageDesign } from "@/lib/tracking/page-designs";
 import { DesignedLayout, type OrderParts } from "./layouts";
 import { RouteLine } from "./route-line";
+import { buildPhaseTimeline } from "@/lib/orders/stages";
 
 const SCOPE_ID = "tracky-tracking";
 
@@ -246,7 +247,14 @@ function orderParts({
     (entry) => entry.state === "current" && entry.stage.isTerminal,
   );
   const settled = Boolean(proof) || reachedEnd || Boolean(order.cancelledAt);
-  const currentIndex = timeline.findIndex((entry) => entry.state === "current");
+
+  // The bar shows the four phases, not the store's full stage list — that can
+  // run to dozens of steps, which the event history lists one by one.
+  const phases = buildPhaseTimeline(
+    timeline.map((entry) => entry.stage),
+    order.currentStageId,
+  );
+  const currentIndex = phases.findIndex((entry) => entry.state === "current");
 
   return {
     orderNumber: order.orderNumber,
@@ -258,7 +266,7 @@ function orderParts({
     // City only, whatever the access: the manifest shows as much to an
     // unverified visitor, so a layout quoting it reveals nothing new.
     city: order.shippingAddress?.city?.trim() || null,
-    timeline,
+    timeline: phases,
     currentIndex,
     delivered: reachedEnd,
     cancelled: Boolean(order.cancelledAt),
@@ -279,7 +287,7 @@ function orderParts({
         </p>
       </div>
     ) : null,
-    route: <RouteLine timeline={timeline} />,
+    route: <RouteLine timeline={phases} />,
     waiting: settled ? null : <WaitingIndicator />,
     events: <EventHistory events={events} proof={proof} />,
     manifest: (
@@ -307,24 +315,60 @@ function OrderView(input: OrderInput) {
 
   return (
     <div className="space-y-9">
-      <section className="space-y-3" data-part="order-head">
-        <h1 className="type-display text-h1">
-          Order <span className="type-code">{parts.orderNumber}</span>
-        </h1>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-          {parts.pill}
-          <p className="text-small" style={{ color: "var(--brand-muted)" }}>
-            {parts.customer}
-          </p>
-        </div>
+      <section
+        data-part="order-head"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          gap: 24,
+          textAlign: "left",
+        }}
+      >
+        <MetaItem label="Customer">{parts.customer}</MetaItem>
+        <MetaItem label="Order" align="right">
+          <h1 style={{ font: "inherit", margin: 0 }}>
+            <span className="type-code">{parts.orderNumber}</span>
+          </h1>
+        </MetaItem>
       </section>
 
       {parts.cancelledNotice}
-      {parts.route}
-      {parts.waiting}
+      <div>
+        {parts.route}
+        {parts.waiting ? <div style={{ marginTop: 28 }}>{parts.waiting}</div> : null}
+      </div>
       {parts.events}
       {parts.manifest}
       {parts.editAddress}
+    </div>
+  );
+}
+
+/** A small uppercase label over a bold value, as on a carrier waybill. */
+function MetaItem({
+  label,
+  align = "left",
+  children,
+}: {
+  label: string;
+  align?: "left" | "right";
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{ minWidth: 0, textAlign: align }}>
+      <p
+        style={{
+          margin: "0 0 2px",
+          fontSize: 11,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: "var(--brand-muted)",
+        }}
+      >
+        {label}
+      </p>
+      <div style={{ fontSize: 17, fontWeight: 700 }}>{children}</div>
     </div>
   );
 }
@@ -379,9 +423,41 @@ function StatusPill({ stage }: { stage: { name: string; color: string } }) {
  */
 function WaitingIndicator() {
   return (
-    <p className="text-small" style={{ color: "var(--brand-muted)" }}>
-      This page updates as soon as our delivery team records the next step.
-    </p>
+    <div
+      data-part="waiting"
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        gap: 3,
+        textAlign: "center",
+      }}
+    >
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+        <svg
+          aria-hidden
+          className="waypoint-pulse"
+          width="12"
+          height="12"
+          viewBox="0 0 14 14"
+          fill="none"
+        >
+          <circle cx="7" cy="7" r="5.5" stroke="var(--brand-line)" strokeWidth="1.8" />
+          <path
+            d="M7 1.5A5.5 5.5 0 0 1 12.5 7"
+            stroke="var(--brand-text)"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+        </svg>
+        <span style={{ fontSize: 13, fontWeight: 500 }}>
+          Waiting for new updates
+        </span>
+      </span>
+      <p style={{ margin: 0, fontSize: 12, color: "var(--brand-muted)" }}>
+        This page updates as soon as our delivery team records the next step.
+      </p>
+    </div>
   );
 }
 

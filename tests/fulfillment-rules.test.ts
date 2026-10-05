@@ -29,6 +29,7 @@ function makeStage(overrides: Partial<Stage> = {}): Stage {
     triggersFulfillment: true,
     locksAddressEditing: false,
     advancesOnPayment: false,
+    phase: "processing",
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,

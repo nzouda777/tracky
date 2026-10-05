@@ -47,6 +47,7 @@ async function provisionStages(storeId: string): Promise<void> {
       position: index,
       icon: stage.icon,
       color: stage.color,
+      phase: stage.phase,
       isTerminal: stage.isTerminal ?? false,
       triggersFulfillment: stage.triggersFulfillment ?? false,
       locksAddressEditing: stage.locksAddressEditing ?? false,

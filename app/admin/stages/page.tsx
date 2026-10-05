@@ -7,6 +7,8 @@ import { stages } from "@/lib/db";
 import { StageManager } from "./stage-manager";
 import { NewStageForm } from "./new-stage-form";
 import { RestoreDefaultsForm } from "./restore-defaults-form";
+import { InstallSequenceForm } from "./install-sequence-form";
+import { DEFAULT_STAGES } from "@/lib/stages/defaults";
 
 export const metadata: Metadata = { title: "Stages" };
 
@@ -50,6 +52,23 @@ export default async function StagesPage() {
         <Alert tone="warning" title="More than one fulfillment trigger">
           {fulfillmentStages.map((stage) => stage.name).join(", ")} all trigger
           fulfillment. Only the first one an order reaches will have an effect.
+        </Alert>
+      ) : null}
+
+      {allStages.length > 0 &&
+      DEFAULT_STAGES.some(
+        (preset) => !allStages.some((stage) => stage.key === preset.key),
+      ) ? (
+        <Alert tone="info" title="Full delivery sequence available">
+          <p>
+            Add the complete {DEFAULT_STAGES.length}-step journey — from Order
+            Placed through customs, depot and delivery attempts to Delivery
+            complete — grouped into the four phases of the customer&rsquo;s
+            progress bar. Your existing stages and their history are kept.
+          </p>
+          <div className="mt-3">
+            <InstallSequenceForm />
+          </div>
         </Alert>
       ) : null}
 

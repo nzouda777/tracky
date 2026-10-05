@@ -25,6 +25,7 @@ function stage(partial: Partial<Stage> & { id: string; position: number }): Stag
     triggersFulfillment: false,
     locksAddressEditing: false,
     advancesOnPayment: false,
+    phase: "processing",
     createdAt: new Date(),
     updatedAt: new Date(),
     ...partial,

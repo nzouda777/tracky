@@ -22,6 +22,7 @@ import { useState, useTransition } from "react";
 import { Alert, Badge, Button, Card, EmptyState } from "@/components/ui";
 import { reorderStagesAction } from "@/lib/actions/stages";
 import type { Stage } from "@/lib/db";
+import { phaseLabel, phaseOf } from "@/lib/stages/defaults";
 import { StageEditForm } from "./stage-edit-form";
 
 /**
@@ -189,6 +190,7 @@ function SortableStage({
         </div>
 
         <div className="flex flex-wrap items-center gap-1.5">
+          <Badge>{phaseLabel(phaseOf(stage))}</Badge>
           {stage.isTerminal ? <Badge tone="success">Terminal</Badge> : null}
           {stage.triggersFulfillment ? (
             <Badge tone="info">Triggers fulfillment</Badge>

@@ -23,6 +23,7 @@ function stage(overrides: Partial<Stage> & { id: string; position: number }): St
     triggersFulfillment: false,
     locksAddressEditing: false,
     advancesOnPayment: false,
+    phase: "processing",
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,

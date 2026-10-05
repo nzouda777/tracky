@@ -1,217 +1,180 @@
 import type { TimelineEntry } from "@/lib/orders/stages";
 
 /**
- * The route line — the signature device of the interface.
+ * The progress bar at the top of an order: the four phases of the journey
+ * (Order Placed → Processing → In Transit → Delivered), each a round icon on
+ * a shared track, with the track filled up to the phase the order is in.
  *
- * This is not a generic dotted progress bar. It is a route: waypoints joined
- * by the road between them, the way a run sheet reads. The road behind the
- * order is drawn; the road ahead is dotted, because it has not happened yet.
+ *   done      solid disc in the text colour, white glyph
+ *   active    the same disc at half strength
+ *   pending   pale disc, muted glyph
  *
- * Horizontal on a wide screen, vertical on a phone — one list, not two, so the
- * reading order and the markup stay identical for a screen reader.
+ * The bar is fed the phase timeline (`buildPhaseTimeline`), not the store's
+ * full stage list — that can run to dozens of steps, which the event history
+ * below lists one by one. Nothing is drawn as reached unless a recorded stage
+ * put the order there.
  *
- * Four waypoint states, and none of them is distinguished by colour alone:
- *   passed     filled disc
- *   active     filled disc inside a hi-vis amber ring, pulsing slowly
- *   upcoming   hollow ring, dotted road in
- *   delivered  green disc with a tick, and only on the terminal waypoint
- *
- * The pulse is the single un-triggered animation in the whole product: it
- * marks what is moving right now. It stops under `prefers-reduced-motion`,
- * where the amber ring alone carries the state.
- *
- * Nothing is ever drawn as reached unless a real recorded event put the order
- * there. An order sitting at waypoint one shows one filled disc, however long
- * it has been sitting.
+ * Everything is styled inline rather than with utility classes, so the bar
+ * renders identically on our own domain and embedded in a Shopify theme,
+ * where only the scoped embed sheet is available.
  */
 export function RouteLine({ timeline }: { timeline: TimelineEntry[] }) {
   if (timeline.length === 0) return null;
 
+  const count = timeline.length;
+  const inset = 50 / count;
+  const currentIndex = timeline.findIndex((entry) => entry.state === "current");
+  const lastReached =
+    currentIndex >= 0
+      ? currentIndex
+      : timeline.filter((entry) => entry.state === "complete").length - 1;
+  const fill =
+    count > 1 && lastReached > 0
+      ? (lastReached / (count - 1)) * (100 - inset * 2)
+      : 0;
+
   return (
-    <ol className="flex flex-col sm:flex-row sm:items-start" data-part="route">
-      {timeline.map((entry, index) => {
-        const { stage, state } = entry;
-        const isFirst = index === 0;
-        const isLast = index === timeline.length - 1;
-        const delivered = state === "current" && stage.isTerminal;
+    <div data-part="route" style={{ position: "relative" }}>
+      <span
+        aria-hidden
+        style={{
+          position: "absolute",
+          top: 18,
+          left: `${inset}%`,
+          right: `${inset}%`,
+          height: 2,
+          borderRadius: 999,
+          backgroundColor: "var(--brand-line)",
+        }}
+      />
+      <span
+        aria-hidden
+        style={{
+          position: "absolute",
+          top: 18,
+          left: `${inset}%`,
+          width: `${fill}%`,
+          height: 2,
+          borderRadius: 999,
+          background:
+            "linear-gradient(to right, var(--brand-text), color-mix(in srgb, var(--brand-text) 50%, var(--brand-surface)))",
+        }}
+      />
 
-        // A segment is drawn as travelled only when the waypoint it *arrives
-        // at* has been reached. Keying it off the waypoint behind would draw a
-        // solid road into a stage that has not happened.
-        const roadIn = state !== "upcoming";
-        const roadOut = !isLast && timeline[index + 1].state !== "upcoming";
+      <ol
+        style={{
+          position: "relative",
+          display: "flex",
+          justifyContent: "space-between",
+          margin: 0,
+          padding: 0,
+          listStyle: "none",
+        }}
+      >
+        {timeline.map((entry) => {
+          const { stage, state } = entry;
+          const delivered = state === "current" && stage.isTerminal;
+          const tone: Tone =
+            state === "complete" || delivered
+              ? "done"
+              : state === "current"
+                ? "active"
+                : "pending";
 
-        return (
-          <li
-            key={stage.id}
-            aria-current={state === "current" ? "step" : undefined}
-            className="flex gap-3.5 sm:min-w-0 sm:flex-1 sm:flex-col sm:gap-0"
-          >
-            <div className="flex flex-col items-center sm:w-full sm:flex-row">
-              <Road live={roadIn} invisible={isFirst} lead />
-
-              <Waypoint state={state} delivered={delivered} />
-
-              <Road live={roadOut} invisible={isLast} />
-            </div>
-
-            {/*
-              The space below a step is a margin here, and on the label rather
-              than on the step, for two reasons that both had to be found by
-              measuring.
-
-              `last:` matches `:last-child`, and this block is always the last
-              child of its own step — so a `last:pb-0` here quietly cancelled
-              the spacing on *every* step, which is why the rail read as a
-              cramped list. And padding on the step would not work either: a
-              stretched flex child only spans the content box, so the rail
-              would stop short and leave a gap before the next waypoint. A
-              margin grows the flex line itself, and the rail follows it.
-            */}
-            <div
-              className={`min-w-0 sm:mt-2.5 sm:px-1 sm:text-center ${
-                isLast ? "" : "mb-9 sm:mb-0"
-              }`}
+          return (
+            <li
+              key={stage.id}
+              aria-current={state === "current" ? "step" : undefined}
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                gap: 8,
+                width: `${100 / count}%`,
+                minWidth: 0,
+              }}
             >
-              <p
-                className="text-small"
+              <span
+                aria-hidden
                 style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  width: 36,
+                  height: 36,
+                  borderRadius: "50%",
+                  backgroundColor: TONE_BG[tone],
                   color:
-                    state === "upcoming"
+                    tone === "pending"
                       ? "var(--brand-muted)"
-                      : "var(--brand-text)",
-                  fontWeight: state === "upcoming" ? 400 : 600,
+                      : "var(--brand-surface)",
+                }}
+              >
+                <PhaseGlyph icon={stage.icon} />
+              </span>
+              <span
+                style={{
+                  fontSize: 12,
+                  fontWeight: 600,
+                  lineHeight: 1.35,
+                  textAlign: "center",
+                  color: TONE_LABEL[tone],
                 }}
               >
                 {stage.name}
-              </p>
-              {state === "current" ? (
-                <p
-                  className="text-caption"
-                  style={{ color: "var(--brand-muted)" }}
-                >
-                  {delivered ? "Completed" : "In progress"}
-                </p>
-              ) : null}
-            </div>
-          </li>
-        );
-      })}
-    </ol>
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
   );
 }
 
-/**
- * The road between two waypoints.
- *
- * One element serves both orientations: a left border makes the vertical rail
- * on a phone, a top border the horizontal line on a wide screen.
- *
- * `lead` is the half that arrives at the waypoint, and it is why this takes a
- * prop at all. On a wide screen both halves grow, which is what centres the
- * waypoint in its cell. On a phone the same rule centred the waypoint in a row
- * whose height is set by the label beside it — so a step carrying a second
- * line ("In progress") pushed its own marker 11px below the word it marks, and
- * every step after it inherited the drift. The arriving half is therefore
- * fixed on a phone and only the departing half grows, which pins each marker
- * to the first line of its label.
- */
-function Road({
-  live,
-  invisible,
-  lead,
-}: {
-  live: boolean;
-  invisible: boolean;
-  lead?: boolean;
-}) {
-  // Half a line of text above the marker's own half: together they put the
-  // marker's centre on the label's first baseline box.
-  const vertical = lead ? "h-px shrink-0" : "min-h-3 flex-1";
+type Tone = "done" | "active" | "pending";
 
-  // An invisible road still has to hold the horizontal layout together — it is
-  // the half-segment that keeps the first and last waypoints centred in their
-  // cells — but on the vertical rail it must collapse, or the first waypoint
-  // floats away from the top of the list.
-  if (invisible) {
-    return (
-      <span
-        aria-hidden
-        className={`w-0 shrink-0 sm:h-0 sm:w-auto sm:flex-1 sm:border-t-2 sm:border-transparent ${lead ? "" : "flex-1"}`}
-      />
-    );
-  }
+const TONE_BG: Record<Tone, string> = {
+  done: "var(--brand-text)",
+  active: "color-mix(in srgb, var(--brand-text) 50%, var(--brand-surface))",
+  pending: "var(--brand-line)",
+};
+
+const TONE_LABEL: Record<Tone, string> = {
+  done: "var(--brand-text)",
+  active: "color-mix(in srgb, var(--brand-text) 50%, var(--brand-surface))",
+  pending: "var(--brand-muted)",
+};
+
+/** 16px glyphs on a 16 grid, drawn in `currentColor`. */
+function PhaseGlyph({ icon }: { icon: string }) {
+  const common = {
+    stroke: "currentColor",
+    strokeWidth: 1.4,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+  };
 
   return (
-    <span
-      aria-hidden
-      className={`w-0 border-l-2 sm:h-0 sm:min-h-0 sm:w-auto sm:flex-1 sm:border-l-0 sm:border-t-2 ${vertical}`}
-      style={{
-        borderColor: live ? "var(--brand-text)" : "var(--brand-line)",
-        borderStyle: live ? "solid" : "dotted",
-      }}
-    />
-  );
-}
-
-/**
- * Every waypoint occupies the same 20px box whatever state it is in.
- *
- * The active one is visually larger because of its ring, and if that ring set
- * the footprint the vertical rail would step sideways at the waypoint the
- * order is at — the one place the eye is going. So the box is fixed and the
- * marks are centred inside it.
- */
-function Waypoint({
-  state,
-  delivered,
-}: {
-  state: TimelineEntry["state"];
-  delivered: boolean;
-}) {
-  return (
-    <span className="relative grid size-5 shrink-0 place-items-center">
-      {state === "current" && !delivered ? (
-        // The hi-vis ring, and the one thing on the page that moves by itself.
-        // The disc underneath carries the state on its own when motion is off.
-        <span
-          aria-hidden
-          className="waypoint-pulse absolute inset-0 rounded-full border-2"
-          style={{ borderColor: "var(--brand-signal)" }}
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+      {icon === "receipt" ? (
+        <>
+          <rect x="2.5" y="3.5" width="11" height="9" rx="1.5" {...common} />
+          <path d="M5 3.5V2.5M11 3.5V2.5M2.5 6.5h11" {...common} />
+        </>
+      ) : icon === "package" ? (
+        <path
+          d="M8 2v2M8 12v2M2 8h2M12 8h2M3.5 3.5l1.5 1.5M11 11l1.5 1.5M3.5 12.5L5 11M11 5l1.5-1.5"
+          {...common}
         />
-      ) : null}
-
-      {delivered ? (
-        <span
-          aria-hidden
-          className="grid size-5 place-items-center rounded-full"
-          style={{ backgroundColor: "var(--brand-delivered)" }}
-        >
-          <svg
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="var(--brand-surface)"
-            strokeWidth={3.2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className="size-3"
-          >
-            <path d="m5.5 12.5 4 4 9-9" />
-          </svg>
-        </span>
-      ) : state === "upcoming" ? (
-        <span
-          aria-hidden
-          className="size-3.5 rounded-full border-2"
-          style={{ borderColor: "var(--brand-line)" }}
-        />
+      ) : icon === "truck" ? (
+        <>
+          <path d="M2 5.5h8v5.5H2zM10 7l3 1.5V11h-3V7z" {...common} />
+          <circle cx="4.5" cy="11.5" r="1" {...common} strokeWidth={1.2} />
+          <circle cx="11.5" cy="11.5" r="1" {...common} strokeWidth={1.2} />
+        </>
       ) : (
-        <span
-          aria-hidden
-          className="size-3.5 rounded-full"
-          style={{ backgroundColor: "var(--brand-text)" }}
-        />
+        <path d="M3 8l3.5 3.5L13 4.5" {...common} strokeWidth={1.6} />
       )}
-    </span>
+    </svg>
   );
 }

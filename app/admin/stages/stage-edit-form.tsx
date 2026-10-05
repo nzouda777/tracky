@@ -10,7 +10,7 @@ import {
 } from "@/lib/actions/stages";
 import type { ActionResult } from "@/lib/actions/result";
 import type { Stage } from "@/lib/db";
-import { STAGE_ICONS } from "@/lib/stages/defaults";
+import { STAGE_ICONS, STAGE_PHASES } from "@/lib/stages/defaults";
 
 export function StageEditForm({
   stage,
@@ -76,7 +76,7 @@ export function StageEditForm({
           />
         </Field>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-3">
           <Field label="Icon" htmlFor={`icon-${stage.id}`}>
             <Select id={`icon-${stage.id}`} name="icon" defaultValue={stage.icon}>
               {STAGE_ICONS.map((icon) => (
@@ -95,6 +95,20 @@ export function StageEditForm({
               defaultValue={stage.color}
               className="h-10 w-20 p-1"
             />
+          </Field>
+
+          <Field label="Progress bar phase" htmlFor={`phase-${stage.id}`}>
+            <Select
+              id={`phase-${stage.id}`}
+              name="phase"
+              defaultValue={stage.phase}
+            >
+              {STAGE_PHASES.map((phase) => (
+                <option key={phase.id} value={phase.id}>
+                  {phase.label}
+                </option>
+              ))}
+            </Select>
           </Field>
         </div>
 

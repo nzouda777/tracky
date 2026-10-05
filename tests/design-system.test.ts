@@ -87,9 +87,12 @@ describe("colour roles stay reserved", () => {
   });
 
   it("uses the delivered green only on the terminal waypoint", () => {
+    // …and on the "Last update" card at the head of the event history, the
+    // one other place the page marks where the order is right now.
     const allowed = new Set([
       "components/tracking/branding.tsx",
       "components/tracking/route-line.tsx",
+      "components/tracking/event-history.tsx",
     ]);
 
     const offenders = FILES.filter(
