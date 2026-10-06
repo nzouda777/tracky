@@ -69,6 +69,7 @@ const LAYOUTS: Record<Exclude<PageLayout, "column">, (props: LayoutProps) => Rea
   atelier: AtelierLayout,
   beaute: BeauteLayout,
   maison: MaisonLayout,
+  classic: ClassicLayout,
 };
 
 export function DesignedLayout({
@@ -788,5 +789,126 @@ function MaisonLayout({
         {footer}
       </div>
     </Contained>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Classic — a carrier-style tracking page
+// ---------------------------------------------------------------------------
+
+/**
+ * The look of a parcel carrier's tracking page. Before an order is open: a
+ * plain header, then a white search card on a grey ground. Once it is open
+ * the page turns white and reads as one sheet: the waybill (customer and
+ * order), the four-phase progress bar, a waiting line, the event timeline
+ * and an "Order" summary, followed by the FAQ.
+ */
+function ClassicLayout({
+  masthead,
+  title,
+  subtitle,
+  lookup,
+  order,
+  extras,
+  footer,
+}: LayoutProps) {
+  return (
+    <div
+      data-part="classic"
+      {...(order ? { "data-open": "" } : {})}
+      style={{ textAlign: "left" }}
+    >
+      <header data-part="classic-header">
+        <div data-part="classic-inner">
+          {masthead}
+          <h1 className="type-display" data-part="classic-title">
+            {order ? "Order tracking" : title}
+          </h1>
+        </div>
+      </header>
+
+      <main data-part="classic-inner" style={stack(32)}>
+        {order ? (
+          <section data-part="classic-card" style={stack(32)}>
+            <div data-part="classic-meta">
+              <div>
+                <p data-part="classic-label">Customer</p>
+                <p data-part="classic-value">{order.customer}</p>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <p data-part="classic-label">Order</p>
+                <p data-part="classic-value">
+                  <span className="type-code">{order.orderNumber}</span>
+                </p>
+              </div>
+            </div>
+
+            {order.cancelled ? (
+              <>
+                <p data-part="classic-value">Order cancelled</p>
+                {order.cancelledNotice}
+              </>
+            ) : (
+              <div style={stack(32)}>
+                {order.route}
+                {order.waiting ? <ClassicWaiting /> : null}
+              </div>
+            )}
+
+            {order.events}
+
+            <div data-part="classic-section">
+              <h2 data-part="classic-heading">Order</h2>
+              {order.manifest}
+            </div>
+
+            {order.editAddress}
+          </section>
+        ) : (
+          <section data-part="classic-search" style={stack(20)}>
+            {subtitle}
+            {lookup}
+          </section>
+        )}
+
+        {extras}
+        {footer}
+      </main>
+    </div>
+  );
+}
+
+/** "Waiting for new updates", with the carrier's update window beneath. */
+function ClassicWaiting() {
+  return (
+    <div
+      data-part="waiting"
+      style={{ ...stack(3), alignItems: "center", textAlign: "center" }}
+    >
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
+        <svg
+          aria-hidden
+          className="waypoint-pulse"
+          width="12"
+          height="12"
+          viewBox="0 0 14 14"
+          fill="none"
+        >
+          <circle cx="7" cy="7" r="5.5" stroke="var(--brand-line)" strokeWidth="1.8" />
+          <path
+            d="M7 1.5A5.5 5.5 0 0 1 12.5 7"
+            stroke="var(--brand-text)"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+        </svg>
+        <span style={{ fontSize: 12, fontWeight: 500, color: "var(--brand-muted)" }}>
+          Waiting for new updates
+        </span>
+      </span>
+      <p style={{ margin: 0, fontSize: 11, color: "var(--brand-muted)", opacity: 0.7 }}>
+        Updated every 12 to 48 hours.
+      </p>
+    </div>
   );
 }

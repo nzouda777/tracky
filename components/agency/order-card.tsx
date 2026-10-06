@@ -2,15 +2,18 @@ import Link from "next/link";
 
 import { Badge, Card } from "@/components/ui";
 import { StageBadge } from "@/components/orders/stage-badge";
-import type { Order, Stage } from "@/lib/db";
+import { TrackingPageLink } from "@/components/orders/tracking-page-link";
+import type { Order, Stage, Store } from "@/lib/db";
 import { formatAddressOneLine, formatRelative } from "@/lib/utils";
 
 /** One delivery, sized for a phone screen and a gloved thumb. */
 export function AgencyOrderCard({
+  store,
   order,
   stage,
   hasProof,
 }: {
+  store: Pick<Store, "shopDomain" | "primaryDomain">;
   order: Order;
   stage: Stage | null;
   hasProof: boolean;
@@ -52,6 +55,16 @@ export function AgencyOrderCard({
           </span>
         </div>
       </Link>
+      {/* Outside the card link: anchors cannot nest. */}
+      <div className="border-t border-ink-100 px-4 py-2.5">
+        <TrackingPageLink
+          store={store}
+          order={order}
+          className="text-sm font-medium text-ink-700 underline underline-offset-2"
+        >
+          Tracking page
+        </TrackingPageLink>
+      </div>
     </Card>
   );
 }

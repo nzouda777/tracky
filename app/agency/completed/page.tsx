@@ -15,7 +15,7 @@ export default async function AgencyCompletedPage({
 }: {
   searchParams: Promise<{ q?: string; stage?: string; driver?: string; page?: string }>;
 }) {
-  const { tdb } = await requireAgency();
+  const { tdb, store } = await requireAgency();
   const params = await searchParams;
 
   const allStages = await tdb.findMany(stages, { orderBy: asc(stages.position) });
@@ -54,7 +54,12 @@ export default async function AgencyCompletedPage({
         <ul className="space-y-3">
           {rows.map(({ order, stage, hasProof }) => (
             <li key={order.id}>
-              <AgencyOrderCard order={order} stage={stage} hasProof={hasProof} />
+              <AgencyOrderCard
+                store={store}
+                order={order}
+                stage={stage}
+                hasProof={hasProof}
+              />
             </li>
           ))}
         </ul>

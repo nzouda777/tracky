@@ -232,7 +232,7 @@ export default async function OrderDetailPage({
           <Card>
             <CardHeader
               title="Shopify fulfillment"
-              description="Only sent once delivery is confirmed."
+              description="Sent when the order arrives, with the link to its tracking page."
             />
             <CardBody className="space-y-3 text-sm">
               <Row
@@ -259,9 +259,14 @@ export default async function OrderDetailPage({
                 This is the link used in emails. It opens on the store&rsquo;s own
                 domain through the Shopify App Proxy.
               </p>
-              <code className="block overflow-x-auto rounded-lg bg-ink-50 px-3 py-2 text-xs text-ink-700">
+              <a
+                href={trackingLink}
+                target="_blank"
+                rel="noreferrer"
+                className="block overflow-x-auto rounded-lg bg-ink-50 px-3 py-2 font-mono text-xs text-ink-700 underline underline-offset-2 hover:text-ink-900"
+              >
                 {trackingLink}
-              </code>
+              </a>
             </CardBody>
           </Card>
         </div>

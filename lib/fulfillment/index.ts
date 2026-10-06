@@ -6,6 +6,7 @@ import {
   orders,
   proofOfDelivery,
   stores,
+  type FulfillmentRules,
   type Order,
   type Stage,
 } from "@/lib/db";
@@ -16,14 +17,19 @@ import { buildTrackingLink } from "@/lib/tracking/links";
 /**
  * Auto-fulfillment.
  *
- * Fulfillment is pushed to Shopify only when ALL of the following hold:
- *   - the store has fulfillment enabled;
- *   - the stage that was just reached is flagged `triggers_fulfillment`;
- *   - a `proof_of_delivery` row exists, i.e. the delivery agency declared the
- *     order delivered after the customer signed the paper note;
- *   - the order has not already been fulfilled.
+ * Two events push a fulfillment to Shopify, each carrying the order's tracking
+ * link so it shows on the order in the Shopify admin:
  *
- * There is no path through this module that fulfils on a delay or a schedule.
+ *   1. **The order arrives** (`fulfillNewOrder`) — as soon as the order is
+ *      created from Shopify, it is marked fulfilled there with the link to its
+ *      tracking page, so the customer has the link from the start.
+ *   2. **A fulfillment-triggering stage is reached** (`attemptFulfillment`) —
+ *      the fallback for an order the first push missed. It still waits for a
+ *      `proof_of_delivery` row unless the store turned that requirement off.
+ *
+ * Both require the store to have fulfillment enabled and never fulfil an order
+ * twice. There is no path through this module that fulfils on a delay or a
+ * schedule.
  */
 
 export type FulfillmentOutcome =
@@ -102,6 +108,61 @@ export async function attemptFulfillment({
     };
   }
 
+  return pushFulfillment({
+    tdb,
+    order,
+    rules,
+    fulfilledAt: proof?.deliveredAt ?? new Date(),
+  });
+}
+
+/**
+ * Fulfils a newly created order in Shopify, with its tracking link, as soon as
+ * it arrives. No proof of delivery is involved: the point is that the order in
+ * Shopify carries the link to follow the delivery from day one.
+ */
+export async function fulfillNewOrder({
+  tdb,
+  order,
+}: {
+  tdb: TenantDb;
+  order: Order;
+}): Promise<FulfillmentOutcome> {
+  if (order.fulfillmentStatus === "fulfilled" || order.shopifyFulfillmentId) {
+    return {
+      status: "already-fulfilled",
+      fulfillmentId: order.shopifyFulfillmentId,
+    };
+  }
+
+  if (order.cancelledAt) {
+    return { status: "skipped", reason: "The order was cancelled in Shopify." };
+  }
+
+  const rules = await tdb.findFirst(fulfillmentRules);
+  if (rules && !rules.enabled) {
+    return { status: "skipped", reason: "Auto-fulfillment is turned off for this store." };
+  }
+
+  return pushFulfillment({ tdb, order, rules, fulfilledAt: new Date() });
+}
+
+/**
+ * The Shopify write itself, shared by both triggers: fulfils every open
+ * fulfillment order with the tracking link attached, and mirrors the result
+ * onto the local order.
+ */
+async function pushFulfillment({
+  tdb,
+  order,
+  rules,
+  fulfilledAt,
+}: {
+  tdb: TenantDb;
+  order: Order;
+  rules: FulfillmentRules | null;
+  fulfilledAt: Date;
+}): Promise<FulfillmentOutcome> {
   const [store] = await db
     .select()
     .from(stores)
@@ -178,8 +239,8 @@ export async function attemptFulfillment({
           fulfillmentOrderId: node.id,
         })),
         notifyCustomer: rules?.notifyCustomerOnFulfillment ?? false,
-        // Real delivery information: our own last-mile service, and the link
-        // to the timeline that carries the confirmed delivery event.
+        // Our own last-mile service, and the link to the order's tracking
+        // page; Shopify shows both on the order and in its shipping email.
         trackingInfo: {
           company: store.name ? `${store.name} Delivery` : "Local Delivery",
           number: order.orderNumber,
@@ -207,7 +268,7 @@ export async function attemptFulfillment({
       {
         fulfillmentStatus: "fulfilled",
         shopifyFulfillmentId: fulfillmentId,
-        fulfilledAt: proof?.deliveredAt ?? new Date(),
+        fulfilledAt,
         fulfillmentError: null,
         updatedAt: new Date(),
       },
@@ -257,8 +318,9 @@ async function skipAndRecord(
 
 /**
  * Re-runs fulfillment for an order that previously failed. Exposed to the
- * backoffice as a "Retry fulfillment" action; still subject to every rule
- * above, so a retry cannot bypass the proof-of-delivery requirement.
+ * backoffice as a "Retry fulfillment" action. At a fulfillment-triggering
+ * stage it goes through `attemptFulfillment` and its proof-of-delivery rule;
+ * anywhere else it repeats the push made when the order arrived.
  */
 export async function retryFulfillment({
   tdb,
@@ -267,7 +329,7 @@ export async function retryFulfillment({
 }: {
   tdb: TenantDb;
   order: Order;
-  stage: Stage;
+  stage: Stage | null;
 }): Promise<FulfillmentOutcome> {
   await tdb.update(
     orders,
@@ -275,5 +337,7 @@ export async function retryFulfillment({
     eq(orders.id, order.id),
   );
   const refreshed = (await tdb.findById(orders, order.id)) ?? order;
-  return attemptFulfillment({ tdb, order: refreshed, stage });
+  return stage?.triggersFulfillment
+    ? attemptFulfillment({ tdb, order: refreshed, stage })
+    : fulfillNewOrder({ tdb, order: refreshed });
 }

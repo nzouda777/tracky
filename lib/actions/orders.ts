@@ -244,7 +244,7 @@ export async function assignDriverAction(
   });
 }
 
-/** Re-attempts a failed Shopify fulfillment. Still requires proof of delivery. */
+/** Re-attempts a failed Shopify fulfillment. */
 export async function retryFulfillmentAction(
   _previous: ActionResult,
   formData: FormData,
@@ -255,17 +255,10 @@ export async function retryFulfillmentAction(
 
     const order = await tdb.findById(orders, orderId);
     if (!order) return { error: "That order no longer exists." };
-    if (!order.currentStageId) {
-      return { error: "This order is not in a stage yet." };
-    }
 
-    const stage = await getStageById(tdb, order.currentStageId);
-    if (!stage?.triggersFulfillment) {
-      return {
-        error:
-          "This order is not in a stage that triggers fulfillment. Move it to the delivered stage first.",
-      };
-    }
+    const stage = order.currentStageId
+      ? await getStageById(tdb, order.currentStageId)
+      : null;
 
     const outcome = await retryFulfillment({ tdb, order, stage });
     revalidateOrder(orderId);

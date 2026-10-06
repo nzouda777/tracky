@@ -4,6 +4,7 @@ import { randomToken } from "@/lib/crypto/secrets";
 import { db, orders, stores, type Order, type Store } from "@/lib/db";
 import { TenantDb } from "@/lib/db/tenant";
 import { cancelPendingSends, scheduleOrderSequence } from "@/lib/email/scheduler";
+import { fulfillNewOrder } from "@/lib/fulfillment";
 import { getFirstStage, getPaidStage, listStages } from "@/lib/orders/stages";
 import {
   placeOrderInFirstStage,
@@ -84,11 +85,18 @@ async function handleOrdersCreate(
   // placeholder they get seconds before the real one.
   const advanced = await advanceIfPaid({ tdb, order, payload });
 
+  // Mark the order fulfilled in Shopify with its tracking link, so the order
+  // there carries the link from the start. A failure is recorded on the order
+  // (and can be retried from the backoffice) without failing the webhook.
+  const fresh = (await tdb.findById(orders, order.id)) ?? order;
+  const fulfillment = await fulfillNewOrder({ tdb, order: fresh });
+
   return {
     handled: true,
     detail:
       `Order ${order.orderNumber} created in "${firstStage.name}"; ` +
-      `${scheduled} delayed email(s) scheduled.${advanced ? ` ${advanced}` : ""}`,
+      `${scheduled} delayed email(s) scheduled.${advanced ? ` ${advanced}` : ""}` +
+      ` Fulfillment: ${fulfillment.status}.`,
   };
 }
 

@@ -4,6 +4,7 @@ import { randomToken } from "@/lib/crypto/secrets";
 import { orders, type Order, type Store } from "@/lib/db";
 import { TenantDb } from "@/lib/db/tenant";
 import { scheduleOrderSequence } from "@/lib/email/scheduler";
+import { fulfillNewOrder } from "@/lib/fulfillment";
 import { getFirstStage } from "@/lib/orders/stages";
 import { recordStageTransition } from "@/lib/orders/transitions";
 import { ShopifyAdminClient } from "./admin-api";
@@ -227,6 +228,11 @@ async function importOne({
   });
 
   const emailsScheduled = await scheduleOrderSequence({ tdb, order });
+
+  // Same as a webhook-created order: fulfil it in Shopify with its tracking
+  // link. An order Shopify already shows as fulfilled is only recorded.
+  const fresh = (await tdb.findById(orders, order.id)) ?? order;
+  await fulfillNewOrder({ tdb, order: fresh });
 
   return { kind: "imported", emailsScheduled };
 }

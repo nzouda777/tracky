@@ -12,6 +12,7 @@ import { AttentionPanel } from "@/components/admin/attention-panel";
 import { StageFunnel } from "@/components/admin/stage-funnel";
 import { StatTile } from "@/components/admin/stat-tile";
 import { StageBadge } from "@/components/orders/stage-badge";
+import { TrackingPageLink } from "@/components/orders/tracking-page-link";
 import { IconExternal } from "@/components/icons";
 import { requireOwner } from "@/lib/auth/session";
 import {
@@ -190,12 +191,19 @@ export default async function AdminDashboardPage() {
                       className="flex items-center gap-3 py-2.5"
                     >
                       <div className="min-w-0 flex-1">
-                        <Link
-                          href={`/admin/orders/${order.id}`}
-                          className="block truncate text-sm font-medium text-ink-900 underline-offset-2 hover:underline"
-                        >
-                          {order.orderNumber}
-                        </Link>
+                        <p className="truncate text-sm">
+                          <TrackingPageLink
+                            store={store}
+                            order={order}
+                            className="font-medium text-ink-900 underline-offset-2 hover:underline"
+                          />
+                          <Link
+                            href={`/admin/orders/${order.id}`}
+                            className="ml-3 text-xs font-medium text-ink-500 underline underline-offset-2 hover:text-ink-900"
+                          >
+                            Details
+                          </Link>
+                        </p>
                         <p className="truncate text-xs text-ink-500">
                           {order.customerName ?? "No name"} ·{" "}
                           {order.assignedDriverName ?? "no driver"}

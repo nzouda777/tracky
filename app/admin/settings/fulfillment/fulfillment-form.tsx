@@ -26,24 +26,24 @@ export function FulfillmentForm({ rules }: { rules: FulfillmentRules | null }) {
         id="fulfillment-enabled"
         name="enabled"
         label="Fulfil orders in Shopify automatically"
-        description="Turn off to keep tracking in this app without touching Shopify fulfillment."
+        description="Each new order is marked fulfilled in Shopify with its tracking link as soon as it arrives. Turn off to keep tracking in this app without touching Shopify fulfillment."
         defaultChecked={rules?.enabled ?? true}
       />
 
       <Checkbox
         id="fulfillment-require-proof"
         name="requireDeliveryConfirmation"
-        label="Require a confirmed delivery before fulfilling"
-        description="Strongly recommended. The delivery agency records the delivery after the customer signs the paper note."
+        label="Require a confirmed delivery for the fallback at the trigger stage"
+        description="Only applies to an order that was not fulfilled when it arrived. The delivery agency records the delivery after the customer signs the paper note."
         checked={requireProof}
         onChange={(event) => setRequireProof(event.currentTarget.checked)}
       />
 
       {!requireProof ? (
         <Alert tone="danger" title="Fulfilment without proof of delivery">
-          With this off, reaching the trigger stage fulfils the order in Shopify
-          even if nobody has confirmed the parcel was handed over. Only do this
-          if you fulfil by some other verified process.
+          With this off, an order that was not fulfilled when it arrived is
+          fulfilled on reaching the trigger stage even if nobody has confirmed
+          the parcel was handed over.
         </Alert>
       ) : null}
 
@@ -51,7 +51,7 @@ export function FulfillmentForm({ rules }: { rules: FulfillmentRules | null }) {
         id="fulfillment-notify"
         name="notifyCustomerOnFulfillment"
         label="Let Shopify email its own shipping confirmation"
-        description="Off by default, because this app already emails the customer at every stage."
+        description="Off by default, because this app already emails the customer at every stage. When on, Shopify's email includes the tracking link."
         defaultChecked={rules?.notifyCustomerOnFulfillment ?? false}
       />
 

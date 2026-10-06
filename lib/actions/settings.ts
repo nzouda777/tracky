@@ -40,9 +40,9 @@ export async function updateFulfillmentRulesAction(
 
     return {
       ok: true,
-      message: values.requireDeliveryConfirmation
-        ? "Saved. Orders will only be fulfilled after the agency confirms delivery."
-        : "Saved. Warning: fulfillment no longer requires a confirmed delivery.",
+      message: values.enabled
+        ? "Saved. New orders are fulfilled in Shopify with their tracking link as soon as they arrive."
+        : "Saved. Orders will no longer be fulfilled in Shopify by this app.",
     };
   });
 }

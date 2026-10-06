@@ -313,10 +313,10 @@ export const PAGE_DESIGNS = [
     tagline: "A carrier's tracking card",
     description:
       "A white tracking card with the four-phase progress bar, a green last update and a full timeline of every step — the familiar parcel-carrier page.",
-    swatches: ["#FFFFFF", "#F7F8F8", "#111111"],
+    swatches: ["#F0F0F0", "#111111", "#02794E"],
     preset: {
-      primaryColor: "#111111",
-      accentColor: "#111111",
+      primaryColor: "#02794E",
+      accentColor: "#02794E",
       backgroundColor: "#FFFFFF",
       textColor: "#111111",
       secondaryColor: "#888888",
@@ -327,7 +327,7 @@ export const PAGE_DESIGNS = [
       cardRadius: 16,
       buttonRadius: 10,
       buttonFullWidth: false,
-      sectionBackground: "#F7F8F8",
+      sectionBackground: "#F0F0F0",
     },
   },
 ] as const;
@@ -830,11 +830,16 @@ const LAYERS: Record<PageDesignId, LayerRule[]> = {
       "font-variation-settings:normal;font-weight:700;letter-spacing:-0.01em",
     ],
     [`& ${P("classic")}`, "background:var(--brand-section);min-height:100%"],
+    [`& ${P("classic")}[data-open]`, "background:var(--brand-surface)"],
     [
       `& ${P("classic-header")}`,
-      "background:var(--brand-surface);border-bottom:1px solid var(--brand-line);padding:18px 0",
+      "background:var(--brand-surface);border-bottom:1px solid var(--brand-line);padding:16px 0",
     ],
-    [`& ${P("classic-inner")}`, "max-width:680px;margin:0 auto;padding-left:16px;padding-right:16px"],
+    [`& ${P("classic-inner")}`, "max-width:720px;margin:0 auto;padding-left:20px;padding-right:20px"],
+    [
+      `& ${P("classic")}[data-open] ${P("classic-card")}`,
+      "box-shadow:none !important;padding:0 !important;border-radius:0 !important",
+    ],
     [`& main${P("classic-inner")}`, "padding-top:28px;padding-bottom:40px"],
     [`& ${P("classic-header")} ${P("masthead")}`, "margin-bottom:12px !important"],
     [`& ${P("classic-title")}`, "font-size:20px;line-height:28px"],
@@ -883,8 +888,14 @@ const LAYERS: Record<PageDesignId, LayerRule[]> = {
       "border-radius:12px !important;border:1px solid var(--brand-line) !important;background:var(--brand-surface) !important",
     ],
     [`& ${P("classic-search")} ${P("button")}`, "border-radius:10px !important;padding-left:22px !important;padding-right:22px !important"],
-    [`& ${P("faq")}, & ${P("help")}`, "background:var(--brand-surface);border-radius:var(--brand-card-radius);padding:20px !important"],
-    [`& ${P("faq")} ${P("section-title")}`, "font-size:18px"],
+    [`& ${P("help")}`, "background:var(--brand-surface) !important;border-radius:12px !important"],
+    [`& ${P("faq")} ${P("section-title")}`, "font-size:20px;letter-spacing:-0.02em;margin-bottom:8px"],
+    [
+      `& ${P("faq")} details`,
+      "border:1px solid var(--brand-line) !important;border-radius:12px;margin-bottom:10px;" +
+        "padding:14px 16px !important;background:var(--brand-surface)",
+    ],
+    [`& ${P("faq")} summary`, "font-weight:600;font-size:14px"],
     [`& ${P("footer")}`, "margin-top:0 !important;text-align:center;border-top-width:0 !important"],
     [`& ${P("classic-card")}, & ${P("classic-search")}`, "padding:28px 32px", WIDE],
     [

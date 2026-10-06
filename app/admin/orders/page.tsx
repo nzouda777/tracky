@@ -12,6 +12,7 @@ import {
   Th,
 } from "@/components/ui";
 import { FulfillmentBadge, StageBadge } from "@/components/orders/stage-badge";
+import { TrackingPageLink } from "@/components/orders/tracking-page-link";
 import { requireOwner } from "@/lib/auth/session";
 import { stages } from "@/lib/db";
 import {
@@ -39,7 +40,7 @@ export default async function OrdersPage({
 }: {
   searchParams: Promise<OrderSearchParams>;
 }) {
-  const { tdb } = await requireOwner();
+  const { tdb, store } = await requireOwner();
   const params = await searchParams;
 
   const [allStages, drivers, buckets] = await Promise.all([
@@ -117,12 +118,17 @@ export default async function OrdersPage({
                         className="size-4 rounded border-ink-300"
                       />
                     </Td>
-                    <Td>
+                    <Td className="whitespace-nowrap">
+                      <TrackingPageLink
+                        store={store}
+                        order={order}
+                        className="font-medium text-ink-900 underline-offset-2 hover:underline"
+                      />
                       <Link
                         href={`/admin/orders/${order.id}`}
-                        className="font-medium text-ink-900 underline-offset-2 hover:underline"
+                        className="ml-3 text-xs font-medium text-ink-500 underline underline-offset-2 hover:text-ink-900"
                       >
-                        {order.orderNumber}
+                        Details
                       </Link>
                       {order.cancelledAt ? (
                         <span className="ml-2">

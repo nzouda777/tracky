@@ -26,20 +26,17 @@ export default async function FulfillmentSettingsPage() {
       />
 
       <Alert tone="info" title="How fulfillment is decided">
-        An order is fulfilled in Shopify only when it reaches a stage flagged as
-        a fulfillment trigger <strong>and</strong> the delivery agency has
-        recorded a proof of delivery. No delay, timer or schedule can fulfil an
-        order.
+        As soon as an order arrives from Shopify, it is marked fulfilled there
+        with the link to its tracking page, so the order in Shopify shows the
+        link from the start. If that fails, it is tried again when the order
+        reaches a fulfillment trigger stage below, or with &ldquo;Retry
+        fulfillment&rdquo; on the order. No delay, timer or schedule can fulfil
+        an order.
       </Alert>
 
-      {triggerStages.length === 0 ? (
-        <Alert tone="warning" title="No stage triggers fulfillment">
-          Nothing will ever be fulfilled until you mark a stage as a fulfillment
-          trigger on the Stages screen.
-        </Alert>
-      ) : (
+      {triggerStages.length === 0 ? null : (
         <Card>
-          <CardHeader title="Trigger stages" />
+          <CardHeader title="Fallback trigger stages" />
           <CardBody>
             <ul className="space-y-1 text-sm text-ink-700">
               {triggerStages.map((stage) => (
