@@ -107,7 +107,18 @@ export const EMAIL_DESIGNS = [
       "A giant status headline over a three-part progress tracker, then the order facts as rounded tiles. Reads like an app notification.",
     swatches: ["#FFFFFF", "#2563EB", "#F1F5F9"],
   },
+  {
+    id: "hooma",
+    name: "Hooma",
+    tagline: "Pastel status hero, fully editable",
+    description:
+      "Logo on soft grey, a pastel gradient hero with an icon circle and the status as headline, a next-update note, an order card, items and address. Every text, colour and section is editable per template.",
+    swatches: ["#F6F6F6", "#DBEAFE", "#3B82F6"],
+  },
 ] as const;
+
+/** Designs with their own settings panel in the template editor. */
+export const DESIGNS_WITH_OPTIONS: ReadonlyArray<string> = ["hooma"];
 
 export type EmailDesign = (typeof EMAIL_DESIGNS)[number];
 export type EmailDesignId = EmailDesign["id"];

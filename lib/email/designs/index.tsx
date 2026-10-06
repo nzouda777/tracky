@@ -4,6 +4,7 @@ import { BeauteLayout } from "./beaute";
 import { resolveEmailDesign, type EmailDesignId } from "./catalog";
 import { ClassicLayout } from "./classic";
 import { EditorialLayout } from "./editorial";
+import { HoomaLayout } from "./hooma";
 import { JourneyLayout } from "./journey";
 import { MaisonLayout } from "./maison";
 import { MinimalLayout } from "./minimal";
@@ -28,6 +29,7 @@ const LAYOUTS: Record<EmailDesignId, DesignLayout> = {
   showroom: ShowroomLayout,
   ticket: TicketLayout,
   journey: JourneyLayout,
+  hooma: HoomaLayout,
 };
 
 /** The layout for a stored design id; unknown ids fall back to the default. */

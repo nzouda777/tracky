@@ -21,10 +21,12 @@ import {
   type EmailDesignId,
 } from "@/lib/email/designs/catalog";
 import { MERGE_VARIABLES, sampleMergeContext } from "@/lib/email/merge";
+import { SAMPLE_ORDER_FACTS } from "@/lib/email/order-facts";
 import { renderEmail } from "@/lib/email/render";
 import { env } from "@/lib/env";
 import { DesignGallery } from "./design-gallery";
 import { DesignSwatches } from "./design-swatches";
+import { HoomaSetForm } from "./hooma-set-form";
 import { NewTemplateForm } from "./new-template-form";
 
 export const metadata: Metadata = { title: "Email templates" };
@@ -46,6 +48,7 @@ export default async function TemplatesPage() {
       const rendered = await renderEmail({
         ...DESIGN_SAMPLE,
         design: design.id,
+        order: SAMPLE_ORDER_FACTS,
         context,
         branding,
         store,
@@ -97,6 +100,16 @@ export default async function TemplatesPage() {
           usage={designUsage}
           templateCount={templates.length}
         />
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Hooma template set"
+          description="Ready-made status emails in the Hooma style, one per stage."
+        />
+        <CardBody>
+          <HoomaSetForm />
+        </CardBody>
       </Card>
 
       <Card>

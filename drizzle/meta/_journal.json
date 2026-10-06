@@ -99,6 +99,13 @@
       "when": 1791248273597,
       "tag": "0013_auto_advance",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791250050755,
+      "tag": "0014_email_design_options",
+      "breakpoints": true
     }
   ]
 }

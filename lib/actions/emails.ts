@@ -20,6 +20,10 @@ import {
   resolveEmailDesign,
 } from "@/lib/email/designs/catalog";
 import { dispatchEmailSend } from "@/lib/email/send";
+import {
+  HOOMA_TEMPLATE_SET,
+  readHoomaOptionsForm,
+} from "@/lib/email/designs/hooma-options";
 import { findUnknownMergeTokens } from "@/lib/email/merge";
 import { guard, type ActionResult } from "./result";
 
@@ -53,6 +57,18 @@ function readTemplateForm(formData: FormData) {
   };
 }
 
+/**
+ * The design's own settings from the editor, or null when the form did not
+ * carry them (a design without settings), so stored ones are left alone.
+ */
+function readDesignOptionsForm(
+  formData: FormData,
+  design: string,
+): Record<string, unknown> | null {
+  if (design !== "hooma" || !formData.has("hooma.theme")) return null;
+  return readHoomaOptionsForm(formData);
+}
+
 function validateTemplate(values: ReturnType<typeof readTemplateForm>) {
   const fieldErrors: Record<string, string> = {};
   if (!values.name) fieldErrors.name = "Give this template a name.";
@@ -84,8 +100,10 @@ export async function createTemplateAction(
     const fieldErrors = validateTemplate(values);
     if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
 
+    const designOptions = readDesignOptionsForm(formData, values.design);
     const created = await tdb.insertOne(emailTemplates, {
       ...values,
+      ...(designOptions ? { designOptions } : {}),
       key: null,
     });
 
@@ -109,8 +127,10 @@ export async function updateTemplateAction(
     const fieldErrors = validateTemplate(values);
     if (Object.keys(fieldErrors).length > 0) return { fieldErrors };
 
+    const designOptions = readDesignOptionsForm(formData, values.design);
     await tdb.updateById(emailTemplates, templateId, {
       ...values,
+      ...(designOptions ? { designOptions } : {}),
       updatedAt: new Date(),
     });
 
@@ -137,6 +157,7 @@ export async function duplicateTemplateAction(
       previewText: existing.previewText,
       body: existing.body,
       design: existing.design,
+      designOptions: existing.designOptions,
       isActive: false,
     });
 
@@ -237,6 +258,36 @@ export async function applyDesignToAllTemplatesAction(
     return {
       ok: true,
       message: `${getEmailDesign(raw).name} applied to ${templates.length} template${templates.length === 1 ? "" : "s"}.`,
+    };
+  });
+}
+
+/**
+ * Adds the ready-made Hooma set — confirmation, processing, out for delivery,
+ * delivered — to the store's templates. Created inactive, so nothing is sent
+ * until the owner attaches them in the sequence builder.
+ */
+export async function createHoomaTemplateSetAction(): Promise<ActionResult> {
+  return guard(async (): Promise<ActionResult> => {
+    const { tdb } = await requireOwner();
+
+    for (const template of HOOMA_TEMPLATE_SET) {
+      await tdb.insertOne(emailTemplates, {
+        key: null,
+        name: template.name,
+        subject: template.subject,
+        previewText: template.previewText,
+        body: template.body,
+        design: "hooma",
+        designOptions: template.options,
+        isActive: false,
+      });
+    }
+
+    revalidateEmails();
+    return {
+      ok: true,
+      message: `${HOOMA_TEMPLATE_SET.length} Hooma templates added. Open one to edit it, then attach it in the email sequence.`,
     };
   });
 }
@@ -589,6 +640,7 @@ export async function previewTemplateAction(input: {
   body: string;
   previewText?: string;
   design?: string;
+  designOptions?: Record<string, unknown>;
 }): Promise<{ subject: string; html: string; unknownTokens: string[] }> {
   const { tdb, store } = await requireOwner();
 
@@ -597,6 +649,7 @@ export async function previewTemplateAction(input: {
 
   const { sampleMergeContext } = await import("@/lib/email/merge");
   const { renderEmail } = await import("@/lib/email/render");
+  const { SAMPLE_ORDER_FACTS } = await import("@/lib/email/order-facts");
 
   const context = sampleMergeContext(store.name ?? store.shopDomain);
   const rendered = await renderEmail({
@@ -604,6 +657,8 @@ export async function previewTemplateAction(input: {
     body: input.body,
     previewText: input.previewText,
     design: input.design,
+    designOptions: input.designOptions,
+    order: SAMPLE_ORDER_FACTS,
     context,
     branding,
     store,

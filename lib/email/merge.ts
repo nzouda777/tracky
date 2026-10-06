@@ -1,5 +1,6 @@
 import type { Order, Stage, Store } from "@/lib/db";
 import { formatAddressOneLine, formatDate } from "@/lib/utils";
+import { formatCodeAmount } from "./order-facts";
 
 /**
  * Merge variables available in email subjects and bodies.
@@ -11,7 +12,13 @@ export const MERGE_VARIABLES = [
     label: "Customer name",
     example: "Sarah Jenkins",
   },
+  {
+    token: "customer_first_name",
+    label: "Customer first name",
+    example: "Sarah",
+  },
   { token: "order_number", label: "Order number", example: "#1042" },
+  { token: "order_total", label: "Order total", example: "AUD 158.00" },
   { token: "order_date", label: "Order date", example: "5 Oct 2025" },
   {
     token: "tracking_link",
@@ -53,14 +60,18 @@ export function buildMergeContext({
   order: Pick<
     Order,
     "orderNumber" | "orderDate" | "customerName" | "shippingAddress"
-  >;
+  > &
+    Partial<Pick<Order, "total" | "currency">>;
   store: Pick<Store, "name" | "shopDomain">;
   stage: Pick<Stage, "name"> | null;
   trackingLink: string;
 }): MergeContext {
   return {
     customer_name: order.customerName ?? "there",
+    customer_first_name:
+      order.customerName?.trim().split(/\s+/)[0] || "there",
     order_number: order.orderNumber,
+    order_total: formatCodeAmount(order.total, order.currency ?? ""),
     order_date: formatDate(order.orderDate),
     tracking_link: trackingLink,
     current_stage: stage?.name ?? "Order received",

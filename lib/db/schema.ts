@@ -609,6 +609,14 @@ export const emailTemplates = pgTable(
     previewText: text("preview_text").notNull().default(""),
     /** Visual shell the body is rendered in — an id from lib/email/designs. */
     design: text("design").notNull().default("classic"),
+    /**
+     * Settings for designs that have their own (texts, colours, sections),
+     * e.g. Hooma — see lib/email/designs/hooma-options.ts. Empty otherwise.
+     */
+    designOptions: jsonb("design_options")
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     isActive: boolean("is_active").notNull().default(true),
     ...timestamps,
   },

@@ -6,6 +6,7 @@ import {
 } from "@/components/tracking/branding";
 import type { BrandingSettings, Store } from "@/lib/db";
 import type { MergeContext } from "../merge";
+import type { EmailOrderFacts } from "../order-facts";
 
 /**
  * What every design is built from: the store's branding and the merged order
@@ -182,6 +183,14 @@ export type EmailModel = {
   helpUrl: string;
   postalAddress: string;
   footerText: string;
+
+  /** Items, total, exact order time and address lines, when known. */
+  order: EmailOrderFacts | null;
+  /**
+   * The template's own design settings, with merge variables already applied
+   * to every text value. Only designs that have settings read it.
+   */
+  designOptions: Record<string, unknown>;
 };
 
 export function buildEmailModel({
@@ -190,12 +199,16 @@ export function buildEmailModel({
   previewText,
   html,
   context,
+  order = null,
+  designOptions = {},
 }: {
   branding: BrandingSettings | null;
   store: Pick<Store, "name" | "shopDomain">;
   previewText: string;
   html: string;
   context: MergeContext;
+  order?: EmailOrderFacts | null;
+  designOptions?: Record<string, unknown>;
 }): EmailModel {
   const storeName = store.name ?? store.shopDomain;
   const address = context.shipping_address?.trim() ?? "";
@@ -226,6 +239,9 @@ export function buildEmailModel({
     footerText:
       branding?.footerText?.trim() ||
       `You are receiving this email because you placed an order with ${storeName}.`,
+
+    order,
+    designOptions,
   };
 }
 

@@ -27,8 +27,13 @@ import {
   resolveEmailDesign,
   type EmailDesignId,
 } from "@/lib/email/designs/catalog";
+import {
+  resolveHoomaOptions,
+  type HoomaOptions,
+} from "@/lib/email/designs/hooma-options";
 import { cn } from "@/lib/utils";
 import { DesignPicker } from "../design-picker";
+import { HoomaFields } from "./hooma-fields";
 
 /**
  * Template editor with a live preview.
@@ -43,7 +48,11 @@ export function TemplateEditor({ template }: { template: EmailTemplate }) {
   const [design, setDesign] = useState<EmailDesignId>(
     resolveEmailDesign(template.design),
   );
+  const [hoomaOptions, setHoomaOptions] = useState<HoomaOptions>(
+    resolveHoomaOptions(template.designOptions),
+  );
   const [device, setDevice] = useState<"desktop" | "mobile">("desktop");
+  const designOptions = design === "hooma" ? hoomaOptions : undefined;
 
   const [preview, setPreview] = useState<{
     subject: string;
@@ -73,7 +82,13 @@ export function TemplateEditor({ template }: { template: EmailTemplate }) {
         try {
           setPreviewError(null);
           setPreview(
-            await previewTemplateAction({ subject, body, previewText, design }),
+            await previewTemplateAction({
+              subject,
+              body,
+              previewText,
+              design,
+              designOptions,
+            }),
           );
         } catch {
           setPreviewError("The preview could not be rendered.");
@@ -81,7 +96,7 @@ export function TemplateEditor({ template }: { template: EmailTemplate }) {
       });
     }, 500);
     return () => clearTimeout(timer);
-  }, [subject, body, previewText, design]);
+  }, [subject, body, previewText, design, designOptions]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
@@ -128,6 +143,10 @@ export function TemplateEditor({ template }: { template: EmailTemplate }) {
             >
               <DesignPicker value={design} onChange={setDesign} />
             </Field>
+
+            {design === "hooma" ? (
+              <HoomaFields value={hoomaOptions} onChange={setHoomaOptions} />
+            ) : null}
 
             <Field label="Preview text" htmlFor="edit-preview-text">
               <Input
@@ -217,6 +236,7 @@ export function TemplateEditor({ template }: { template: EmailTemplate }) {
                       body,
                       previewText,
                       design,
+                      designOptions,
                     }),
                   );
                 })

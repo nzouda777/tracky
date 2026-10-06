@@ -13,6 +13,7 @@ import {
 import { env } from "@/lib/env";
 import { buildTrackingLink } from "@/lib/tracking/links";
 import { buildMergeContext } from "./merge";
+import { buildOrderFacts } from "./order-facts";
 import { renderEmail } from "./render";
 
 export type DispatchResult =
@@ -53,6 +54,8 @@ export async function dispatchEmailSend(
       body: template.body,
       previewText: template.previewText,
       design: template.design,
+      designOptions: template.designOptions,
+      order: buildOrderFacts(order),
       branding,
       store,
       context: buildMergeContext({

@@ -1,0 +1,1 @@
+ALTER TABLE "email_templates" ADD COLUMN "design_options" jsonb DEFAULT '{}'::jsonb NOT NULL;

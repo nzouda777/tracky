@@ -4,6 +4,7 @@ import type { BrandingSettings, Store } from "@/lib/db";
 import { layoutFor } from "./designs";
 import { buildEmailModel } from "./designs/shared";
 import { applyMergeFields, type MergeContext } from "./merge";
+import type { EmailOrderFacts } from "./order-facts";
 
 /**
  * Wraps a store's editable HTML body in a branded email layout.
@@ -36,6 +37,8 @@ export async function renderEmail({
   branding,
   store,
   design,
+  designOptions,
+  order,
 }: {
   subject: string;
   body: string;
@@ -45,12 +48,29 @@ export async function renderEmail({
   store: Pick<Store, "name" | "shopDomain">;
   /** A design id from `EMAIL_DESIGNS`; missing or unknown means the default. */
   design?: string | null;
+  /** The template's own design settings (`email_templates.design_options`). */
+  designOptions?: unknown;
+  /** Items, total and exact time of the order, for designs that show them. */
+  order?: EmailOrderFacts | null;
 }): Promise<RenderedEmail> {
   const mergedSubject = applyMergeFields(subject, context, { escape: false });
   const mergedBody = applyMergeFields(body, context, { escape: true });
   const mergedPreview = applyMergeFields(previewText ?? "", context, {
     escape: false,
   });
+
+  // Text settings accept merge variables too. React escapes them when they
+  // are rendered, so they are merged unescaped here.
+  const mergedOptions = Object.fromEntries(
+    Object.entries(
+      designOptions && typeof designOptions === "object" ? designOptions : {},
+    ).map(([key, value]) => [
+      key,
+      typeof value === "string"
+        ? applyMergeFields(value, context, { escape: false })
+        : value,
+    ]),
+  );
 
   const Layout = layoutFor(design);
   const element = (
@@ -61,6 +81,8 @@ export async function renderEmail({
         previewText: mergedPreview,
         html: mergedBody,
         context,
+        order,
+        designOptions: mergedOptions,
       })}
     />
   );
