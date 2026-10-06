@@ -727,10 +727,23 @@ export const fulfillmentRules = pgTable(
     requireDeliveryConfirmation: boolean("require_delivery_confirmation")
       .notNull()
       .default(true),
-    /** Ask Shopify to email its own shipping confirmation. Off by default. */
+    /**
+     * Ask Shopify to email its own shipping confirmation. Only ever applied to
+     * orders auto-fulfilled after `autoFulfillSince`, so older orders never
+     * trigger a second email.
+     */
     notifyCustomerOnFulfillment: boolean("notify_customer_on_fulfillment")
       .notNull()
-      .default(false),
+      .default(true),
+    /**
+     * Auto-fulfillment only covers orders placed in Shopify at or after this
+     * moment. Older orders are fulfilled by hand. Reset whenever the owner
+     * switches auto-fulfillment back on, so orders that arrived while it was
+     * off are not picked up later.
+     */
+    autoFulfillSince: timestamp("auto_fulfill_since", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
     ...timestamps,
   },
   (table) => [uniqueIndex("fulfillment_rules_store_key").on(table.storeId)],

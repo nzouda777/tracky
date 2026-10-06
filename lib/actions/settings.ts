@@ -97,7 +97,13 @@ export async function updateFulfillmentRulesAction(
 
     const existing = await tdb.findFirst(fulfillmentRules);
     if (existing) {
-      await tdb.updateById(fulfillmentRules, existing.id, values);
+      // Switching back on starts from now: orders that arrived while it was
+      // off stay manual, so their customers never get a late shipping email.
+      const restarted = values.enabled && !existing.enabled;
+      await tdb.updateById(fulfillmentRules, existing.id, {
+        ...values,
+        ...(restarted ? { autoFulfillSince: new Date() } : {}),
+      });
     } else {
       await tdb.insertOne(fulfillmentRules, values);
     }
@@ -107,7 +113,7 @@ export async function updateFulfillmentRulesAction(
     return {
       ok: true,
       message: values.enabled
-        ? "Saved. New orders are fulfilled in Shopify with their tracking link as soon as they arrive."
+        ? "Saved. New orders are fulfilled in Shopify with their tracking link as soon as they arrive; older orders stay manual."
         : "Saved. Orders will no longer be fulfilled in Shopify by this app.",
     };
   });

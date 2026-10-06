@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { attemptFulfillment } from "@/lib/fulfillment";
-import type { Order, ProofOfDelivery, Stage } from "@/lib/db";
+import {
+  attemptFulfillment,
+  catchUpFulfillment,
+  fulfillNewOrder,
+  isAutoFulfillEligible,
+} from "@/lib/fulfillment";
+import type { FulfillmentRules, Order, ProofOfDelivery, Stage } from "@/lib/db";
 import type { TenantDb } from "@/lib/db/tenant";
 
 /**
@@ -66,7 +71,7 @@ function makeOrder(overrides: Partial<Order> = {}): Order {
 
 /** Minimal tenant client: returns canned rows, records nothing else. */
 function makeTdb(options: {
-  rules?: { enabled: boolean; requireDeliveryConfirmation: boolean } | null;
+  rules?: Partial<FulfillmentRules> | null;
   proof?: Partial<ProofOfDelivery> | null;
 }): TenantDb {
   const updates: Array<Record<string, unknown>> = [];
@@ -190,5 +195,69 @@ describe("fulfillment is idempotent", () => {
     });
 
     expect(result.status).toBe("already-fulfilled");
+  });
+});
+
+const SINCE = new Date("2026-10-06T12:00:00Z");
+
+function makeRules(overrides: Partial<FulfillmentRules> = {}): FulfillmentRules {
+  return {
+    id: "rules-1",
+    storeId: STORE_ID,
+    enabled: true,
+    requireDeliveryConfirmation: true,
+    notifyCustomerOnFulfillment: true,
+    autoFulfillSince: SINCE,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+}
+
+describe("only new orders are auto-fulfilled", () => {
+  const before = new Date(SINCE.getTime() - 60_000);
+  const after = new Date(SINCE.getTime() + 60_000);
+
+  it("covers orders placed at or after the start date", () => {
+    expect(isAutoFulfillEligible(makeOrder({ orderDate: after }), makeRules())).toBe(true);
+    expect(isAutoFulfillEligible(makeOrder({ orderDate: SINCE }), makeRules())).toBe(true);
+  });
+
+  it("leaves older orders, cancelled orders and disabled stores alone", () => {
+    expect(isAutoFulfillEligible(makeOrder({ orderDate: before }), makeRules())).toBe(false);
+    expect(
+      isAutoFulfillEligible(makeOrder({ orderDate: after, cancelledAt: after }), makeRules()),
+    ).toBe(false);
+    expect(
+      isAutoFulfillEligible(makeOrder({ orderDate: after }), makeRules({ enabled: false })),
+    ).toBe(false);
+    expect(isAutoFulfillEligible(makeOrder({ orderDate: after }), null)).toBe(false);
+  });
+
+  it("does not push an older order when it arrives or is synced", async () => {
+    const result = await fulfillNewOrder({
+      tdb: makeTdb({ rules: makeRules() }),
+      order: makeOrder({ orderDate: before }),
+    });
+    expect(result).toMatchObject({
+      status: "skipped",
+      reason: expect.stringContaining("by hand"),
+    });
+  });
+
+  it("does not catch up an older order when its stage changes", async () => {
+    const result = await catchUpFulfillment({
+      tdb: makeTdb({ rules: makeRules() }),
+      order: makeOrder({ orderDate: before }),
+    });
+    expect(result).toBeNull();
+  });
+
+  it("does not catch up an order that is already fulfilled", async () => {
+    const result = await catchUpFulfillment({
+      tdb: makeTdb({ rules: makeRules() }),
+      order: makeOrder({ orderDate: after, fulfillmentStatus: "fulfilled" }),
+    });
+    expect(result).toBeNull();
   });
 });

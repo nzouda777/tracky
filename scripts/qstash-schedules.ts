@@ -39,6 +39,13 @@ const SCHEDULES = [
     cronEnv: "QSTASH_AUTO_ADVANCE_CRON",
     defaultCron: "0 * * * *",
   },
+  {
+    // Retries the Shopify fulfillment of new orders whose first push failed.
+    id: "tracky-fulfillment-catch-up",
+    path: "/api/cron/fulfillment-catch-up",
+    cronEnv: "QSTASH_FULFILLMENT_CATCH_UP_CRON",
+    defaultCron: "15 * * * *",
+  },
 ] as const;
 
 async function main() {

@@ -26,24 +26,23 @@ export function FulfillmentForm({ rules }: { rules: FulfillmentRules | null }) {
         id="fulfillment-enabled"
         name="enabled"
         label="Fulfil orders in Shopify automatically"
-        description="Each new order is marked fulfilled in Shopify with its tracking link as soon as it arrives. Turn off to keep tracking in this app without touching Shopify fulfillment."
+        description={`Each new order is marked fulfilled in Shopify with its tracking link as soon as it arrives, and retried on every stage change until it goes through. Orders placed before ${rules ? `${new Date(rules.autoFulfillSince).toISOString().slice(0, 16).replace("T", " ")} UTC` : "this was switched on"} are left for you to fulfil by hand. Turning this off and on again starts from that moment.`}
         defaultChecked={rules?.enabled ?? true}
       />
 
       <Checkbox
         id="fulfillment-require-proof"
         name="requireDeliveryConfirmation"
-        label="Require a confirmed delivery for the fallback at the trigger stage"
-        description="Only applies to an order that was not fulfilled when it arrived. The delivery agency records the delivery after the customer signs the paper note."
+        label="Require a confirmed delivery to retry an older order at the trigger stage"
+        description={'Only applies to the manual "Retry fulfillment" on orders placed before auto-fulfillment started. The delivery agency records the delivery after the customer signs the paper note.'}
         checked={requireProof}
         onChange={(event) => setRequireProof(event.currentTarget.checked)}
       />
 
       {!requireProof ? (
         <Alert tone="danger" title="Fulfilment without proof of delivery">
-          With this off, an order that was not fulfilled when it arrived is
-          fulfilled on reaching the trigger stage even if nobody has confirmed
-          the parcel was handed over.
+          With this off, retrying an older order at the trigger stage fulfils
+          it even if nobody has confirmed the parcel was handed over.
         </Alert>
       ) : null}
 
@@ -51,8 +50,8 @@ export function FulfillmentForm({ rules }: { rules: FulfillmentRules | null }) {
         id="fulfillment-notify"
         name="notifyCustomerOnFulfillment"
         label="Let Shopify email its own shipping confirmation"
-        description="Off by default, because this app already emails the customer at every stage. When on, Shopify's email includes the tracking link."
-        defaultChecked={rules?.notifyCustomerOnFulfillment ?? false}
+        description="Sent only for orders under auto-fulfillment, never for older ones you fulfil by hand. It includes the tracking link, alongside this app's own stage emails."
+        defaultChecked={rules?.notifyCustomerOnFulfillment ?? true}
       />
 
       <SubmitButton pendingLabel="Saving…">Save rules</SubmitButton>

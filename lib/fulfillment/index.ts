@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { and, asc, eq, gte, isNotNull, isNull, lte, ne } from "drizzle-orm";
 
 import {
   db,
@@ -10,27 +10,50 @@ import {
   type Order,
   type Stage,
 } from "@/lib/db";
-import type { TenantDb } from "@/lib/db/tenant";
+import { TenantDb } from "@/lib/db/tenant";
 import { ShopifyAdminClient, toGid } from "@/lib/shopify/admin-api";
 import { buildTrackingLink } from "@/lib/tracking/links";
 
 /**
  * Auto-fulfillment.
  *
- * Two events push a fulfillment to Shopify, each carrying the order's tracking
- * link so it shows on the order in the Shopify admin:
+ * Only orders placed in Shopify at or after the store's `autoFulfillSince` are
+ * fulfilled automatically; older orders are left for the merchant to fulfil by
+ * hand, so their customers never get a second shipping email.
  *
- *   1. **The order arrives** (`fulfillNewOrder`) — as soon as the order is
- *      created from Shopify, it is marked fulfilled there with the link to its
- *      tracking page, so the customer has the link from the start.
- *   2. **A fulfillment-triggering stage is reached** (`attemptFulfillment`) —
- *      the fallback for an order the first push missed. It still waits for a
- *      `proof_of_delivery` row unless the store turned that requirement off.
+ * An eligible order is pushed to Shopify, with its tracking link, when:
  *
- * Both require the store to have fulfillment enabled and never fulfil an order
- * twice. There is no path through this module that fulfils on a delay or a
- * schedule.
+ *   1. **It arrives** (`fulfillNewOrder`), so the customer has the link from
+ *      the start.
+ *   2. **Its stage changes** while still unfulfilled (`catchUpFulfillment`,
+ *      called from `recordStageTransition`), so a first push that failed is
+ *      retried on the next real event.
+ *   3. **The catch-up sweep runs** (`runFulfillmentCatchUp`), for orders whose
+ *      push failed and that have not moved since.
+ *
+ * `attemptFulfillment` (the proof-of-delivery gate at a trigger stage) remains
+ * for the manual "Retry fulfillment" action on older orders.
+ *
+ * Nothing here fulfils an order twice.
  */
+
+/** Leaves a just-created order to its own webhook before the sweep touches it. */
+const CATCH_UP_GRACE_MS = 10 * 60_000;
+/** Upper bound per sweep run, so one run always finishes inside the time limit. */
+export const CATCH_UP_BATCH_SIZE = 25;
+
+/**
+ * Whether `order` falls under auto-fulfillment: the store has it on, and the
+ * order was placed in Shopify at or after the store's start date.
+ */
+export function isAutoFulfillEligible(
+  order: Order,
+  rules: FulfillmentRules | null,
+): boolean {
+  if (!rules || !rules.enabled) return false;
+  if (order.cancelledAt) return false;
+  return order.orderDate.getTime() >= rules.autoFulfillSince.getTime();
+}
 
 export type FulfillmentOutcome =
   | { status: "fulfilled"; fulfillmentId: string }
@@ -111,22 +134,27 @@ export async function attemptFulfillment({
   return pushFulfillment({
     tdb,
     order,
-    rules,
+    notifyCustomer: shouldNotify(order, rules),
     fulfilledAt: proof?.deliveredAt ?? new Date(),
   });
 }
 
 /**
- * Fulfils a newly created order in Shopify, with its tracking link, as soon as
- * it arrives. No proof of delivery is involved: the point is that the order in
- * Shopify carries the link to follow the delivery from day one.
+ * Fulfils an eligible order in Shopify, with its tracking link. No proof of
+ * delivery is involved: the point is that the order in Shopify carries the
+ * link to follow the delivery from day one.
+ *
+ * `manual` is the backoffice retry: it bypasses the start date (that is how
+ * older orders are fulfilled by hand) but never emails their customer.
  */
 export async function fulfillNewOrder({
   tdb,
   order,
+  manual = false,
 }: {
   tdb: TenantDb;
   order: Order;
+  manual?: boolean;
 }): Promise<FulfillmentOutcome> {
   if (order.fulfillmentStatus === "fulfilled" || order.shopifyFulfillmentId) {
     return {
@@ -144,7 +172,107 @@ export async function fulfillNewOrder({
     return { status: "skipped", reason: "Auto-fulfillment is turned off for this store." };
   }
 
-  return pushFulfillment({ tdb, order, rules, fulfilledAt: new Date() });
+  if (!manual && !isAutoFulfillEligible(order, rules)) {
+    return {
+      status: "skipped",
+      reason: "The order predates auto-fulfillment; fulfil it by hand.",
+    };
+  }
+
+  return pushFulfillment({
+    tdb,
+    order,
+    notifyCustomer: shouldNotify(order, rules),
+    fulfilledAt: new Date(),
+  });
+}
+
+/**
+ * Retries the push for an eligible order that is still unfulfilled. Returns
+ * null when there is nothing to do (already fulfilled, or an older order),
+ * so callers can tell "no attempt" from an attempt that was skipped.
+ */
+export async function catchUpFulfillment({
+  tdb,
+  order,
+}: {
+  tdb: TenantDb;
+  order: Order;
+}): Promise<FulfillmentOutcome | null> {
+  if (order.fulfillmentStatus === "fulfilled" || order.shopifyFulfillmentId) {
+    return null;
+  }
+  const rules = await tdb.findFirst(fulfillmentRules);
+  if (!isAutoFulfillEligible(order, rules)) return null;
+  return fulfillNewOrder({ tdb, order });
+}
+
+/**
+ * Sweeps every store for eligible orders whose push has not gone through yet
+ * (a Shopify error, a store that was paused, a missed webhook) and retries
+ * them, least recently tried first.
+ */
+export async function runFulfillmentCatchUp(
+  now: Date = new Date(),
+): Promise<{ stores: number; attempted: number; fulfilled: number; failed: number }> {
+  const enabled = await db
+    .select({ rules: fulfillmentRules })
+    .from(fulfillmentRules)
+    .innerJoin(stores, eq(stores.id, fulfillmentRules.storeId))
+    .where(
+      and(
+        eq(fulfillmentRules.enabled, true),
+        eq(stores.status, "active"),
+        // A paused store is frozen: nothing aimed outward moves.
+        isNull(stores.pausedAt),
+        isNotNull(stores.accessToken),
+      ),
+    );
+
+  const result = { stores: enabled.length, attempted: 0, fulfilled: 0, failed: 0 };
+  const graceCutoff = new Date(now.getTime() - CATCH_UP_GRACE_MS);
+
+  for (const { rules } of enabled) {
+    const budget = CATCH_UP_BATCH_SIZE - result.attempted;
+    if (budget <= 0) break;
+
+    const tdb = new TenantDb(rules.storeId);
+    const due = await tdb.raw
+      .select({ order: orders })
+      .from(orders)
+      .where(
+        tdb.scope(
+          orders,
+          isNull(orders.cancelledAt),
+          ne(orders.fulfillmentStatus, "fulfilled"),
+          isNull(orders.shopifyFulfillmentId),
+          gte(orders.orderDate, rules.autoFulfillSince),
+          lte(orders.updatedAt, graceCutoff),
+        ),
+      )
+      .orderBy(asc(orders.updatedAt))
+      .limit(budget);
+
+    for (const { order } of due) {
+      result.attempted += 1;
+      const outcome = await fulfillNewOrder({ tdb, order });
+      if (outcome.status === "fulfilled" || outcome.status === "already-fulfilled") {
+        result.fulfilled += 1;
+      } else if (outcome.status === "failed") {
+        result.failed += 1;
+      }
+    }
+  }
+
+  return result;
+}
+
+/** Shopify's shipping email goes only to orders under auto-fulfillment. */
+function shouldNotify(order: Order, rules: FulfillmentRules | null): boolean {
+  return (
+    isAutoFulfillEligible(order, rules) &&
+    (rules?.notifyCustomerOnFulfillment ?? false)
+  );
 }
 
 /**
@@ -155,12 +283,12 @@ export async function fulfillNewOrder({
 async function pushFulfillment({
   tdb,
   order,
-  rules,
+  notifyCustomer,
   fulfilledAt,
 }: {
   tdb: TenantDb;
   order: Order;
-  rules: FulfillmentRules | null;
+  notifyCustomer: boolean;
   fulfilledAt: Date;
 }): Promise<FulfillmentOutcome> {
   const [store] = await db
@@ -238,7 +366,7 @@ async function pushFulfillment({
         lineItemsByFulfillmentOrder: openFulfillmentOrders.map((node) => ({
           fulfillmentOrderId: node.id,
         })),
-        notifyCustomer: rules?.notifyCustomerOnFulfillment ?? false,
+        notifyCustomer,
         // Our own last-mile service, and the link to the order's tracking
         // page; Shopify shows both on the order and in its shipping email.
         trackingInfo: {
@@ -318,9 +446,10 @@ async function skipAndRecord(
 
 /**
  * Re-runs fulfillment for an order that previously failed. Exposed to the
- * backoffice as a "Retry fulfillment" action. At a fulfillment-triggering
- * stage it goes through `attemptFulfillment` and its proof-of-delivery rule;
- * anywhere else it repeats the push made when the order arrived.
+ * backoffice as a "Retry fulfillment" action. An order under auto-fulfillment
+ * repeats its normal push; an older one goes through `attemptFulfillment` and
+ * its proof-of-delivery rule at a trigger stage, or a manual push (no customer
+ * email) anywhere else.
  */
 export async function retryFulfillment({
   tdb,
@@ -337,7 +466,11 @@ export async function retryFulfillment({
     eq(orders.id, order.id),
   );
   const refreshed = (await tdb.findById(orders, order.id)) ?? order;
+  const rules = await tdb.findFirst(fulfillmentRules);
+  if (isAutoFulfillEligible(refreshed, rules)) {
+    return fulfillNewOrder({ tdb, order: refreshed });
+  }
   return stage?.triggersFulfillment
     ? attemptFulfillment({ tdb, order: refreshed, stage })
-    : fulfillNewOrder({ tdb, order: refreshed });
+    : fulfillNewOrder({ tdb, order: refreshed, manual: true });
 }

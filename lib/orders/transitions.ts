@@ -10,7 +10,7 @@ import {
   type StageEventSource,
 } from "@/lib/db";
 import type { TenantDb } from "@/lib/db/tenant";
-import { attemptFulfillment } from "@/lib/fulfillment";
+import { catchUpFulfillment } from "@/lib/fulfillment";
 import { scheduleStageEmails } from "@/lib/email/scheduler";
 import { getStageById } from "./stages";
 
@@ -45,8 +45,8 @@ export type StageTransitionResult = {
   order: Order;
   stage: Stage;
   event: OrderStageHistory;
-  /** Null when the stage does not trigger fulfillment, or it was skipped. */
-  fulfillment: Awaited<ReturnType<typeof attemptFulfillment>> | null;
+  /** Null when no push was attempted (already fulfilled, or an older order). */
+  fulfillment: Awaited<ReturnType<typeof catchUpFulfillment>>;
   emailsScheduled: number;
 };
 
@@ -103,11 +103,12 @@ export async function recordStageTransition({
     return 0;
   });
 
-  const fulfillment = stage.triggersFulfillment
-    ? await attemptFulfillment({ tdb, order: nextOrder, stage })
-    : null;
+  // Any real event is a chance to catch up an order under auto-fulfillment
+  // whose push to Shopify has not gone through yet. Older orders are left to
+  // the merchant, whatever stage they reach.
+  const fulfillment = await catchUpFulfillment({ tdb, order: nextOrder });
 
-  // attemptFulfillment may have written fulfillment fields; re-read so callers
+  // catchUpFulfillment may have written fulfillment fields; re-read so callers
   // see the final state.
   const finalOrder = fulfillment
     ? ((await tdb.findById(orders, order.id)) ?? nextOrder)
