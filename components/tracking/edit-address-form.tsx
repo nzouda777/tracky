@@ -8,9 +8,9 @@ import type { Order } from "@/lib/db";
  * new address to Shopify via the Admin API, and redirects back here.
  *
  * Deliberately a plain form: the page is served inside the merchant's theme and
- * must work without any client-side JavaScript. It stays collapsed by default
- * so the manifest above it is what the page leads with — the address is a fact
- * to check far more often than a thing to change.
+ * must work without any client-side JavaScript. It stays hidden until the
+ * "Edit address" link in the order summary is followed — the address is a
+ * fact to check far more often than a thing to change.
  */
 export function EditAddressForm({
   proxyPath,
@@ -31,7 +31,19 @@ export function EditAddressForm({
   };
 
   return (
-    <section>
+    <section
+      id="edit-address"
+      data-part="edit-address"
+      style={{ textAlign: "left" }}
+    >
+      {/* The "Edit address" link in the order summary points here. The form
+          stays hidden until that anchor is the URL's target — or a failed
+          save brought the customer back to it — so it opens without any
+          JavaScript. */}
+      {error ? null : (
+        <style>{`[data-part="edit-address"]:not(:target) [data-part="edit-address-body"]{display:none}`}</style>
+      )}
+
       {/* Confirmation is stated, not coloured in: the delivered green is
           reserved for the terminal waypoint and must not start meaning
           "saved" as well. */}
@@ -63,13 +75,30 @@ export function EditAddressForm({
         </p>
       ) : null}
 
-      <details open={Boolean(error)}>
-        <summary
-          className="cursor-pointer text-small font-medium underline underline-offset-2"
-          style={{ color: "var(--brand-link)" }}
+      <div data-part="edit-address-body">
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 16,
+          }}
         >
-          Edit address
-        </summary>
+          <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, lineHeight: "24px" }}>
+            Edit delivery address
+          </h2>
+          <a
+            href="#"
+            style={{
+              fontSize: 15,
+              fontWeight: 600,
+              color: "var(--brand-muted)",
+              textDecoration: "none",
+            }}
+          >
+            Cancel
+          </a>
+        </div>
 
         <form
           action={`${proxyPath}/address`}
@@ -158,7 +187,7 @@ export function EditAddressForm({
             You can change your address until your order leaves for delivery.
           </p>
         </form>
-      </details>
+      </div>
     </section>
   );
 }

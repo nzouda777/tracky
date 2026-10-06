@@ -1,6 +1,11 @@
 import type { Order, Store } from "@/lib/db";
 import type { LookupAccess, PublicOrderView } from "@/lib/tracking/lookup";
-import { formatAddressLines, formatDate, formatMoney } from "@/lib/utils";
+import {
+  formatAddressLines,
+  formatCodeAmount,
+  formatDate,
+  formatLongDate,
+} from "@/lib/utils";
 import { BrandingStyle, type Branding } from "./branding";
 import { EditAddressForm } from "./edit-address-form";
 import { EventHistory } from "./event-history";
@@ -96,6 +101,7 @@ export function TrackingPage({
               ? orderParts({
                   view,
                   branding,
+                  storeName,
                   proxyPath,
                   access,
                   addressMessage,
@@ -168,6 +174,7 @@ export function TrackingPage({
             <OrderView
               view={view}
               branding={branding}
+              storeName={storeName}
               proxyPath={proxyPath}
               access={access}
               addressMessage={addressMessage}
@@ -213,6 +220,7 @@ function Column({
 type OrderInput = {
   view: PublicOrderView;
   branding: Branding;
+  storeName: string;
   proxyPath: string;
   access: LookupAccess;
   addressMessage?: string | null;
@@ -233,6 +241,7 @@ type OrderInput = {
 function orderParts({
   view,
   branding,
+  storeName,
   proxyPath,
   access,
   addressMessage,
@@ -294,8 +303,10 @@ function orderParts({
       <Manifest
         order={order}
         branding={branding}
+        storeName={storeName}
         unverified={unverified}
         verifyHref={verifyHref}
+        canEditAddress={!unverified && canEditAddress}
       />
     ),
     editAddress:
@@ -462,20 +473,26 @@ function WaitingIndicator() {
 }
 
 /**
- * The manifest: the facts of the order, aligned so they can be checked at a
- * glance rather than read as prose. Label left, value right, a rule between
- * each. Real codes are set in mono so the digits line up.
+ * The order summary: an "ORDER" heading with the address action beside it,
+ * then label-left, value-right rows on hairlines, ending on the total paid.
+ *
+ * Styled inline throughout: inside a merchant's theme the embed reset zeroes
+ * every margin and padding, and only inline styles are sure to survive it.
  */
 function Manifest({
   order,
   branding,
+  storeName,
   unverified,
   verifyHref,
+  canEditAddress,
 }: {
   order: Order;
   branding: Branding;
+  storeName: string;
   unverified: boolean;
   verifyHref: string;
+  canEditAddress: boolean;
 }) {
   const address = order.shippingAddress;
   const shipTo = unverified
@@ -488,73 +505,95 @@ function Manifest({
 
   return (
     <section data-part="manifest">
-      <h2 className="text-h3 font-semibold" data-part="section-title">
-        Manifest
-      </h2>
-
-      <dl className="mt-3" style={{ textAlign: "left" }}>
-        <Row label="Order no.">
-          <span className="type-code">{order.orderNumber}</span>
-        </Row>
-
-        <Row label="Placed">{formatDate(order.orderDate)}</Row>
-
-        {branding.showOrderSummary && order.lineItems.length > 0 ? (
-          <Row label="Items">
-            <ul className="space-y-1">
-              {order.lineItems.map((item, index) => (
-                <li key={`${item.id ?? item.title}-${index}`}>
-                  {item.title}
-                  {item.variantTitle ? (
-                    <span style={{ color: "var(--brand-muted)" }}>
-                      {" "}
-                      {item.variantTitle}
-                    </span>
-                  ) : null}{" "}
-                  <span className="type-code">×{item.quantity}</span>
-                </li>
-              ))}
-            </ul>
-          </Row>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 16,
+          paddingBottom: 14,
+          borderBottom: "1.5px solid var(--brand-line)",
+        }}
+      >
+        <h2
+          data-part="section-title"
+          style={{
+            margin: 0,
+            fontSize: 13,
+            fontWeight: 700,
+            letterSpacing: "0.14em",
+            lineHeight: "20px",
+            textTransform: "uppercase",
+            color: "var(--brand-muted)",
+          }}
+        >
+          Order
+        </h2>
+        {canEditAddress ? (
+          <a
+            href="#edit-address"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 8,
+              fontSize: 16,
+              fontWeight: 600,
+              lineHeight: "20px",
+              color: "var(--brand-link)",
+              textDecoration: "none",
+            }}
+          >
+            <svg
+              aria-hidden
+              width="17"
+              height="17"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              style={{ display: "block" }}
+            >
+              <path d="M17 3a2.85 2.85 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+              <path d="m15 5 4 4" />
+            </svg>
+            Edit address
+          </a>
         ) : null}
+      </div>
 
-        {branding.showOrderSummary ? (
-          <Row label="Total">
-            <span className="type-code">
-              {formatMoney(order.total, order.currency)}
-            </span>
-          </Row>
-        ) : null}
-
+      <dl style={{ margin: "8px 0 0", textAlign: "left" }}>
         <Row label="Ship to">
           {shipTo.length > 0 ? (
-            <address className="not-italic">
-              {shipTo.map((line) => (
-                <span key={line} className="block">
-                  {line}
-                </span>
-              ))}
-              {unverified ? (
-                <span className="block" style={{ color: "var(--brand-muted)" }}>
-                  ···
-                </span>
-              ) : null}
+            <address style={{ fontStyle: "normal" }}>
+              {shipTo.join(", ")}
+              {unverified ? " ···" : ""}
             </address>
           ) : (
-            <span style={{ color: "var(--brand-muted)" }}>
+            <span style={{ color: "var(--brand-muted)", fontWeight: 400 }}>
               No delivery address on file
             </span>
           )}
 
           {unverified ? (
             <p
-              className="mt-1.5 text-caption"
-              style={{ color: "var(--brand-muted)" }}
+              style={{
+                margin: "6px 0 0",
+                fontSize: 13,
+                fontWeight: 400,
+                lineHeight: "18px",
+                color: "var(--brand-muted)",
+              }}
             >
               <a
                 href={verifyHref}
-                className="font-medium underline underline-offset-2"
-                style={{ color: "var(--brand-link)" }}
+                style={{
+                  color: "var(--brand-link)",
+                  fontWeight: 600,
+                  textDecoration: "underline",
+                  textUnderlineOffset: 2,
+                }}
               >
                 Confirm your email address
               </a>{" "}
@@ -562,62 +601,187 @@ function Manifest({
             </p>
           ) : null}
         </Row>
+
+        <Row label="Order number">{order.orderNumber}</Row>
+        <Row label="Order date">{formatLongDate(order.orderDate)}</Row>
+        <Row label="Store">{storeName}</Row>
+
+        {branding.showOrderSummary && order.lineItems.length > 0 ? (
+          <Row label="Items">
+            {order.lineItems.map((item, index) => (
+              <span
+                key={`${item.id ?? item.title}-${index}`}
+                style={{ display: "block" }}
+              >
+                {item.title}
+                {item.variantTitle ? (
+                  <span style={{ color: "var(--brand-muted)", fontWeight: 400 }}>
+                    {" "}
+                    {item.variantTitle}
+                  </span>
+                ) : null}{" "}
+                ×{item.quantity}
+              </span>
+            ))}
+          </Row>
+        ) : null}
+
+        {branding.showOrderSummary ? (
+          <Row label="Total paid" emphasis>
+            {formatCodeAmount(order.total, order.currency) || "—"}
+          </Row>
+        ) : null}
       </dl>
     </section>
   );
 }
 
-/** One manifest line: label left, value right, rule beneath. */
 /**
- * One manifest line: a label and its value, side by side.
- *
- * They used to sit at opposite ends of the row, which reads fine in a narrow
- * panel and falls apart in a wide one — on an 840px column the order number
- * ended up 699px from the words "Order no.", far enough that the eye cannot
- * pair them. The label now holds a fixed measure and the value starts right
- * after it, so the pair stays legible at any column width the store picks.
- *
- * The row still wraps: below roughly 420px the value drops under its label
- * rather than being squeezed into a few characters.
+ * One summary line: the label at the left edge, the value at the right, a
+ * hairline beneath. The label keeps a narrow measure so a long value (the
+ * address) takes the room and the label wraps instead.
  */
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function Row({
+  label,
+  emphasis = false,
+  children,
+}: {
+  label: string;
+  /** The closing "Total paid" line: bold label, larger value, no rule. */
+  emphasis?: boolean;
+  children: React.ReactNode;
+}) {
   return (
     <div
-      className="flex flex-wrap items-baseline gap-x-6 gap-y-1 border-b py-2.5 text-small last:border-b-0"
-      style={{ borderColor: "var(--brand-line)" }}
+      data-part="manifest-row"
+      style={{
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "space-between",
+        gap: 20,
+        padding: "13px 0",
+        borderBottom: emphasis ? "none" : "1px solid var(--brand-line)",
+      }}
     >
       <dt
-        className="shrink-0"
-        style={{ color: "var(--brand-muted)", width: "136px" }}
+        style={{
+          flex: "0 1 auto",
+          minWidth: 0,
+          maxWidth: "45%",
+          fontSize: emphasis ? 17 : 16,
+          fontWeight: emphasis ? 700 : 400,
+          lineHeight: "25px",
+          color: emphasis ? "var(--brand-text)" : "var(--brand-muted)",
+        }}
       >
         {label}
       </dt>
-      <dd className="min-w-0 flex-1" style={{ textAlign: "left" }}>
+      <dd
+        style={{
+          flex: "1 1 auto",
+          minWidth: 0,
+          margin: 0,
+          fontSize: emphasis ? 18 : 16,
+          fontWeight: emphasis ? 700 : 600,
+          lineHeight: "25px",
+          textAlign: "right",
+          overflowWrap: "anywhere",
+          color: "var(--brand-text)",
+        }}
+      >
         {children}
       </dd>
     </div>
   );
 }
 
+/**
+ * Questions as separate rounded cards, each with a chevron that turns when it
+ * opens. A plain `<details>`, so it works without any JavaScript.
+ */
 function Faq({ items }: { items: Array<{ question: string; answer: string }> }) {
   return (
-    <section data-part="faq">
-      <h2 className="text-h3 font-semibold" data-part="section-title">
-        Frequently asked questions
+    <section data-part="faq" style={{ textAlign: "left" }}>
+      {/* Turns the chevron of an open question. Scoped to this block. */}
+      <style>{`[data-part="faq"] details[open] > summary [data-part="faq-chevron"]{transform:rotate(180deg)}[data-part="faq"] summary::-webkit-details-marker{display:none}`}</style>
+
+      <h2
+        data-part="section-title"
+        style={{
+          margin: 0,
+          fontSize: 26,
+          fontWeight: 700,
+          letterSpacing: "-0.02em",
+          lineHeight: "32px",
+          color: "var(--brand-text)",
+        }}
+      >
+        Frequently Asked Questions
       </h2>
-      <div className="mt-3">
+
+      <div
+        style={{
+          marginTop: 26,
+          display: "flex",
+          flexDirection: "column",
+          gap: 14,
+        }}
+      >
         {items.map((item) => (
           <details
             key={item.question}
-            className="border-b py-2.5 last:border-b-0"
-            style={{ borderColor: "var(--brand-line)" }}
+            style={{
+              border: "1.5px solid var(--brand-line)",
+              borderRadius: 16,
+              backgroundColor: "var(--brand-surface)",
+              textAlign: "left",
+            }}
           >
-            <summary className="cursor-pointer text-small font-medium">
-              {item.question}
+            <summary
+              style={{
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 20,
+                padding: "18px 22px",
+                listStyle: "none",
+                cursor: "pointer",
+                fontSize: 16,
+                fontWeight: 600,
+                lineHeight: "26px",
+                color: "var(--brand-text)",
+              }}
+            >
+              <span style={{ minWidth: 0 }}>{item.question}</span>
+              <svg
+                data-part="faq-chevron"
+                aria-hidden
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.25"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                style={{
+                  display: "block",
+                  flexShrink: 0,
+                  color: "var(--brand-muted)",
+                  transition: "transform 0.2s ease",
+                }}
+              >
+                <path d="m6 9 6 6 6-6" />
+              </svg>
             </summary>
             <p
-              className="mt-1.5 text-small"
-              style={{ color: "var(--brand-muted)" }}
+              style={{
+                margin: 0,
+                padding: "0 22px 20px",
+                fontSize: 15,
+                lineHeight: "24px",
+                color: "var(--brand-muted)",
+              }}
             >
               {item.answer}
             </p>

@@ -1,6 +1,9 @@
 import type { Order, Stage, Store } from "@/lib/db";
-import { formatAddressOneLine, formatDate } from "@/lib/utils";
-import { formatCodeAmount } from "./order-facts";
+import {
+  formatAddressOneLine,
+  formatCodeAmount,
+  formatDate,
+} from "@/lib/utils";
 
 /**
  * Merge variables available in email subjects and bodies.

@@ -1,6 +1,8 @@
 import type { Order } from "@/lib/db";
 import { optional } from "@/lib/env";
-import { formatAddressLines } from "@/lib/utils";
+import { formatAddressLines, formatCodeAmount } from "@/lib/utils";
+
+export { formatCodeAmount };
 
 /**
  * Order details some designs show beyond the merge variables: the items, the
@@ -23,17 +25,6 @@ export type EmailOrderFacts = {
 /** Time zone order times are shown in. Set EMAIL_TIMEZONE to change it. */
 function emailTimeZone(): string {
   return optional("EMAIL_TIMEZONE", "Australia/Sydney");
-}
-
-/** `USD 7.98` — the currency code, then the amount. */
-export function formatCodeAmount(
-  amount: string | number | null | undefined,
-  currency: string,
-): string {
-  if (amount === null || amount === undefined || amount === "") return "";
-  const value = Number(amount);
-  if (Number.isNaN(value)) return "";
-  return `${currency} ${value.toFixed(2)}`.trim();
 }
 
 /** `6/25/2026, 6:43:09 AM` */

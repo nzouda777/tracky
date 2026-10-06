@@ -59,6 +59,29 @@ export function formatMoney(
   }
 }
 
+/** `USD 7.98` — the currency code, then the amount. */
+export function formatCodeAmount(
+  amount: string | number | null | undefined,
+  currency: string,
+): string {
+  if (amount === null || amount === undefined || amount === "") return "";
+  const value = Number(amount);
+  if (Number.isNaN(value)) return "";
+  return `${currency} ${value.toFixed(2)}`.trim();
+}
+
+/** `June 25, 2026` */
+export function formatLongDate(value: Date | string | null | undefined): string {
+  if (!value) return "—";
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) return "—";
+  return new Intl.DateTimeFormat("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
 /** "2 hours ago" — used for the "last update" block on the tracking page. */
 export function formatRelative(value: Date | string | null | undefined): string {
   if (!value) return "—";
