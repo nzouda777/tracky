@@ -92,6 +92,13 @@
       "when": 1791176946370,
       "tag": "0012_stage_phase",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791248273597,
+      "tag": "0013_auto_advance",
+      "breakpoints": true
     }
   ]
 }

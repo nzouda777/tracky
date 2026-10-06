@@ -14,6 +14,7 @@ export type NavIconName =
   | "mail"
   | "sequence"
   | "fulfillment"
+  | "autoAdvance"
   | "stores"
   | "users";
 
@@ -66,6 +67,11 @@ export function buildAdminNav(counts: {
           href: "/admin/settings/fulfillment",
           label: "Fulfillment",
           icon: "fulfillment",
+        },
+        {
+          href: "/admin/settings/auto-advance",
+          label: "Auto-advance",
+          icon: "autoAdvance",
         },
         {
           href: "/admin/stores",

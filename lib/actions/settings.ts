@@ -5,9 +5,75 @@ import { revalidatePath } from "next/cache";
 
 import { requireOwner } from "@/lib/auth/session";
 import { randomToken } from "@/lib/crypto/secrets";
-import { db, fulfillmentRules, storeMemberships, users } from "@/lib/db";
+import {
+  autoAdvanceSettings,
+  db,
+  fulfillmentRules,
+  stages,
+  storeMemberships,
+  users,
+} from "@/lib/db";
 import { env } from "@/lib/env";
+import {
+  AUTO_ADVANCE_MAX_DELAY_HOURS,
+  AUTO_ADVANCE_MIN_DELAY_HOURS,
+} from "@/lib/orders/auto-advance";
 import { guard, type ActionResult } from "./result";
+
+// ---------------------------------------------------------------------------
+// Auto-advance
+// ---------------------------------------------------------------------------
+
+export async function updateAutoAdvanceSettingsAction(
+  _previous: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  return guard(async (): Promise<ActionResult> => {
+    const { tdb } = await requireOwner();
+
+    const delayHours = Number(formData.get("delayHours"));
+    if (
+      !Number.isInteger(delayHours) ||
+      delayHours < AUTO_ADVANCE_MIN_DELAY_HOURS ||
+      delayHours > AUTO_ADVANCE_MAX_DELAY_HOURS
+    ) {
+      return {
+        error: `The delay must be a whole number of hours between ${AUTO_ADVANCE_MIN_DELAY_HOURS} and ${AUTO_ADVANCE_MAX_DELAY_HOURS}.`,
+      };
+    }
+
+    // The stop stage is looked up through the tenant client, so an id from
+    // another store simply does not resolve.
+    const stopAtRaw = String(formData.get("stopAtStageId") ?? "");
+    const stopAtStage = stopAtRaw ? await tdb.findById(stages, stopAtRaw) : null;
+    if (stopAtRaw && !stopAtStage) {
+      return { error: "That stage does not exist in this store." };
+    }
+
+    const values = {
+      enabled: formData.get("enabled") === "on",
+      delayHours,
+      stopAtStageId: stopAtStage?.id ?? null,
+      updatedAt: new Date(),
+    };
+
+    const existing = await tdb.findFirst(autoAdvanceSettings);
+    if (existing) {
+      await tdb.updateById(autoAdvanceSettings, existing.id, values);
+    } else {
+      await tdb.insertOne(autoAdvanceSettings, values);
+    }
+
+    revalidatePath("/admin/settings/auto-advance");
+
+    return {
+      ok: true,
+      message: values.enabled
+        ? `Saved. Auto-advance is on: orders move to the next stage after ${delayHours} hour${delayHours === 1 ? "" : "s"} without an update.`
+        : "Saved. Auto-advance is off: orders only move when the agency or an admin updates them.",
+    };
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Fulfillment rules

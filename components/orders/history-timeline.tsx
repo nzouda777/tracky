@@ -7,6 +7,7 @@ const SOURCE_LABELS: Record<string, { label: string; tone: "info" | "success" | 
   shopify_sync: { label: "Manual sync", tone: "info" },
   agency: { label: "Delivery agency", tone: "success" },
   admin: { label: "Manual override", tone: "warning" },
+  automatic: { label: "Automatic", tone: "info" },
 };
 
 /**

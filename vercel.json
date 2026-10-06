@@ -4,6 +4,10 @@
     {
       "path": "/api/cron/sweep-emails",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/auto-advance",
+      "schedule": "30 3 * * *"
     }
   ]
 }

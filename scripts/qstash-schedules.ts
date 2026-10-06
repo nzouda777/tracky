@@ -23,8 +23,23 @@ config({ path: ".env" });
 
 import { Client, type Schedule } from "@upstash/qstash";
 
-const SCHEDULE_ID = "tracky-sweep-emails";
-const DEFAULT_CRON = "*/15 * * * *";
+/** Every schedule this script owns. */
+const SCHEDULES = [
+  {
+    id: "tracky-sweep-emails",
+    path: "/api/cron/sweep-emails",
+    cronEnv: "QSTASH_SWEEP_CRON",
+    defaultCron: "*/15 * * * *",
+  },
+  {
+    // Moves orders on for stores that switched auto-advance on. Hourly, so an
+    // order moves within the hour after its delay is up.
+    id: "tracky-auto-advance",
+    path: "/api/cron/auto-advance",
+    cronEnv: "QSTASH_AUTO_ADVANCE_CRON",
+    defaultCron: "0 * * * *",
+  },
+] as const;
 
 async function main() {
   const command = process.argv[2] ?? "setup";
@@ -40,7 +55,6 @@ async function main() {
 
   const appUrl = required("APP_URL").replace(/\/$/, "");
   const cronSecret = required("CRON_SECRET");
-  const cron = process.env.QSTASH_SWEEP_CRON?.trim() || DEFAULT_CRON;
 
   if (appUrl.includes("localhost") || appUrl.includes("127.0.0.1")) {
     throw new Error(
@@ -49,29 +63,33 @@ async function main() {
     );
   }
 
-  const destination = `${appUrl}/api/cron/sweep-emails`;
+  for (const schedule of SCHEDULES) {
+    const cron = process.env[schedule.cronEnv]?.trim() || schedule.defaultCron;
+    const destination = `${appUrl}${schedule.path}`;
 
-  const { scheduleId } = await client.schedules.create({
-    scheduleId: SCHEDULE_ID,
-    destination,
-    cron,
-    method: "POST",
-    // The route accepts a QStash signature on its own. The bearer token is
-    // sent as well so the schedule keeps working if the signing keys are
-    // rotated before the deployment picks them up.
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${cronSecret}`,
-    },
-    body: JSON.stringify({ source: "qstash-schedule" }),
-    retries: 3,
-  });
+    const { scheduleId } = await client.schedules.create({
+      scheduleId: schedule.id,
+      destination,
+      cron,
+      method: "POST",
+      // The routes accept a QStash signature on their own. The bearer token
+      // is sent as well so the schedules keep working if the signing keys are
+      // rotated before the deployment picks them up.
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${cronSecret}`,
+      },
+      body: JSON.stringify({ source: "qstash-schedule" }),
+      retries: 3,
+    });
 
-  console.log(`✓ schedule ${scheduleId}`);
-  console.log(`  cron        ${cron}`);
-  console.log(`  destination ${destination}`);
+    console.log(`✓ schedule ${scheduleId}`);
+    console.log(`  cron        ${cron}`);
+    console.log(`  destination ${destination}`);
+  }
+
   console.log(
-    "\nVercel Cron still runs the same endpoint once a day as a backstop.",
+    "\nVercel Cron still runs the same endpoints once a day as a backstop.",
   );
 }
 
@@ -91,11 +109,14 @@ async function list(client: Client) {
 }
 
 async function remove(client: Client) {
-  await client.schedules.delete(SCHEDULE_ID);
-  console.log(`✓ deleted ${SCHEDULE_ID}`);
+  for (const schedule of SCHEDULES) {
+    await client.schedules.delete(schedule.id);
+    console.log(`✓ deleted ${schedule.id}`);
+  }
   console.log(
-    "The daily Vercel Cron run is now the only sweep. Delayed email still " +
-      "goes out on time via QStash messages; only the safety net is slower.",
+    "The daily Vercel Cron runs are now the only ones. Delayed email still " +
+      "goes out on time via QStash messages; the email safety net and " +
+      "auto-advance only run once a day.",
   );
 }
 

@@ -69,8 +69,9 @@ export const membershipStatusEnum = pgEnum("membership_status", [
 ]);
 
 /**
- * Where a stage transition came from. There is deliberately no `timer` or
- * `system` source: time never advances an order (see lib/orders/transitions).
+ * Where a stage transition came from. Time only advances an order through the
+ * store's opt-in auto-advance (lib/orders/auto-advance.ts), and every such
+ * event is recorded as `automatic` so it is never mistaken for a human one.
  */
 export const stageEventSourceEnum = pgEnum("stage_event_source", [
   "shopify_webhook",
@@ -86,6 +87,12 @@ export const stageEventSourceEnum = pgEnum("stage_event_source", [
   "shopify_sync",
   "agency",
   "admin",
+  /**
+   * Moved on by the store's auto-advance after its configured delay. Only
+   * possible while the owner has auto-advance switched on: the brand's own
+   * delivery network guarantees a real stage change within that delay.
+   */
+  "automatic",
 ]);
 
 export const fulfillmentStatusEnum = pgEnum("fulfillment_status", [
@@ -722,6 +729,33 @@ export const fulfillmentRules = pgTable(
 );
 
 // ---------------------------------------------------------------------------
+// auto_advance_settings — opt-in time-based stage progression
+// ---------------------------------------------------------------------------
+
+export const autoAdvanceSettings = pgTable(
+  "auto_advance_settings",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    storeId: uuid("store_id")
+      .notNull()
+      .references(() => stores.id, { onDelete: "cascade" }),
+    /** Off by default; the owner switches it on from Settings → Auto-advance. */
+    enabled: boolean("enabled").notNull().default(false),
+    /** Hours an order waits at a stage before moving to the next one. */
+    delayHours: integer("delay_hours").notNull().default(24),
+    /**
+     * The last stage auto-advance may move an order into. Null means it can go
+     * all the way to the final stage.
+     */
+    stopAtStageId: uuid("stop_at_stage_id").references(() => stages.id, {
+      onDelete: "set null",
+    }),
+    ...timestamps,
+  },
+  (table) => [uniqueIndex("auto_advance_settings_store_key").on(table.storeId)],
+);
+
+// ---------------------------------------------------------------------------
 // webhook_events — idempotency ledger for Shopify webhooks
 // ---------------------------------------------------------------------------
 
@@ -942,6 +976,7 @@ export type EmailTemplate = typeof emailTemplates.$inferSelect;
 export type EmailSequenceStep = typeof emailSequenceSteps.$inferSelect;
 export type EmailSend = typeof emailSends.$inferSelect;
 export type FulfillmentRules = typeof fulfillmentRules.$inferSelect;
+export type AutoAdvanceSettings = typeof autoAdvanceSettings.$inferSelect;
 export type WebhookEvent = typeof webhookEvents.$inferSelect;
 export type PlatformAuditEntry = typeof platformAuditLog.$inferSelect;
 export type PlatformAction = (typeof platformActionEnum.enumValues)[number];

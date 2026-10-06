@@ -121,6 +121,8 @@ Tests des webhooks (HMAC, idempotence, rejeu), de l'isolation multi-tenant (une 
 
 - **Aucune génération d'événements de suivi fictifs.** La timeline ne reflète que des événements réels (webhooks ou saisies humaines authentifiées).
 - **Aucune progression d'étape sur minuterie.** Le temps ne fait jamais avancer une commande ; seuls des événements réels le font. (Les délais ne servent qu'à **programmer des emails**, jamais à changer un statut de livraison.)
+  - **Exception (auto-advance, ajoutée à la demande du propriétaire) :** la marque dispose de son propre réseau de livraison qui garantit un changement d'étape sous 24h maximum. L'admin peut donc activer/désactiver, par boutique, un passage automatique à l'étape suivante après un délai configurable (24h par défaut), avec une étape d'arrêt optionnelle. Désactivé par défaut. Chaque passage est tracé avec `source = automatic`, les commandes annulées ne bougent jamais et aucune preuve de livraison n'est créée.
+- **Fulfillment Shopify à la création de la commande** (ajouté à la demande du propriétaire) : chaque nouvelle commande est marquée fulfilled dans Shopify avec son lien de tracking dès son arrivée.
 - **Pas de fulfillment sans livraison réelle confirmée par l'agence.**
 - **Application entièrement en anglais.** Tout le contenu visible (UI, page de tracking, emails, backoffice, étapes et templates par défaut, messages d'erreur) est rédigé en anglais. Aucune chaîne visible en français dans l'app livrée.
 - Chiffre les tokens d'accès Shopify au repos. Vérifie systématiquement HMAC (webhooks) et signature (App Proxy).

@@ -20,6 +20,7 @@ const SOURCE: Record<
   shopify_sync: { label: "Synced", tone: "info" },
   agency: { label: "Agency", tone: "success" },
   admin: { label: "Manual", tone: "warning" },
+  automatic: { label: "Automatic", tone: "info" },
 };
 
 export function ActivityFeed({ entries }: { entries: ActivityEntry[] }) {

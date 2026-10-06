@@ -61,8 +61,14 @@ describe("the QStash schedule carries the frequent sweep", () => {
   const script = read("scripts/qstash-schedules.ts");
 
   it("is registered under a fixed id, so re-running cannot stack duplicates", () => {
-    expect(script).toContain(`const SCHEDULE_ID = "${SWEEP_SCHEDULE_ID}"`);
-    expect(script).toContain("scheduleId: SCHEDULE_ID");
+    expect(script).toContain(`id: "${SWEEP_SCHEDULE_ID}"`);
+    expect(script).toContain("scheduleId: schedule.id");
+  });
+
+  it("also registers the hourly auto-advance run under a fixed id", () => {
+    expect(script).toContain('id: "tracky-auto-advance"');
+    expect(script).toContain("/api/cron/auto-advance");
+    expect(script).toContain('defaultCron: "0 * * * *"');
   });
 
   it("targets the same endpoint Vercel Cron does", () => {
@@ -70,7 +76,7 @@ describe("the QStash schedule carries the frequent sweep", () => {
   });
 
   it("runs more often than the Vercel cron it is compensating for", () => {
-    expect(script).toContain(`const DEFAULT_CRON = "${DEFAULT_SWEEP_CRON}"`);
+    expect(script).toContain(`defaultCron: "${DEFAULT_SWEEP_CRON}"`);
     // A sub-daily expression is the whole point of the second scheduler.
     expect(DEFAULT_SWEEP_CRON.split(/\s+/)[0]).not.toMatch(/^\d+$/);
   });

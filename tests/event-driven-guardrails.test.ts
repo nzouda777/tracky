@@ -67,6 +67,10 @@ describe("stage transitions are event-driven only", () => {
       // Human actions. Every function in this file starts with a role check
       // (requireOwner / requireAgency / requireStoreAccess).
       "lib/actions/orders.ts",
+      // Auto-advance: the one time-based path, an explicit exception for
+      // brands whose delivery network guarantees a stage change within a set
+      // delay. Off unless the owner switches it on; pinned below.
+      "lib/orders/auto-advance.ts",
       // Verified Shopify webhooks. Not a scheduler: the payload is
       // signature-checked before it reaches here, and the only transition it
       // performs is the one below — an order Shopify reports as paid moving to
@@ -79,6 +83,31 @@ describe("stage transitions are event-driven only", () => {
       // test below pins that it stays behind that guard.
       "lib/shopify/sync.ts",
     ]);
+  });
+
+  it("auto-advance only runs for stores that switched it on, and says so", () => {
+    const source = read("lib/orders/auto-advance.ts");
+
+    // Gated on the owner's switch, and on a live, unpaused store.
+    expect(source).toContain("eq(autoAdvanceSettings.enabled, true)");
+    expect(source).toContain("isNull(stores.pausedAt)");
+    // Recorded as what it is, never as a person or Shopify.
+    expect(source).toContain('source: "automatic"');
+    expect(source).not.toMatch(/source: "(agency|admin|shopify_webhook)"/);
+    // Cancelled orders stay put, and no proof of delivery is ever invented.
+    expect(source).toContain("isNull(orders.cancelledAt)");
+    expect(source).not.toContain("proofOfDelivery");
+    // Off by default.
+    expect(read("lib/db/schema.ts")).toMatch(
+      /enabled: boolean\("enabled"\)\.notNull\(\)\.default\(false\),\s*\/\*\* Hours an order waits/,
+    );
+  });
+
+  it("auto-advance is reachable only from its guarded cron route", () => {
+    const callers = callersOf("runAutoAdvance(").filter(
+      (file) => file !== "lib/orders/auto-advance.ts",
+    );
+    expect(callers).toEqual(["app/api/cron/auto-advance/route.ts"]);
   });
 
   /**

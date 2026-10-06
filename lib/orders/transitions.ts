@@ -19,10 +19,11 @@ import { getStageById } from "./stages";
  *
  * Two rules are enforced here rather than trusted to call sites:
  *
- *  1. **Only real events move an order.** `source` is one of
- *     `shopify_webhook` | `agency` | `admin`; there is no timer source, and no
- *     scheduler anywhere in this codebase calls this function. Delays exist
- *     solely to schedule email (see lib/email/scheduler.ts).
+ *  1. **Every move has a named cause.** `source` is one of
+ *     `shopify_webhook` | `shopify_sync` | `agency` | `admin` | `automatic`.
+ *     The only scheduler that calls this function is the store's opt-in
+ *     auto-advance (lib/orders/auto-advance.ts), recorded as `automatic`;
+ *     every other delay exists solely to schedule email.
  *  2. **Every transition is recorded before it is reflected.** The row in
  *     `order_stage_history` is written first and is what the public timeline
  *     reads, so the customer only ever sees events that actually happened.

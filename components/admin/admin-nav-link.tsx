@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 
 import {
   IconBrush,
+  IconClock,
   IconDashboard,
   IconMail,
   IconOrders,
@@ -31,6 +32,7 @@ const ICONS: Record<NavIconName, typeof IconDashboard> = {
   mail: IconMail,
   sequence: IconSequence,
   fulfillment: IconTruck,
+  autoAdvance: IconClock,
   stores: IconStore,
   users: IconUsers,
 };
