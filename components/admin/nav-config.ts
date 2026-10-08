@@ -13,6 +13,7 @@ export type NavIconName =
   | "branding"
   | "mail"
   | "sequence"
+  | "emailLog"
   | "fulfillment"
   | "autoAdvance"
   | "stores"
@@ -32,6 +33,7 @@ export function buildAdminNav(counts: {
   attention: number;
   activeOrders: number;
   stores: number;
+  failedEmails: number;
 }): AdminNavGroup[] {
   return [
     {
@@ -58,6 +60,12 @@ export function buildAdminNav(counts: {
         { href: "/admin/branding", label: "Branding", icon: "branding" },
         { href: "/admin/emails/templates", label: "Email templates", icon: "mail" },
         { href: "/admin/emails/sequence", label: "Email sequence", icon: "sequence" },
+        {
+          href: "/admin/emails/log",
+          label: "Email log",
+          icon: "emailLog",
+          badge: counts.failedEmails,
+        },
       ],
     },
     {

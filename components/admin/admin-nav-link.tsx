@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import {
+  IconAlertTriangle,
   IconBrush,
   IconClock,
   IconDashboard,
@@ -31,6 +32,7 @@ const ICONS: Record<NavIconName, typeof IconDashboard> = {
   branding: IconBrush,
   mail: IconMail,
   sequence: IconSequence,
+  emailLog: IconAlertTriangle,
   fulfillment: IconTruck,
   autoAdvance: IconClock,
   stores: IconStore,

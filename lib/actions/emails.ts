@@ -30,6 +30,7 @@ import { guard, type ActionResult } from "./result";
 function revalidateEmails() {
   revalidatePath("/admin/emails/templates");
   revalidatePath("/admin/emails/sequence");
+  revalidatePath("/admin/emails/log");
   revalidatePath("/admin/orders");
 }
 

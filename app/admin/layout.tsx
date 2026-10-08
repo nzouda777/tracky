@@ -5,6 +5,7 @@ import { AdminShell } from "@/components/admin/admin-shell";
 import { buildAdminNav } from "@/components/admin/nav-config";
 import { getPlatformSession } from "@/lib/auth/platform";
 import { requireOwner } from "@/lib/auth/session";
+import { countEmailSendsByStatus } from "@/lib/email/log";
 import {
   getAttentionItems,
   getDashboardMetrics,
@@ -22,15 +23,17 @@ export default async function AdminLayout({
   // The sidebar carries live counts, so a problem is visible from any screen
   // rather than only on the dashboard.
   const allStages = await getOrderedStages(session.tdb);
-  const [metrics, attention] = await Promise.all([
+  const [metrics, attention, emailCounts] = await Promise.all([
     getDashboardMetrics(session.tdb, allStages),
     getAttentionItems(session.tdb, allStages),
+    countEmailSendsByStatus(session.tdb),
   ]);
 
   const nav = buildAdminNav({
     attention: attention.length,
     activeOrders: metrics.activeOrders,
     stores: session.memberships.length,
+    failedEmails: emailCounts.failed,
   });
 
   // Only a platform operator ever sees the link; everyone else gets a 404 at
