@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, lte, max } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, isNull, lte, max } from "drizzle-orm";
 
 import {
   autoAdvanceSettings,
@@ -10,6 +10,7 @@ import {
   type Order,
 } from "@/lib/db";
 import { TenantDb } from "@/lib/db/tenant";
+import { trackingStart } from "@/lib/stores/tracking-window";
 import { listStages } from "./stages";
 import { recordStageTransition } from "./transitions";
 
@@ -23,6 +24,10 @@ import { recordStageTransition } from "./transitions";
  *   - an order moves one stage at a time, once it has sat at its current stage
  *     for `delayHours` since its last recorded event — any agency or admin
  *     update restarts that clock;
+ *   - the move is recorded at the moment it fell due (last event +
+ *     `delayHours`), not when the job happened to run, so steps stay exactly
+ *     `delayHours` apart counting from the order date and never drift;
+ *   - orders placed before the day the store was connected are never moved;
  *   - it never goes past `stopAtStageId` (or the final stage when unset), and
  *     never moves a cancelled order;
  *   - every move is recorded with `source = automatic`, so the history always
@@ -49,7 +54,7 @@ export async function runAutoAdvance(
   now: Date = new Date(),
 ): Promise<AutoAdvanceResult> {
   const enabled = await db
-    .select({ settings: autoAdvanceSettings })
+    .select({ settings: autoAdvanceSettings, installedAt: stores.installedAt })
     .from(autoAdvanceSettings)
     .innerJoin(stores, eq(stores.id, autoAdvanceSettings.storeId))
     .where(
@@ -67,11 +72,16 @@ export async function runAutoAdvance(
     failed: 0,
   };
 
-  for (const { settings } of enabled) {
+  for (const { settings, installedAt } of enabled) {
     const budget = AUTO_ADVANCE_BATCH_SIZE - result.advanced - result.failed;
     if (budget <= 0) break;
 
-    const outcome = await advanceStore({ settings, now, limit: budget });
+    const outcome = await advanceStore({
+      settings,
+      since: trackingStart({ installedAt }),
+      now,
+      limit: budget,
+    });
     result.advanced += outcome.advanced;
     result.failed += outcome.failed;
   }
@@ -81,10 +91,13 @@ export async function runAutoAdvance(
 
 async function advanceStore({
   settings,
+  since,
   now,
   limit,
 }: {
   settings: AutoAdvanceSettings;
+  /** Orders placed before this are left alone. */
+  since: Date | null;
   now: Date;
   limit: number;
 }): Promise<{ advanced: number; failed: number }> {
@@ -100,18 +113,20 @@ async function advanceStore({
     .filter((stage) => !stage.isTerminal);
   if (movable.length === 0) return { advanced: 0, failed: 0 };
 
-  const cutoff = new Date(now.getTime() - settings.delayHours * 3_600_000);
+  const delayMs = settings.delayHours * 3_600_000;
+  const cutoff = new Date(now.getTime() - delayMs);
   const due = await findDueOrders({
     tdb,
     stageIds: movable.map((stage) => stage.id),
     cutoff,
+    since,
     limit,
   });
 
   let advanced = 0;
   let failed = 0;
 
-  for (const order of due) {
+  for (const { order, lastEventAt } of due) {
     const index = allStages.findIndex((stage) => stage.id === order.currentStageId);
     const next = allStages[index + 1];
     if (index === -1 || !next) continue;
@@ -136,6 +151,8 @@ async function advanceStore({
         source: "automatic",
         note: null,
         userId: null,
+        // When the step fell due, so the next one counts from here too.
+        occurredAt: new Date(lastEventAt.getTime() + delayMs),
       });
       advanced += 1;
     } catch (error) {
@@ -171,19 +188,21 @@ function resolveStopIndex(
 
 /**
  * Orders sitting at one of `stageIds` whose most recent recorded event is
- * older than `cutoff`, oldest first.
+ * older than `cutoff`, oldest first, with that event's time.
  */
 async function findDueOrders({
   tdb,
   stageIds,
   cutoff,
+  since,
   limit,
 }: {
   tdb: TenantDb;
   stageIds: string[];
   cutoff: Date;
+  since: Date | null;
   limit: number;
-}): Promise<Order[]> {
+}): Promise<Array<{ order: Order; lastEventAt: Date }>> {
   const lastEvent = tdb.raw
     .select({
       orderId: orderStageHistory.orderId,
@@ -195,7 +214,7 @@ async function findDueOrders({
     .as("last_event");
 
   const rows = await tdb.raw
-    .select({ order: orders })
+    .select({ order: orders, lastEventAt: lastEvent.at })
     .from(orders)
     .innerJoin(lastEvent, eq(lastEvent.orderId, orders.id))
     .where(
@@ -204,10 +223,26 @@ async function findDueOrders({
         isNull(orders.cancelledAt),
         inArray(orders.currentStageId, stageIds),
         lte(lastEvent.at, cutoff),
+        since ? gte(orders.orderDate, since) : undefined,
       ),
     )
     .orderBy(asc(lastEvent.at))
     .limit(limit);
 
-  return rows.map((row) => row.order);
+  return rows.map((row) => ({
+    order: row.order,
+    lastEventAt: toDate(row.lastEventAt),
+  }));
+}
+
+/**
+ * An aggregate read through a subquery may arrive as Postgres text
+ * ("2026-10-08 12:00:00.123+00") rather than a Date, depending on the driver.
+ */
+function toDate(value: unknown): Date {
+  if (value instanceof Date) return value;
+  const text = String(value)
+    .replace(" ", "T")
+    .replace(/([+-]\d{2})$/, "$1:00");
+  return new Date(text);
 }

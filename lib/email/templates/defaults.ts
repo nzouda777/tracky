@@ -45,17 +45,6 @@ export const DEFAULT_EMAIL_TEMPLATES: DefaultTemplate[] = [
     trigger: { type: "on_stage", stageKey: "confirmed" },
   },
   {
-    key: "order-processing",
-    name: "Order is being packed",
-    subject: "We are packing order {{order_number}}",
-    previewText: "Your items are being picked and packed.",
-    body: [
-      "<p>Hi {{customer_name}},</p>",
-      "<p>Your order is being picked and packed right now. The next email you get from us will be the one saying it has left for delivery.</p>",
-    ].join("\n"),
-    trigger: { type: "on_stage", stageKey: "processing" },
-  },
-  {
     key: "out-for-delivery",
     name: "Out for delivery",
     subject: "Order {{order_number}} is out for delivery",
@@ -76,18 +65,5 @@ export const DEFAULT_EMAIL_TEMPLATES: DefaultTemplate[] = [
       "<p>Your order has been delivered and signed for. We hope everything arrived in perfect condition — if anything is not right, just reply to this email and we will sort it out.</p>",
     ].join("\n"),
     trigger: { type: "on_stage", stageKey: "delivered" },
-  },
-  {
-    key: "post-delivery-check-in",
-    name: "Post-delivery check-in",
-    subject: "How was your order, {{customer_name}}?",
-    previewText: "A quick note after your delivery.",
-    body: [
-      "<p>Hi {{customer_name}},</p>",
-      "<p>It has been a few days since your order. We wanted to check everything arrived as it should.</p>",
-      "<p>If something is missing, damaged or simply not what you expected, reply to this email — a real person reads it.</p>",
-    ].join("\n"),
-    // A delay only ever schedules an email. It never moves an order forward.
-    trigger: { type: "delay_after_order", delayDays: 7 },
   },
 ];
