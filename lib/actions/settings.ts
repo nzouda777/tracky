@@ -32,14 +32,27 @@ export async function updateAutoAdvanceSettingsAction(
     const { tdb } = await requireOwner();
 
     const delayHours = Number(formData.get("delayHours"));
-    if (
-      !Number.isInteger(delayHours) ||
-      delayHours < AUTO_ADVANCE_MIN_DELAY_HOURS ||
-      delayHours > AUTO_ADVANCE_MAX_DELAY_HOURS
-    ) {
-      return {
-        error: `The delay must be a whole number of hours between ${AUTO_ADVANCE_MIN_DELAY_HOURS} and ${AUTO_ADVANCE_MAX_DELAY_HOURS}.`,
-      };
+    const subStageDelayHours = Number(formData.get("subStageDelayHours"));
+    for (const hours of [delayHours, subStageDelayHours]) {
+      if (
+        !Number.isInteger(hours) ||
+        hours < AUTO_ADVANCE_MIN_DELAY_HOURS ||
+        hours > AUTO_ADVANCE_MAX_DELAY_HOURS
+      ) {
+        return {
+          error: `Delays must be a whole number of hours between ${AUTO_ADVANCE_MIN_DELAY_HOURS} and ${AUTO_ADVANCE_MAX_DELAY_HOURS}.`,
+        };
+      }
+    }
+
+    // A plain date from the form, read as midnight UTC; empty means "from the
+    // day the store was connected".
+    const emailsSinceRaw = String(formData.get("emailsSince") ?? "").trim();
+    const emailsSince = emailsSinceRaw
+      ? new Date(`${emailsSinceRaw}T00:00:00.000Z`)
+      : null;
+    if (emailsSince && Number.isNaN(emailsSince.getTime())) {
+      return { error: "Enter a valid email start date." };
     }
 
     // The stop stage is looked up through the tenant client, so an id from
@@ -53,7 +66,10 @@ export async function updateAutoAdvanceSettingsAction(
     const values = {
       enabled: formData.get("enabled") === "on",
       delayHours,
+      subStageDelayHours,
       stopAtStageId: stopAtStage?.id ?? null,
+      emailsMainStagesOnly: formData.get("emailsMainStagesOnly") === "on",
+      emailsSince,
       updatedAt: new Date(),
     };
 
@@ -65,11 +81,12 @@ export async function updateAutoAdvanceSettingsAction(
     }
 
     revalidatePath("/admin/settings/auto-advance");
+    revalidatePath("/admin/emails/sequence");
 
     return {
       ok: true,
       message: values.enabled
-        ? `Saved. Auto-advance is on: orders move to the next stage after ${delayHours} hour${delayHours === 1 ? "" : "s"} without an update.`
+        ? `Saved. Sub-stages move every ${subStageDelayHours} h, and the next main stage starts ${delayHours} h after the last sub-stage.`
         : "Saved. Auto-advance is off: orders only move when the agency or an admin updates them.",
     };
   });

@@ -113,6 +113,13 @@
       "when": 1791262700473,
       "tag": "0015_auto_fulfill_since",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791593017334,
+      "tag": "0016_progression_settings",
+      "breakpoints": true
     }
   ]
 }

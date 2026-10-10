@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, lte, max } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, lte, max, or } from "drizzle-orm";
 
 import {
   autoAdvanceSettings,
@@ -10,6 +10,7 @@ import {
   type Order,
 } from "@/lib/db";
 import { TenantDb } from "@/lib/db/tenant";
+import { stepDelayHours } from "@/lib/stages/phases";
 import { listStages } from "./stages";
 import { recordStageTransition } from "./transitions";
 
@@ -21,11 +22,14 @@ import { recordStageTransition } from "./transitions";
  * delay. It only runs while the owner has it switched on, and:
  *
  *   - an order moves one stage at a time, once it has sat at its current stage
- *     for `delayHours` since its last recorded event — any agency or admin
- *     update restarts that clock;
- *   - the move is recorded at the moment it fell due (last event +
- *     `delayHours`), not when the job happened to run, so steps stay exactly
- *     `delayHours` apart counting from the order date and never drift;
+ *     long enough since its last recorded event — any agency or admin update
+ *     restarts that clock. Sub-stages inside one main stage (phase) follow
+ *     each other every `subStageDelayHours`; once the last sub-stage of a
+ *     phase is reached, the move into the next main stage waits the store's
+ *     `delayHours`;
+ *   - the move is recorded at the moment it fell due (last event + delay), not
+ *     when the job happened to run, so steps keep their exact spacing counting
+ *     from the order date and never drift;
  *   - it never goes past `stopAtStageId` (or the final stage when unset), and
  *     never moves a cancelled order;
  *   - every move is recorded with `source = automatic`, so the history always
@@ -35,6 +39,8 @@ import { recordStageTransition } from "./transitions";
  */
 
 export const AUTO_ADVANCE_DEFAULT_DELAY_HOURS = 24;
+/** Default time between two sub-stages of the same main stage (phase). */
+export const SUB_STAGE_DEFAULT_DELAY_HOURS = 24;
 export const AUTO_ADVANCE_MIN_DELAY_HOURS = 1;
 export const AUTO_ADVANCE_MAX_DELAY_HOURS = 24 * 30;
 
@@ -103,12 +109,22 @@ async function advanceStore({
     .filter((stage) => !stage.isTerminal);
   if (movable.length === 0) return { advanced: 0, failed: 0 };
 
-  const delayMs = settings.delayHours * 3_600_000;
-  const cutoff = new Date(now.getTime() - delayMs);
+  // Group the movable stages by how long an order waits there.
+  const delayByStage = new Map<string, number>();
+  const groups = new Map<number, string[]>();
+  for (const stage of movable) {
+    const index = allStages.indexOf(stage);
+    const hours = stepDelayHours(stage, allStages[index + 1], settings);
+    delayByStage.set(stage.id, hours);
+    groups.set(hours, [...(groups.get(hours) ?? []), stage.id]);
+  }
+
   const due = await findDueOrders({
     tdb,
-    stageIds: movable.map((stage) => stage.id),
-    cutoff,
+    groups: [...groups].map(([hours, stageIds]) => ({
+      stageIds,
+      cutoff: new Date(now.getTime() - hours * 3_600_000),
+    })),
     limit,
   });
 
@@ -121,6 +137,7 @@ async function advanceStore({
     if (index === -1 || !next) continue;
 
     const from = allStages[index];
+    const delayMs = (delayByStage.get(from.id) ?? settings.delayHours) * 3_600_000;
 
     // Claim the step atomically: the stage only changes if the order is still
     // where we read it, so an overlapping run or an agency update in between
@@ -176,18 +193,17 @@ function resolveStopIndex(
 }
 
 /**
- * Orders sitting at one of `stageIds` whose most recent recorded event is
- * older than `cutoff`, oldest first, with that event's time.
+ * Orders sitting at a stage of one of `groups` whose most recent recorded
+ * event is older than that group's `cutoff`, oldest first, with that event's
+ * time.
  */
 async function findDueOrders({
   tdb,
-  stageIds,
-  cutoff,
+  groups,
   limit,
 }: {
   tdb: TenantDb;
-  stageIds: string[];
-  cutoff: Date;
+  groups: Array<{ stageIds: string[]; cutoff: Date }>;
   limit: number;
 }): Promise<Array<{ order: Order; lastEventAt: Date }>> {
   const lastEvent = tdb.raw
@@ -208,8 +224,14 @@ async function findDueOrders({
       tdb.scope(
         orders,
         isNull(orders.cancelledAt),
-        inArray(orders.currentStageId, stageIds),
-        lte(lastEvent.at, cutoff),
+        or(
+          ...groups.map((group) =>
+            and(
+              inArray(orders.currentStageId, group.stageIds),
+              lte(lastEvent.at, group.cutoff),
+            ),
+          ),
+        ),
       ),
     )
     .orderBy(asc(lastEvent.at))

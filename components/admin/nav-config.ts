@@ -78,7 +78,7 @@ export function buildAdminNav(counts: {
         },
         {
           href: "/admin/settings/auto-advance",
-          label: "Auto-advance",
+          label: "Progression & emails",
           icon: "autoAdvance",
         },
         {

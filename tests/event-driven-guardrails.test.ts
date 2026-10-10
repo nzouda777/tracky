@@ -99,7 +99,7 @@ describe("stage transitions are event-driven only", () => {
     expect(source).not.toContain("proofOfDelivery");
     // Off by default.
     expect(read("lib/db/schema.ts")).toMatch(
-      /enabled: boolean\("enabled"\)\.notNull\(\)\.default\(false\),\s*\/\*\* Hours an order waits/,
+      /enabled: boolean\("enabled"\)\.notNull\(\)\.default\(false\),\s*\/\*\*[\s*]*Hours an order waits/,
     );
   });
 

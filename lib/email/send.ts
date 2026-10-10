@@ -1,6 +1,7 @@
 import { eq } from "drizzle-orm";
 
 import {
+  autoAdvanceSettings,
   brandingSettings,
   db,
   emailSends,
@@ -150,8 +151,13 @@ async function loadSendContext(send: EmailSend): Promise<SendContext> {
   // went wrong, and the row stays in the store's history as evidence of what
   // the customer was not told while the pause was on.
   if (store.pausedAt) return { skip: "Store is paused." };
-  if (!mayEmailOrder(store, order.orderDate)) {
-    return { skip: "Order predates the store's connection." };
+  const [progression] = await db
+    .select()
+    .from(autoAdvanceSettings)
+    .where(eq(autoAdvanceSettings.storeId, send.storeId))
+    .limit(1);
+  if (!mayEmailOrder(store, progression ?? null, order.orderDate)) {
+    return { skip: "Order was placed before the store's email start date." };
   }
 
   if (!send.templateId) return { skip: "Send record has no template." };

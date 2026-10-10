@@ -762,8 +762,13 @@ export const autoAdvanceSettings = pgTable(
       .references(() => stores.id, { onDelete: "cascade" }),
     /** Off by default; the owner switches it on from Settings → Auto-advance. */
     enabled: boolean("enabled").notNull().default(false),
-    /** Hours an order waits at a stage before moving to the next one. */
+    /**
+     * Hours an order waits at the last sub-stage of a main stage (phase)
+     * before moving into the next main stage.
+     */
     delayHours: integer("delay_hours").notNull().default(24),
+    /** Hours between two sub-stages of the same main stage. */
+    subStageDelayHours: integer("sub_stage_delay_hours").notNull().default(24),
     /**
      * The last stage auto-advance may move an order into. Null means it can go
      * all the way to the final stage.
@@ -771,6 +776,18 @@ export const autoAdvanceSettings = pgTable(
     stopAtStageId: uuid("stop_at_stage_id").references(() => stages.id, {
       onDelete: "set null",
     }),
+    /**
+     * When true, emails only go out as an order enters a main stage: steps
+     * attached to a sub-stage are not sent.
+     */
+    emailsMainStagesOnly: boolean("emails_main_stages_only")
+      .notNull()
+      .default(true),
+    /**
+     * Only orders placed on or after this moment get customer emails. Null
+     * means midnight UTC on the day the store was connected.
+     */
+    emailsSince: timestamp("emails_since", { withTimezone: true }),
     ...timestamps,
   },
   (table) => [uniqueIndex("auto_advance_settings_store_key").on(table.storeId)],

@@ -1,16 +1,21 @@
-import type { Store } from "@/lib/db";
+import type { AutoAdvanceSettings, Store } from "@/lib/db";
 
 /**
  * Which orders the app may email.
  *
  * Every order is imported and moves along its stages, but only orders placed
- * on the day the store was connected, or later, get customer emails. Older
- * orders stay silent, so connecting the app never sends a burst of emails
- * about orders customers already have.
+ * on or after the store's email start date get customer emails. Older orders
+ * stay silent, so connecting the app never sends a burst of emails about
+ * orders customers already have.
  *
- * The day boundary is midnight UTC on the day of `installedAt`.
+ * The start date is set by the owner (Settings → Progression & emails). When
+ * unset it is midnight UTC on the day the store was connected.
  */
-export function trackingStart(store: Pick<Store, "installedAt">): Date | null {
+export function emailsStart(
+  store: Pick<Store, "installedAt">,
+  settings: Pick<AutoAdvanceSettings, "emailsSince"> | null,
+): Date | null {
+  if (settings?.emailsSince) return settings.emailsSince;
   if (!store.installedAt) return null;
   const start = new Date(store.installedAt);
   start.setUTCHours(0, 0, 0, 0);
@@ -20,8 +25,9 @@ export function trackingStart(store: Pick<Store, "installedAt">): Date | null {
 /** True when the customer of an order placed at `orderDate` may be emailed. */
 export function mayEmailOrder(
   store: Pick<Store, "installedAt">,
+  settings: Pick<AutoAdvanceSettings, "emailsSince"> | null,
   orderDate: Date,
 ): boolean {
-  const start = trackingStart(store);
+  const start = emailsStart(store, settings);
   return !start || orderDate.getTime() >= start.getTime();
 }

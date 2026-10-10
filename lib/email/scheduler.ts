@@ -1,14 +1,17 @@
 import { and, asc, eq } from "drizzle-orm";
 
 import {
+  autoAdvanceSettings,
   emailSends,
   emailSequenceSteps,
+  stages,
   type EmailSequenceStep,
   type Order,
   type Stage,
 } from "@/lib/db";
 import type { TenantDb } from "@/lib/db/tenant";
 import { env } from "@/lib/env";
+import { mainStageOf } from "@/lib/stages/phases";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -177,8 +180,14 @@ export async function scheduleOrderSequence({
 }
 
 /**
- * Schedules every `on_stage` step attached to the stage an order just reached.
+ * Schedules the `on_stage` steps for the stage an order just reached.
  * Called from `recordStageTransition`, i.e. only ever off a real event.
+ *
+ * With "main stages only" on (the default), emails belong to main stages:
+ * the steps attached to the first stage of the reached stage's phase are
+ * scheduled, whichever stage of that phase the order landed on, and steps
+ * attached to sub-stages are never sent. The (order, step) unique index means
+ * the main-stage email goes out once, on entering the phase.
  */
 export async function scheduleStageEmails({
   tdb,
@@ -191,11 +200,22 @@ export async function scheduleStageEmails({
 }): Promise<number> {
   if (!order.customerEmail) return 0;
 
+  const settings = await tdb.findFirst(autoAdvanceSettings);
+  const mainStagesOnly = settings?.emailsMainStagesOnly ?? true;
+
+  let targetStageId = stage.id;
+  if (mainStagesOnly) {
+    const allStages = await tdb.findMany(stages, {
+      orderBy: asc(stages.position),
+    });
+    targetStageId = (mainStageOf(allStages, stage) ?? stage).id;
+  }
+
   const steps = await tdb.findMany(emailSequenceSteps, {
     where: and(
       eq(emailSequenceSteps.isActive, true),
       eq(emailSequenceSteps.triggerType, "on_stage"),
-      eq(emailSequenceSteps.stageId, stage.id),
+      eq(emailSequenceSteps.stageId, targetStageId),
     ),
     orderBy: asc(emailSequenceSteps.position),
   });
