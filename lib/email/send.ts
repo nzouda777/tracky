@@ -11,7 +11,7 @@ import {
   type EmailSend,
 } from "@/lib/db";
 import { env } from "@/lib/env";
-import { isTrackedOrder } from "@/lib/stores/tracking-window";
+import { mayEmailOrder } from "@/lib/stores/tracking-window";
 import { buildTrackingLink } from "@/lib/tracking/links";
 import { buildMergeContext } from "./merge";
 import { buildOrderFacts } from "./order-facts";
@@ -150,7 +150,7 @@ async function loadSendContext(send: EmailSend): Promise<SendContext> {
   // went wrong, and the row stays in the store's history as evidence of what
   // the customer was not told while the pause was on.
   if (store.pausedAt) return { skip: "Store is paused." };
-  if (!isTrackedOrder(store, order.orderDate)) {
+  if (!mayEmailOrder(store, order.orderDate)) {
     return { skip: "Order predates the store's connection." };
   }
 

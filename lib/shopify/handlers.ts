@@ -10,7 +10,6 @@ import {
   placeOrderInFirstStage,
   recordStageTransition,
 } from "@/lib/orders/transitions";
-import { isTrackedOrder } from "@/lib/stores/tracking-window";
 import { mapOrderPayload, type ShopifyOrderPayload } from "./orders";
 import type { WebhookTopic } from "./webhooks";
 
@@ -61,14 +60,6 @@ async function handleOrdersCreate(
     // stage placement, which would duplicate the customer's timeline.
     await tdb.update(orders, { ...fields, updatedAt: new Date() }, eq(orders.id, existing.id));
     return { handled: true, detail: `Order ${fields.orderNumber} already existed; fields resynced.` };
-  }
-
-  // Orders placed before the day the app was connected are not ours to track.
-  if (!isTrackedOrder(store, fields.orderDate)) {
-    return {
-      handled: true,
-      detail: `Order ${fields.orderNumber} predates the store's connection; ignored.`,
-    };
   }
 
   const firstStage = await getFirstStage(tdb);

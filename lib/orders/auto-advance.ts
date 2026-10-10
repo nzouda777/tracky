@@ -1,4 +1,4 @@
-import { and, asc, eq, gte, inArray, isNull, lte, max } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, lte, max } from "drizzle-orm";
 
 import {
   autoAdvanceSettings,
@@ -10,7 +10,6 @@ import {
   type Order,
 } from "@/lib/db";
 import { TenantDb } from "@/lib/db/tenant";
-import { trackingStart } from "@/lib/stores/tracking-window";
 import { listStages } from "./stages";
 import { recordStageTransition } from "./transitions";
 
@@ -27,7 +26,6 @@ import { recordStageTransition } from "./transitions";
  *   - the move is recorded at the moment it fell due (last event +
  *     `delayHours`), not when the job happened to run, so steps stay exactly
  *     `delayHours` apart counting from the order date and never drift;
- *   - orders placed before the day the store was connected are never moved;
  *   - it never goes past `stopAtStageId` (or the final stage when unset), and
  *     never moves a cancelled order;
  *   - every move is recorded with `source = automatic`, so the history always
@@ -54,7 +52,7 @@ export async function runAutoAdvance(
   now: Date = new Date(),
 ): Promise<AutoAdvanceResult> {
   const enabled = await db
-    .select({ settings: autoAdvanceSettings, installedAt: stores.installedAt })
+    .select({ settings: autoAdvanceSettings })
     .from(autoAdvanceSettings)
     .innerJoin(stores, eq(stores.id, autoAdvanceSettings.storeId))
     .where(
@@ -72,16 +70,11 @@ export async function runAutoAdvance(
     failed: 0,
   };
 
-  for (const { settings, installedAt } of enabled) {
+  for (const { settings } of enabled) {
     const budget = AUTO_ADVANCE_BATCH_SIZE - result.advanced - result.failed;
     if (budget <= 0) break;
 
-    const outcome = await advanceStore({
-      settings,
-      since: trackingStart({ installedAt }),
-      now,
-      limit: budget,
-    });
+    const outcome = await advanceStore({ settings, now, limit: budget });
     result.advanced += outcome.advanced;
     result.failed += outcome.failed;
   }
@@ -91,13 +84,10 @@ export async function runAutoAdvance(
 
 async function advanceStore({
   settings,
-  since,
   now,
   limit,
 }: {
   settings: AutoAdvanceSettings;
-  /** Orders placed before this are left alone. */
-  since: Date | null;
   now: Date;
   limit: number;
 }): Promise<{ advanced: number; failed: number }> {
@@ -119,7 +109,6 @@ async function advanceStore({
     tdb,
     stageIds: movable.map((stage) => stage.id),
     cutoff,
-    since,
     limit,
   });
 
@@ -194,13 +183,11 @@ async function findDueOrders({
   tdb,
   stageIds,
   cutoff,
-  since,
   limit,
 }: {
   tdb: TenantDb;
   stageIds: string[];
   cutoff: Date;
-  since: Date | null;
   limit: number;
 }): Promise<Array<{ order: Order; lastEventAt: Date }>> {
   const lastEvent = tdb.raw
@@ -223,7 +210,6 @@ async function findDueOrders({
         isNull(orders.cancelledAt),
         inArray(orders.currentStageId, stageIds),
         lte(lastEvent.at, cutoff),
-        since ? gte(orders.orderDate, since) : undefined,
       ),
     )
     .orderBy(asc(lastEvent.at))

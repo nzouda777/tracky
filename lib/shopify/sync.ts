@@ -7,7 +7,6 @@ import { scheduleOrderSequence } from "@/lib/email/scheduler";
 import { fulfillNewOrder } from "@/lib/fulfillment";
 import { getFirstStage } from "@/lib/orders/stages";
 import { recordStageTransition } from "@/lib/orders/transitions";
-import { isTrackedOrder } from "@/lib/stores/tracking-window";
 import { ShopifyAdminClient } from "./admin-api";
 import { mapOrderPayload, type ShopifyOrderPayload } from "./orders";
 
@@ -210,9 +209,6 @@ async function importOne({
     });
     return { kind: "updated" };
   }
-
-  // Orders placed before the day the app was connected are not imported.
-  if (!isTrackedOrder(store, fields.orderDate)) return { kind: "skipped" };
 
   const order = await tdb.insertOne(orders, {
     ...fields,

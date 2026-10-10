@@ -1,12 +1,12 @@
 import type { Store } from "@/lib/db";
 
 /**
- * Which orders the app takes care of.
+ * Which orders the app may email.
  *
- * Only orders placed on the day the store was connected, or later, are
- * tracked: imported, emailed and moved by auto-advance. Anything older belongs
- * to the merchant's previous process and is left alone, so connecting the app
- * never sends a burst of emails about orders customers already have.
+ * Every order is imported and moves along its stages, but only orders placed
+ * on the day the store was connected, or later, get customer emails. Older
+ * orders stay silent, so connecting the app never sends a burst of emails
+ * about orders customers already have.
  *
  * The day boundary is midnight UTC on the day of `installedAt`.
  */
@@ -17,8 +17,8 @@ export function trackingStart(store: Pick<Store, "installedAt">): Date | null {
   return start;
 }
 
-/** True when the app should handle an order placed at `orderDate`. */
-export function isTrackedOrder(
+/** True when the customer of an order placed at `orderDate` may be emailed. */
+export function mayEmailOrder(
   store: Pick<Store, "installedAt">,
   orderDate: Date,
 ): boolean {
