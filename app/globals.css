@@ -203,8 +203,20 @@ body {
   animation: waypoint-pulse 2.4s ease-in-out infinite;
 }
 
+/* A slow turn for "work in progress" glyphs: Processing, waiting for updates. */
+@keyframes tracking-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.tracking-spin {
+  animation: tracking-spin 1.6s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .waypoint-pulse {
+  .waypoint-pulse,
+  .tracking-spin {
     animation: none;
   }
 

@@ -57,6 +57,7 @@ const SPACE: Record<string, string> = {
   "7": "28px",
   "9": "36px",
   "12": "48px",
+  "16": "64px",
 };
 
 /**
@@ -209,6 +210,8 @@ const IDENTITY = [
 
   `@keyframes tracky-waypoint-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(1.35)}}`,
   rule(".waypoint-pulse", "animation:tracky-waypoint-pulse 2.4s ease-in-out infinite"),
+  `@keyframes tracky-spin{to{transform:rotate(360deg)}}`,
+  rule(".tracking-spin", "animation:tracky-spin 1.6s linear infinite"),
 ];
 
 const TYPE = [
@@ -295,7 +298,7 @@ const SPACING = [
   ...scale("p", ["padding"], ["5"]),
   ...scale("px", ["padding-left", "padding-right"], ["2.5", "3", "3.5", "4", "5"]),
   ...scale("py", ["padding-top", "padding-bottom"], ["1", "2.5", "3", "3.5", "9"]),
-  ...scale("pt", ["padding-top"], ["5", "9"]),
+  ...scale("pt", ["padding-top"], ["5", "9", "12"]),
   ...scale("pb", ["padding-bottom"], ["7", "9", "12"]),
   ...scale("mt", ["margin-top"], ["0.5", "1.5", "3", "4", "5", "9", "12"]),
   ...scale("mb", ["margin-bottom"], ["3", "9"]),
@@ -318,6 +321,7 @@ const SM = [
   rule(".sm\\:px-1", `padding-left:${SPACE["1"]};padding-right:${SPACE["1"]}`),
   rule(".sm\\:py-12", `padding-top:${SPACE["12"]};padding-bottom:${SPACE["12"]}`),
   rule(".sm\\:pt-12", `padding-top:${SPACE["12"]}`),
+  rule(".sm\\:pt-16", `padding-top:${SPACE["16"]}`),
   rule(".sm\\:pb-0", "padding-bottom:0"),
   rule(".sm\\:mb-0", "margin-bottom:0"),
   rule(".sm\\:mt-2\\.5", `margin-top:${SPACE["2.5"]}`),
@@ -341,6 +345,7 @@ const SM = [
 const REDUCED_MOTION =
   `@media (prefers-reduced-motion:reduce){` +
   rule(".waypoint-pulse", "animation:none") +
+  rule(".tracking-spin", "animation:none") +
   `${S} *,${S} *::before,${S} *::after{animation-duration:.01ms !important;` +
   `animation-iteration-count:1 !important;transition-duration:.01ms !important}}`;
 

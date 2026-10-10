@@ -126,7 +126,7 @@ export function TrackingPage({
       <BrandingStyle branding={branding} scopeId={SCOPE_ID} />
 
       {/* The title block sits on the page's own ground. */}
-      <Column className="pt-9 sm:pt-12">
+      <Column className="pt-12 sm:pt-16">
         <Masthead branding={branding} storeName={storeName} />
 
         {view ? null : (
@@ -447,7 +447,7 @@ function WaitingIndicator() {
       <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
         <svg
           aria-hidden
-          className="waypoint-pulse"
+          className="tracking-spin"
           width="12"
           height="12"
           viewBox="0 0 14 14"
@@ -511,7 +511,7 @@ function Manifest({
           alignItems: "center",
           justifyContent: "space-between",
           gap: 16,
-          paddingBottom: 14,
+          paddingBottom: 10,
           borderBottom: "1.5px solid var(--brand-line)",
         }}
       >
@@ -519,10 +519,10 @@ function Manifest({
           data-part="section-title"
           style={{
             margin: 0,
-            fontSize: 13,
+            fontSize: 10,
             fontWeight: 700,
             letterSpacing: "0.14em",
-            lineHeight: "20px",
+            lineHeight: "16px",
             textTransform: "uppercase",
             color: "var(--brand-muted)",
           }}
@@ -535,18 +535,18 @@ function Manifest({
             style={{
               display: "inline-flex",
               alignItems: "center",
-              gap: 8,
-              fontSize: 16,
+              gap: 6,
+              fontSize: 12,
               fontWeight: 600,
-              lineHeight: "20px",
+              lineHeight: "16px",
               color: "var(--brand-link)",
               textDecoration: "none",
             }}
           >
             <svg
               aria-hidden
-              width="17"
-              height="17"
+              width="13"
+              height="13"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -563,7 +563,7 @@ function Manifest({
         ) : null}
       </div>
 
-      <dl style={{ margin: "8px 0 0", textAlign: "left" }}>
+      <dl style={{ margin: "16px 0 0", textAlign: "left" }}>
         <Row label="Ship to">
           {shipTo.length > 0 ? (
             <address style={{ fontStyle: "normal" }}>
@@ -580,9 +580,9 @@ function Manifest({
             <p
               style={{
                 margin: "6px 0 0",
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: 400,
-                lineHeight: "18px",
+                lineHeight: "16px",
                 color: "var(--brand-muted)",
               }}
             >
@@ -647,7 +647,7 @@ function Row({
   children,
 }: {
   label: string;
-  /** The closing "Total paid" line: bold label, larger value, no rule. */
+  /** The closing "Total paid" line: bold label and value, no rule. */
   emphasis?: boolean;
   children: React.ReactNode;
 }) {
@@ -659,7 +659,7 @@ function Row({
         alignItems: "flex-start",
         justifyContent: "space-between",
         gap: 20,
-        padding: "13px 0",
+        padding: "8px 0",
         borderBottom: emphasis ? "none" : "1px solid var(--brand-line)",
       }}
     >
@@ -668,9 +668,9 @@ function Row({
           flex: "0 1 auto",
           minWidth: 0,
           maxWidth: "45%",
-          fontSize: emphasis ? 17 : 16,
+          fontSize: 14,
           fontWeight: emphasis ? 700 : 400,
-          lineHeight: "25px",
+          lineHeight: "20px",
           color: emphasis ? "var(--brand-text)" : "var(--brand-muted)",
         }}
       >
@@ -681,9 +681,9 @@ function Row({
           flex: "1 1 auto",
           minWidth: 0,
           margin: 0,
-          fontSize: emphasis ? 18 : 16,
+          fontSize: 14,
           fontWeight: emphasis ? 700 : 600,
-          lineHeight: "25px",
+          lineHeight: "20px",
           textAlign: "right",
           overflowWrap: "anywhere",
           color: "var(--brand-text)",

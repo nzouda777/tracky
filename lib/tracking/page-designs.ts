@@ -833,7 +833,7 @@ const LAYERS: Record<PageDesignId, LayerRule[]> = {
     [`& ${P("classic")}[data-open]`, "background:var(--brand-surface)"],
     [
       `& ${P("classic-header")}`,
-      "background:var(--brand-surface);border-bottom:1px solid var(--brand-line);padding:16px 0",
+      "background:var(--brand-surface);border-bottom:1px solid var(--brand-line);padding:36px 0 20px",
     ],
     [`& ${P("classic-inner")}`, "max-width:720px;margin:0 auto;padding-left:20px;padding-right:20px"],
     [

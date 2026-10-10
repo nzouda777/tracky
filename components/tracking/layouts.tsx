@@ -888,7 +888,7 @@ function ClassicWaiting() {
       <span style={{ display: "inline-flex", alignItems: "center", gap: 7 }}>
         <svg
           aria-hidden
-          className="waypoint-pulse"
+          className="tracking-spin"
           width="12"
           height="12"
           viewBox="0 0 14 14"

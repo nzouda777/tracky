@@ -110,7 +110,11 @@ export function RouteLine({ timeline }: { timeline: TimelineEntry[] }) {
                       : "var(--brand-surface)",
                 }}
               >
-                <PhaseGlyph icon={stage.icon} />
+                {/* The Processing glyph turns until that phase is done. */}
+                <PhaseGlyph
+                  icon={stage.icon}
+                  spin={stage.icon === "package" && tone !== "done"}
+                />
               </span>
               <span
                 style={{
@@ -146,7 +150,7 @@ const TONE_LABEL: Record<Tone, string> = {
 };
 
 /** 16px glyphs on a 16 grid, drawn in `currentColor`. */
-function PhaseGlyph({ icon }: { icon: string }) {
+function PhaseGlyph({ icon, spin = false }: { icon: string; spin?: boolean }) {
   const common = {
     stroke: "currentColor",
     strokeWidth: 1.4,
@@ -155,7 +159,13 @@ function PhaseGlyph({ icon }: { icon: string }) {
   };
 
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 16 16"
+      fill="none"
+      className={spin ? "tracking-spin" : undefined}
+    >
       {icon === "receipt" ? (
         <>
           <rect x="2.5" y="3.5" width="11" height="9" rx="1.5" {...common} />

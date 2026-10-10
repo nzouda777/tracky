@@ -140,10 +140,13 @@ describe("radii are a hierarchy, not one value", () => {
 describe("motion is spent once", () => {
   const css = read("app/globals.css");
 
-  it("declares exactly one looping animation", () => {
+  it("declares only the two sanctioned looping animations", () => {
+    // The route's active waypoint, and the slow turn of "work in progress"
+    // glyphs on the tracking page (Processing, waiting for updates).
     const infinite = css.match(/animation:[^;]*infinite/g) ?? [];
-    expect(infinite).toHaveLength(1);
+    expect(infinite).toHaveLength(2);
     expect(infinite[0]).toContain("waypoint-pulse");
+    expect(infinite[1]).toContain("tracking-spin");
   });
 
   it("stops it for anyone who asked for less motion", () => {
