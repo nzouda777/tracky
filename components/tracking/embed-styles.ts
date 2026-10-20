@@ -197,6 +197,9 @@ const IDENTITY = [
       "line-height:1.5",
   ),
   rootRule(".min-h-dvh", "min-height:auto"),
+  // Clearance below the theme's header, which otherwise sits right on the
+  // tracker.
+  rootRule(".pt-16", `padding-top:${SPACE["16"]}`),
 
   rule(
     ".type-display",

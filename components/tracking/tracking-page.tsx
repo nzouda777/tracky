@@ -69,7 +69,7 @@ export function TrackingPage({
     return (
       <div
         id={SCOPE_ID}
-        className="tracking-root min-h-dvh"
+        className="tracking-root min-h-dvh pt-16"
         data-design={design.id}
         data-layout={design.layout}
         style={{ backgroundColor: "var(--brand-surface)" }}
@@ -119,7 +119,7 @@ export function TrackingPage({
   return (
     <div
       id={SCOPE_ID}
-      className="tracking-root min-h-dvh"
+      className="tracking-root min-h-dvh pt-16"
       data-design={design.id}
       style={{ backgroundColor: "var(--brand-surface)" }}
     >
