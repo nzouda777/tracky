@@ -4,8 +4,8 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 
 import { requireAgency, requireOwner, requireStoreAccess } from "@/lib/auth/session";
-import { orders, proofOfDelivery, stages } from "@/lib/db";
-import { retryFulfillment } from "@/lib/fulfillment";
+import { fulfillmentRules, orders, proofOfDelivery, stages } from "@/lib/db";
+import { fulfillAllOpenOrders, retryFulfillment } from "@/lib/fulfillment";
 import { getStageById } from "@/lib/orders/stages";
 import { recordStageTransition } from "@/lib/orders/transitions";
 import { guard, type ActionResult } from "./result";
@@ -290,4 +290,55 @@ function describeFulfillment(
     case "failed":
       return ` Fulfillment failed: ${outcome.error}`;
   }
+}
+
+/**
+ * Fulfils, in Shopify, every order of this store that is not fulfilled yet.
+ * Each order goes through the same path as "Retry fulfillment"; a run stops
+ * before the request time limit and says how many are left for the next one.
+ */
+export async function fulfillAllOpenOrdersAction(): Promise<ActionResult> {
+  return guard(async (): Promise<ActionResult> => {
+    const { tdb, store } = await requireOwner();
+
+    if (store.pausedAt) {
+      return { error: "This store is paused. Resume it before fulfilling orders." };
+    }
+    const rules = await tdb.findFirst(fulfillmentRules);
+    if (rules && !rules.enabled) {
+      return {
+        error:
+          "Fulfillment is turned off for this store. Turn on \"Fulfil orders in Shopify automatically\" above first.",
+      };
+    }
+
+    const result = await fulfillAllOpenOrders(tdb);
+    revalidatePath("/admin/orders");
+    revalidatePath("/admin/settings/fulfillment");
+    revalidatePath("/admin");
+
+    if (result.attempted === 0) {
+      return { ok: true, message: "Every order is already fulfilled." };
+    }
+
+    const parts = [`${result.fulfilled} fulfilled in Shopify`];
+    if (result.alreadyFulfilled > 0) {
+      parts.push(`${result.alreadyFulfilled} were already fulfilled there`);
+    }
+    if (result.skipped > 0) {
+      parts.push(`${result.skipped} skipped (e.g. ${result.firstSkipReason})`);
+    }
+    if (result.failed > 0) {
+      parts.push(`${result.failed} failed (e.g. ${result.firstError})`);
+    }
+    const summary = `${parts.join(", ")}.`;
+    const more =
+      result.remaining > 0
+        ? ` ${result.remaining} order${result.remaining === 1 ? "" : "s"} left — click again to continue.`
+        : "";
+
+    return result.failed > 0 && result.fulfilled === 0 && result.alreadyFulfilled === 0
+      ? { error: summary + more }
+      : { ok: true, message: summary + more };
+  });
 }

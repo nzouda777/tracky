@@ -96,8 +96,6 @@ export default async function EmailLogPage({
   const split = volume.providers30Days
     .map((entry) => `${providerLabel(entry.provider)} ${Math.round(entry.share * 100)}%`)
     .join(" / ");
-  const postalShare =
-    volume.providers30Days.find((entry) => entry.provider === "postal")?.share ?? 0;
 
   return (
     <div className="space-y-5">
@@ -119,9 +117,7 @@ export default async function EmailLogPage({
           hint={
             volume.sentLast30Days === 0
               ? "Nothing sent in the last 30 days."
-              : postalShare > 0
-                ? "Postal takes over only when Resend hits a rate limit or quota."
-                : "Everything went through Resend."
+              : "Main provider and fallback are set in Settings → Email delivery."
           }
         />
       </div>

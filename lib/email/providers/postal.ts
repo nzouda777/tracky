@@ -1,5 +1,10 @@
 import { env } from "@/lib/env";
-import type { EmailProvider, SendEmailInput, SendEmailResult } from "./types";
+import {
+  RateLimitError,
+  type EmailProvider,
+  type SendEmailInput,
+  type SendEmailResult,
+} from "./types";
 
 type PostalResponse = {
   status?: string;
@@ -14,8 +19,9 @@ type PostalResponse = {
 /**
  * Our self-hosted Postal server, over its HTTP API.
  *
- * It sits last in the chain, so it needs no rate-limit mapping: whatever it
- * refuses is surfaced as-is.
+ * Postal has no sending quota of its own; only an HTTP 429 (from a proxy in
+ * front of it, say) counts as a rate limit, so with Postal first Resend takes
+ * over on little else unless `EMAIL_FALLBACK_MODE=any_error`.
  */
 export const postalProvider: EmailProvider = {
   name: "postal",
@@ -53,7 +59,9 @@ export const postalProvider: EmailProvider = {
     const data = (await res.json().catch(() => null)) as PostalResponse | null;
     if (!res.ok || !data || data.status !== "success") {
       const detail = data?.data?.message ?? data?.data?.code ?? JSON.stringify(data);
-      throw new Error(`Postal send failed: ${res.status} ${detail}`);
+      const message = `Postal send failed: ${res.status} ${detail}`;
+      if (res.status === 429) throw new RateLimitError("postal", message);
+      throw new Error(message);
     }
 
     const messageId =

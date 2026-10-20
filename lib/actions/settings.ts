@@ -11,9 +11,15 @@ import {
   fulfillmentRules,
   stages,
   storeMemberships,
+  stores,
   users,
 } from "@/lib/db";
-import { emailConfigured, sendEmail } from "@/lib/email/providers";
+import {
+  EMAIL_PROVIDER_NAMES,
+  providerChain,
+  sendEmail,
+  type EmailProviderName,
+} from "@/lib/email/providers";
 import { env } from "@/lib/env";
 import {
   AUTO_ADVANCE_MAX_DELAY_HOURS,
@@ -89,6 +95,38 @@ export async function updateAutoAdvanceSettingsAction(
       message: values.enabled
         ? `Saved. Sub-stages move every ${subStageDelayHours} h, and the next main stage starts ${delayHours} h after the last sub-stage.`
         : "Saved. Auto-advance is off: orders only move when the agency or an admin updates them.",
+    };
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Email delivery
+// ---------------------------------------------------------------------------
+
+/** Chooses which provider this store's email tries first. */
+export async function updateEmailPrimaryProviderAction(
+  _previous: ActionResult,
+  formData: FormData,
+): Promise<ActionResult> {
+  return guard(async (): Promise<ActionResult> => {
+    const { store } = await requireOwner();
+
+    const value = String(formData.get("primaryProvider") ?? "");
+    if (!EMAIL_PROVIDER_NAMES.includes(value as EmailProviderName)) {
+      return { error: "Choose Resend or Postal." };
+    }
+
+    await db
+      .update(stores)
+      .set({ emailPrimaryProvider: value, updatedAt: new Date() })
+      .where(eq(stores.id, store.id));
+
+    revalidatePath("/admin/settings/email-delivery");
+
+    const [first, second] = value === "postal" ? ["Postal", "Resend"] : ["Resend", "Postal"];
+    return {
+      ok: true,
+      message: `Saved. Emails now go through ${first} first, with ${second} as the fallback.`,
     };
   });
 }
@@ -231,6 +269,7 @@ export async function inviteUserAction(
       storeName: store.name ?? store.shopDomain,
       inviteUrl,
       hasPassword: Boolean(invitee.passwordHash),
+      primaryProvider: store.emailPrimaryProvider,
     });
 
     revalidatePath("/admin/settings/users");
@@ -307,13 +346,16 @@ async function sendInviteEmail({
   storeName,
   inviteUrl,
   hasPassword,
+  primaryProvider,
 }: {
   to: string;
   storeName: string;
   inviteUrl: string;
   hasPassword: boolean;
+  primaryProvider: string;
 }): Promise<boolean> {
-  if (!emailConfigured()) return false;
+  const chain = providerChain(primaryProvider);
+  if (chain.length === 0) return false;
 
   try {
     const action = hasPassword
@@ -332,7 +374,7 @@ async function sendInviteEmail({
         <p>This link expires in 7 days.</p>
       `,
       text: `You have been invited to help manage deliveries for ${storeName} in Tracky.\n\n${action}\n\n${inviteUrl}\n\nThis link expires in 7 days.`,
-    });
+    }, chain);
 
     return true;
   } catch (error) {

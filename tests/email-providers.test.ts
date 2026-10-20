@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   RateLimitError,
+  providerChain,
   sendEmail,
   type EmailProvider,
   type SendEmailInput,
@@ -118,6 +119,42 @@ describe("sendEmail", () => {
   });
 });
 
+describe("providerChain", () => {
+  beforeEach(() => {
+    process.env.RESEND_API_KEY = "re_test";
+    process.env.RESEND_FROM_EMAIL = "orders@send.example.com";
+    process.env.POSTAL_API_URL = "https://postal.example.com";
+    process.env.POSTAL_API_KEY = "test-key";
+  });
+
+  afterEach(() => {
+    delete process.env.RESEND_API_KEY;
+    delete process.env.RESEND_FROM_EMAIL;
+    delete process.env.POSTAL_API_URL;
+    delete process.env.POSTAL_API_KEY;
+  });
+
+  const names = (primary?: string | null) => providerChain(primary).map((p) => p.name);
+
+  it("puts Resend first by default", () => {
+    expect(names()).toEqual(["resend", "postal"]);
+    expect(names(null)).toEqual(["resend", "postal"]);
+  });
+
+  it("puts Postal first when a store chooses it", () => {
+    expect(names("postal")).toEqual(["postal", "resend"]);
+  });
+
+  it("ignores an unknown stored value", () => {
+    expect(names("sendgrid")).toEqual(["resend", "postal"]);
+  });
+
+  it("drops an unconfigured primary so mail still goes out", () => {
+    delete process.env.POSTAL_API_KEY;
+    expect(names("postal")).toEqual(["resend"]);
+  });
+});
+
 describe("postalProvider", () => {
   beforeEach(() => {
     process.env.POSTAL_API_URL = "https://postal.example.com/";
@@ -175,6 +212,11 @@ describe("postalProvider", () => {
     await expect(postalProvider.send(INPUT)).rejects.toThrow(
       /Postal send failed: 200 From address is not valid/,
     );
+  });
+
+  it("maps an HTTP 429 to a RateLimitError", async () => {
+    stubFetch(429, { status: "error", data: { message: "Too many requests" } });
+    await expect(postalProvider.send(INPUT)).rejects.toBeInstanceOf(RateLimitError);
   });
 
   it("throws on a non-JSON error response", async () => {

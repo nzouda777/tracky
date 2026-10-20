@@ -16,7 +16,7 @@ import { mayEmailOrder } from "@/lib/stores/tracking-window";
 import { buildTrackingLink } from "@/lib/tracking/links";
 import { buildMergeContext } from "./merge";
 import { buildOrderFacts } from "./order-facts";
-import { emailConfigured, sendEmail } from "./providers";
+import { providerChain, sendEmail } from "./providers";
 import { renderEmail } from "./render";
 
 export type DispatchResult =
@@ -70,7 +70,8 @@ export async function dispatchEmailSend(
       }),
     });
 
-    if (!emailConfigured()) {
+    const chain = providerChain(store.emailPrimaryProvider);
+    if (chain.length === 0) {
       const reason =
         "Email provider is not configured (RESEND_API_KEY or POSTAL_API_KEY).";
       await markFailed(send.id, reason);
@@ -91,7 +92,7 @@ export async function dispatchEmailSend(
       text: rendered.text,
       headers: { "X-Entity-Ref-ID": send.id },
       idempotencyKey: send.id,
-    });
+    }, chain);
 
     await db
       .update(emailSends)

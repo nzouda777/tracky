@@ -4,18 +4,45 @@ import { resendProvider } from "./resend";
 import {
   RateLimitError,
   type EmailProvider,
+  type EmailProviderName,
   type SendEmailInput,
   type SendEmailResult,
 } from "./types";
 
 export * from "./types";
 
-/** Resend first; Postal takes over only when Resend is saturated. */
+/** Default order: Resend first, Postal when Resend is saturated. */
 const CHAIN: EmailProvider[] = [resendProvider, postalProvider];
 
-/** The providers that can actually send, in fallback order. */
+export const EMAIL_PROVIDER_NAMES: EmailProviderName[] = CHAIN.map((p) => p.name);
+
+/** Narrows a stored value to a provider name, falling back to the default. */
+export function parseProviderName(value: unknown): EmailProviderName {
+  return EMAIL_PROVIDER_NAMES.includes(value as EmailProviderName)
+    ? (value as EmailProviderName)
+    : CHAIN[0].name;
+}
+
+/**
+ * The providers that can actually send, in fallback order, with `primary`
+ * (a store's choice) moved to the front. An unconfigured primary simply drops
+ * out, so mail still goes through the other one.
+ */
+export function providerChain(primary?: string | null): EmailProvider[] {
+  const first = parseProviderName(primary);
+  return [
+    ...CHAIN.filter((provider) => provider.name === first),
+    ...CHAIN.filter((provider) => provider.name !== first),
+  ].filter((provider) => provider.configured());
+}
+
+/** Whether one provider's credentials are present, for the settings page. */
+export function providerConfigured(name: EmailProviderName): boolean {
+  return CHAIN.some((provider) => provider.name === name && provider.configured());
+}
+
 function configuredChain(): EmailProvider[] {
-  return CHAIN.filter((provider) => provider.configured());
+  return providerChain();
 }
 
 /** True when at least one provider can send, so callers can degrade. */
@@ -29,7 +56,9 @@ function shouldFallback(err: unknown): boolean {
 }
 
 /**
- * Sends one email through the first provider that accepts it.
+ * Sends one email through the first provider that accepts it. `chain`
+ * defaults to the platform order; pass `providerChain(store.emailPrimaryProvider)`
+ * for a store's own mail.
  *
  * A provider that refuses for a rate limit or quota hands over to the next
  * one; any other refusal is thrown, so the caller records it and QStash

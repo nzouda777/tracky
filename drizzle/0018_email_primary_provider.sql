@@ -1,0 +1,1 @@
+ALTER TABLE "stores" ADD COLUMN "email_primary_provider" text DEFAULT 'resend' NOT NULL;

@@ -1,10 +1,24 @@
-import { and, asc, eq, gte, isNotNull, isNull, lte, ne } from "drizzle-orm";
+import {
+  and,
+  asc,
+  count,
+  eq,
+  gt,
+  gte,
+  isNotNull,
+  isNull,
+  lte,
+  ne,
+  or,
+  type SQL,
+} from "drizzle-orm";
 
 import {
   db,
   fulfillmentRules,
   orders,
   proofOfDelivery,
+  stages,
   stores,
   type FulfillmentRules,
   type Order,
@@ -473,4 +487,142 @@ export async function retryFulfillment({
   return stage?.triggersFulfillment
     ? attemptFulfillment({ tdb, order: refreshed, stage })
     : fulfillNewOrder({ tdb, order: refreshed, manual: true });
+}
+
+/** Orders `fulfillAllOpenOrders` looks at: not cancelled, not yet fulfilled. */
+function openOrdersWhere(tdb: TenantDb, ...extra: Array<SQL | undefined>) {
+  return tdb.scope(
+    orders,
+    isNull(orders.cancelledAt),
+    ne(orders.fulfillmentStatus, "fulfilled"),
+    isNull(orders.shopifyFulfillmentId),
+    ...extra,
+  );
+}
+
+/** Orders strictly after `cursor` in (orderDate, id) order; all when null. */
+function after(cursor: { orderDate: Date; id: string } | null): SQL | undefined {
+  if (!cursor) return undefined;
+  return or(
+    gt(orders.orderDate, cursor.orderDate),
+    and(eq(orders.orderDate, cursor.orderDate), gt(orders.id, cursor.id)),
+  );
+}
+
+/** How many of this store's orders are still waiting for a fulfillment. */
+export async function countOpenOrders(tdb: TenantDb): Promise<number> {
+  const [{ value }] = await tdb.raw
+    .select({ value: count() })
+    .from(orders)
+    .where(openOrdersWhere(tdb));
+  return value;
+}
+
+export type BulkFulfillmentResult = {
+  attempted: number;
+  fulfilled: number;
+  alreadyFulfilled: number;
+  skipped: number;
+  failed: number;
+  /** One example per outcome kind, so the owner can see why. */
+  firstSkipReason: string | null;
+  firstError: string | null;
+  /** Open orders the time budget did not reach. */
+  remaining: number;
+};
+
+/**
+ * The backoffice "fulfil every open order" button: runs the same path as the
+ * per-order "Retry fulfillment" on each open order, oldest first, until the
+ * time budget runs out. Older orders are pushed without a customer email and
+ * the proof-of-delivery rule still applies at trigger stages, exactly as for a
+ * single retry. Calling it again carries on from where it stopped.
+ */
+export async function fulfillAllOpenOrders(
+  tdb: TenantDb,
+  { budgetMs = 45_000, pageSize = 25 }: { budgetMs?: number; pageSize?: number } = {},
+): Promise<BulkFulfillmentResult> {
+  const deadline = Date.now() + budgetMs;
+  const result: BulkFulfillmentResult = {
+    attempted: 0,
+    fulfilled: 0,
+    alreadyFulfilled: 0,
+    skipped: 0,
+    failed: 0,
+    firstSkipReason: null,
+    firstError: null,
+    remaining: 0,
+  };
+
+  // Keyset cursor: orders that are skipped or fail stay open, so paging by
+  // position would see them again instead of moving on.
+  let cursor: { orderDate: Date; id: string } | null = null;
+  let outOfTime = false;
+
+  while (!outOfTime) {
+    const page: Order[] = (
+      await tdb.raw
+        .select({ order: orders })
+        .from(orders)
+        .where(
+          openOrdersWhere(
+            tdb,
+            after(cursor),
+          ),
+        )
+        .orderBy(asc(orders.orderDate), asc(orders.id))
+        .limit(pageSize)
+    ).map((row) => row.order);
+
+    if (page.length === 0) break;
+
+    for (const order of page) {
+      if (Date.now() >= deadline) {
+        outOfTime = true;
+        break;
+      }
+      cursor = { orderDate: order.orderDate, id: order.id };
+      result.attempted += 1;
+
+      const stage = order.currentStageId
+        ? ((
+            await tdb.raw
+              .select()
+              .from(stages)
+              .where(tdb.scope(stages, eq(stages.id, order.currentStageId)))
+              .limit(1)
+          )[0] ?? null)
+        : null;
+
+      const outcome = await retryFulfillment({ tdb, order, stage });
+      switch (outcome.status) {
+        case "fulfilled":
+          result.fulfilled += 1;
+          break;
+        case "already-fulfilled":
+          result.alreadyFulfilled += 1;
+          break;
+        case "skipped":
+          result.skipped += 1;
+          result.firstSkipReason ??= outcome.reason;
+          break;
+        case "failed":
+          result.failed += 1;
+          result.firstError ??= outcome.error;
+          break;
+      }
+    }
+
+    if (page.length < pageSize) break;
+  }
+
+  if (outOfTime) {
+    const [{ value }] = await tdb.raw
+      .select({ value: count() })
+      .from(orders)
+      .where(openOrdersWhere(tdb, after(cursor)));
+    result.remaining = value;
+  }
+
+  return result;
 }

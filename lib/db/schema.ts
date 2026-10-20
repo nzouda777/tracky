@@ -199,6 +199,11 @@ export const stores = pgTable(
      * fulfillment is written back to Shopify.
      */
     pausedAt: timestamp("paused_at", { withTimezone: true }),
+    /**
+     * Which email provider this store's mail tries first: `resend` or
+     * `postal`. The other one is the fallback.
+     */
+    emailPrimaryProvider: text("email_primary_provider").notNull().default("resend"),
     /** Free-text note only platform operators ever see. */
     internalNote: text("internal_note"),
     ...timestamps,

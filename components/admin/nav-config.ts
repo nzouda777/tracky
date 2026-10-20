@@ -77,6 +77,11 @@ export function buildAdminNav(counts: {
           icon: "fulfillment",
         },
         {
+          href: "/admin/settings/email-delivery",
+          label: "Email delivery",
+          icon: "mail",
+        },
+        {
           href: "/admin/settings/auto-advance",
           label: "Progression & emails",
           icon: "autoAdvance",

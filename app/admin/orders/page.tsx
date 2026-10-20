@@ -32,8 +32,14 @@ import { OrderFilters } from "./order-filters";
 import { BulkEmailBar } from "./bulk-email-bar";
 import { listActiveTemplates } from "@/lib/actions/emails";
 import { SyncOrdersButton } from "@/components/admin/sync-orders-button";
+import { FulfillAllButton } from "@/components/admin/fulfill-all-button";
+import { countOpenOrders } from "@/lib/fulfillment";
 
 export const metadata: Metadata = { title: "Orders" };
+
+// "Fulfil all open orders" runs as a server action of this page and talks to
+// Shopify once or twice per order.
+export const maxDuration = 60;
 
 export default async function OrdersPage({
   searchParams,
@@ -43,10 +49,11 @@ export default async function OrdersPage({
   const { tdb, store } = await requireOwner();
   const params = await searchParams;
 
-  const [allStages, drivers, buckets] = await Promise.all([
+  const [allStages, drivers, buckets, openCount] = await Promise.all([
     tdb.findMany(stages, { orderBy: asc(stages.position) }),
     listDriverNames(tdb),
     countOrdersByStage(tdb),
+    countOpenOrders(tdb),
   ]);
   const stepOf = new Map(allStages.map((stage, index) => [stage.id, index + 1]));
 
@@ -69,7 +76,12 @@ export default async function OrdersPage({
             ? `${total} order${total === 1 ? "" : "s"} match ${activeCount} filter${activeCount === 1 ? "" : "s"}.`
             : `${total} order${total === 1 ? "" : "s"} synced from Shopify.`
         }
-        action={<SyncOrdersButton compact />}
+        action={
+          <div className="flex flex-wrap items-start gap-2">
+            <FulfillAllButton openCount={openCount} />
+            <SyncOrdersButton compact />
+          </div>
+        }
       />
 
       <PipelineOverview

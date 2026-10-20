@@ -3,17 +3,23 @@ import { asc } from "drizzle-orm";
 
 import { Alert, Card, CardBody, CardHeader, PageHeader } from "@/components/ui";
 import { requireOwner } from "@/lib/auth/session";
+import { FulfillAllButton } from "@/components/admin/fulfill-all-button";
 import { fulfillmentRules, stages } from "@/lib/db";
+import { countOpenOrders } from "@/lib/fulfillment";
 import { FulfillmentForm } from "./fulfillment-form";
 
 export const metadata: Metadata = { title: "Fulfillment" };
 
+// The bulk fulfil button below talks to Shopify once or twice per order.
+export const maxDuration = 60;
+
 export default async function FulfillmentSettingsPage() {
   const { tdb } = await requireOwner();
 
-  const [rules, allStages] = await Promise.all([
+  const [rules, allStages, openCount] = await Promise.all([
     tdb.findFirst(fulfillmentRules),
     tdb.findMany(stages, { orderBy: asc(stages.position) }),
+    countOpenOrders(tdb),
   ]);
 
   const triggerStages = allStages.filter((stage) => stage.triggersFulfillment);
@@ -54,6 +60,16 @@ export default async function FulfillmentSettingsPage() {
         <CardHeader title="Rules" />
         <CardBody>
           <FulfillmentForm rules={rules} />
+        </CardBody>
+      </Card>
+
+      <Card>
+        <CardHeader
+          title="Fulfil every open order"
+          description="Pushes a Shopify fulfillment, with its tracking link, for every order not fulfilled yet. Orders placed before auto-fulfillment started are fulfilled without a Shopify customer email, and the delivery-confirmation rule above still applies at trigger stages."
+        />
+        <CardBody>
+          <FulfillAllButton openCount={openCount} />
         </CardBody>
       </Card>
     </div>
