@@ -16,6 +16,7 @@ import { mayEmailOrder } from "@/lib/stores/tracking-window";
 import { buildTrackingLink } from "@/lib/tracking/links";
 import { buildMergeContext } from "./merge";
 import { buildOrderFacts } from "./order-facts";
+import { emailConfigured, sendEmail } from "./providers";
 import { renderEmail } from "./render";
 
 export type DispatchResult =
@@ -24,9 +25,10 @@ export type DispatchResult =
   | { status: "failed"; error: string };
 
 /**
- * Renders and sends one `email_sends` row through Resend, then records the
- * outcome. Safe to call twice: a row that is no longer `scheduled` is skipped,
- * which is what makes the QStash job and the cron sweep able to overlap.
+ * Renders and sends one `email_sends` row through the provider chain (Resend,
+ * then Postal), then records the outcome and which provider took it. Safe to
+ * call twice: a row that is no longer `scheduled` is skipped, which is what
+ * makes the QStash job and the cron sweep able to overlap.
  */
 export async function dispatchEmailSend(
   emailSendId: string,
@@ -68,33 +70,28 @@ export async function dispatchEmailSend(
       }),
     });
 
-    if (!env.resend.configured) {
-      const reason = "Email provider is not configured (RESEND_API_KEY).";
+    if (!emailConfigured()) {
+      const reason =
+        "Email provider is not configured (RESEND_API_KEY or POSTAL_API_KEY).";
       await markFailed(send.id, reason);
       return { status: "failed", error: reason };
     }
 
-    const { Resend } = await import("resend");
-    const resend = new Resend(env.resend.apiKey);
-
-    const response = await resend.emails.send({
+    // Throws on refusal; the catch below records it as failed.
+    const result = await sendEmail({
       // Shared platform sending domain for v1; the store name carries the brand.
       from: `${store.name ?? env.resend.fromName} <${env.resend.fromEmail}>`,
       // Every template invites the customer to reply, so replies have to reach
       // a mailbox. The sending domain is often a no-MX subdomain chosen for
       // deliverability, where a reply would simply bounce.
-      ...(env.resend.replyTo ? { replyTo: [env.resend.replyTo] } : {}),
-      to: [send.toEmail],
+      ...(env.resend.replyTo ? { replyTo: env.resend.replyTo } : {}),
+      to: send.toEmail,
       subject: rendered.subject,
       html: rendered.html,
       text: rendered.text,
       headers: { "X-Entity-Ref-ID": send.id },
+      idempotencyKey: send.id,
     });
-
-    if (response.error) {
-      await markFailed(send.id, response.error.message);
-      return { status: "failed", error: response.error.message };
-    }
 
     await db
       .update(emailSends)
@@ -102,13 +99,14 @@ export async function dispatchEmailSend(
         status: "sent",
         sentAt: new Date(),
         subject: rendered.subject,
-        providerMessageId: response.data?.id ?? null,
+        provider: result.provider,
+        providerMessageId: result.providerMessageId,
         error: null,
         updatedAt: new Date(),
       })
       .where(eq(emailSends.id, send.id));
 
-    return { status: "sent", providerMessageId: response.data?.id ?? null };
+    return { status: "sent", providerMessageId: result.providerMessageId };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     await markFailed(send.id, message);

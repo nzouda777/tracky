@@ -14,7 +14,7 @@ import {
 } from "@/components/ui";
 import { requireOwner } from "@/lib/auth/session";
 import { db, storeMemberships, users } from "@/lib/db";
-import { env } from "@/lib/env";
+import { emailConfigured } from "@/lib/email/providers";
 import { formatDate } from "@/lib/utils";
 import { InviteUserForm } from "./invite-user-form";
 import { RevokeButton } from "./revoke-button";
@@ -109,7 +109,7 @@ export default async function UsersPage() {
           description="They receive a one-time link and set their own password."
         />
         <CardBody>
-          {!env.resend.configured ? (
+          {!emailConfigured() ? (
             <Alert tone="warning" className="mb-4">
               Email is not configured, so the invitation link will be shown here
               for you to share manually.

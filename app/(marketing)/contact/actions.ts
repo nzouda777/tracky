@@ -1,5 +1,6 @@
 "use server";
 
+import { emailConfigured, sendEmail } from "@/lib/email/providers";
 import { env, isConfigured, optional } from "@/lib/env";
 
 /**
@@ -66,7 +67,7 @@ export async function sendContactMessage(
 
   // --- Delivery -----------------------------------------------------------
   const to = optional("CONTACT_EMAIL", "");
-  if (!to || !env.resend.configured) {
+  if (!to || !emailConfigured()) {
     // Never pretend a message was sent when it was not. The form shows the
     // fallback address in this case.
     return {
@@ -76,14 +77,11 @@ export async function sendContactMessage(
   }
 
   try {
-    const { Resend } = await import("resend");
-    const resend = new Resend(env.resend.apiKey);
-
-    const { error } = await resend.emails.send({
+    await sendEmail({
       // A fixed, verified sender. The visitor's address is a reply-to only.
       from: `${env.resend.fromName} <${env.resend.fromEmail}>`,
       replyTo: email,
-      to: [to],
+      to,
       subject: `Tracky enquiry — ${name}${company ? ` (${company})` : ""}`,
       text: [
         `Name:    ${name}`,
@@ -95,16 +93,8 @@ export async function sendContactMessage(
         .filter((line) => line !== null)
         .join("\n"),
     });
-
-    if (error) {
-      console.error("[contact] send failed", error);
-      return {
-        error:
-          "We could not send that just now. Please try again, or email us directly.",
-      };
-    }
   } catch (error) {
-    console.error("[contact] send threw", error);
+    console.error("[contact] send failed", error);
     return {
       error:
         "We could not send that just now. Please try again, or email us directly.",
@@ -116,7 +106,7 @@ export async function sendContactMessage(
 
 /** Whether the form can actually deliver, so the page can say so honestly. */
 export async function contactIsConfigured(): Promise<boolean> {
-  return isConfigured("CONTACT_EMAIL") && env.resend.configured;
+  return isConfigured("CONTACT_EMAIL") && emailConfigured();
 }
 
 /** The address to show as a fallback, if one is configured. */

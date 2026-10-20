@@ -688,6 +688,11 @@ export const emailSends = pgTable(
     scheduledFor: timestamp("scheduled_for", { withTimezone: true }).notNull(),
     sentAt: timestamp("sent_at", { withTimezone: true }),
     qstashMessageId: text("qstash_message_id"),
+    /**
+     * Which provider accepted the send: `resend` or `postal`. Plain text rather
+     * than an enum so rows written by a retired provider still read back.
+     */
+    provider: text("provider"),
     providerMessageId: text("provider_message_id"),
     error: text("error"),
     /** Set for manual sends so the UI can tell them apart. */

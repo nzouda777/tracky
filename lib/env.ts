@@ -110,6 +110,31 @@ export const env = {
       return isConfigured("RESEND_API_KEY", "RESEND_FROM_EMAIL");
     },
   },
+  /**
+   * Our self-hosted Postal server: the fallback behind Resend. It sends from
+   * the same address as Resend (`RESEND_FROM_EMAIL`), so that domain has to be
+   * verified on both.
+   */
+  postal: {
+    get apiUrl(): string {
+      return required("POSTAL_API_URL").replace(/\/+$/, "");
+    },
+    get apiKey(): string {
+      return required("POSTAL_API_KEY");
+    },
+    get configured(): boolean {
+      return isConfigured("POSTAL_API_URL", "POSTAL_API_KEY", "RESEND_FROM_EMAIL");
+    },
+  },
+  email: {
+    /**
+     * When a send moves on to the next provider: only on a rate limit or
+     * quota refusal (the default), or on any failure.
+     */
+    get fallbackMode(): "rate_limit" | "any_error" {
+      return read("EMAIL_FALLBACK_MODE") === "any_error" ? "any_error" : "rate_limit";
+    },
+  },
   qstash: {
     get token(): string {
       return required("QSTASH_TOKEN");

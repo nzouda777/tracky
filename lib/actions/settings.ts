@@ -13,6 +13,7 @@ import {
   storeMemberships,
   users,
 } from "@/lib/db";
+import { emailConfigured, sendEmail } from "@/lib/email/providers";
 import { env } from "@/lib/env";
 import {
   AUTO_ADVANCE_MAX_DELAY_HOURS,
@@ -312,19 +313,16 @@ async function sendInviteEmail({
   inviteUrl: string;
   hasPassword: boolean;
 }): Promise<boolean> {
-  if (!env.resend.configured) return false;
+  if (!emailConfigured()) return false;
 
   try {
-    const { Resend } = await import("resend");
-    const resend = new Resend(env.resend.apiKey);
-
     const action = hasPassword
       ? "Accept the invitation with your existing Tracky password."
       : "Accept the invitation and choose a password.";
 
-    const { error } = await resend.emails.send({
+    await sendEmail({
       from: `${env.resend.fromName} <${env.resend.fromEmail}>`,
-      to: [to],
+      to,
       subject: `You have been invited to manage deliveries for ${storeName}`,
       html: `
         <p>Hello,</p>
@@ -336,7 +334,7 @@ async function sendInviteEmail({
       text: `You have been invited to help manage deliveries for ${storeName} in Tracky.\n\n${action}\n\n${inviteUrl}\n\nThis link expires in 7 days.`,
     });
 
-    return !error;
+    return true;
   } catch (error) {
     console.error("[invite] failed to send invitation email", error);
     return false;

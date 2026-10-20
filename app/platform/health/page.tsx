@@ -52,7 +52,13 @@ export default async function PlatformHealthPage() {
     {
       name: "Email (Resend)",
       configured: env.resend.configured,
-      note: "Without it, sends are recorded as failed and customers hear nothing.",
+      note: "Without it (and without Postal), sends are recorded as failed and customers hear nothing.",
+    },
+    {
+      name: "Email fallback (Postal)",
+      configured: env.postal.configured,
+      optional: true,
+      note: `Takes over when Resend hits a rate limit or quota (fallback mode: ${env.email.fallbackMode}).`,
     },
     {
       name: "Scheduling (QStash)",

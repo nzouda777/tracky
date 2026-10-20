@@ -120,6 +120,13 @@
       "when": 1791593017334,
       "tag": "0016_progression_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1792507986478,
+      "tag": "0017_email_send_provider",
+      "breakpoints": true
     }
   ]
 }

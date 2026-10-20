@@ -44,7 +44,7 @@ encryption key) are awkward to change later.
                      │ /admin  (owner)              │
    Staff    ────────▶│ /agency (dispatch, mobile)   │
                      ├──────────────────────────────┤
-   QStash   ────────▶│ /api/jobs/send-email         │──▶ Resend
+   QStash   ────────▶│ /api/jobs/send-email         │──▶ Resend (→ Postal)
    Vercel Cron ─────▶│ /api/cron/sweep-emails       │
                      └──────────────────────────────┘
 ```
@@ -55,7 +55,7 @@ Five managed services, none optional in production:
 | ---------------- | ------------------------------------------------- |
 | **Vercel**       | Hosting, cron                                     |
 | **Neon**         | Postgres                                          |
-| **Resend**       | Transactional email                               |
+| **Resend**       | Transactional email (Postal, self-hosted, as fallback) |
 | **Upstash QStash** | Delayed email scheduling                        |
 | **Vercel Blob**  | Store logos, photos of signed delivery notes      |
 
@@ -168,6 +168,23 @@ merchant's name in their inbox while the domain stays yours.
 > Until the domain is verified, sends fail and are recorded in `email_sends`
 > with `status = failed` and the provider's message. The app never crashes on
 > a failed send.
+
+### Fallback — Postal (self-hosted)
+
+When Resend refuses a send for a rate limit or a quota (HTTP 429,
+`daily_quota_exceeded`, `monthly_quota_exceeded`), the send is handed to our
+Postal server over its HTTP API. Any other refusal is recorded as `failed` and
+retried by QStash — it is not passed on. `EMAIL_FALLBACK_MODE=any_error`
+widens the hand-over to every failure.
+
+1. In the Postal web UI, create an API credential (type **API**) for the mail
+   server → `POSTAL_API_KEY`. Revoke any older key.
+2. Set `POSTAL_API_URL` to the server's base URL (no trailing slash).
+3. Postal sends from the same `RESEND_FROM_EMAIL`, so that domain needs SPF
+   and DKIM on **both** Resend and Postal.
+
+Each sent row records the provider that accepted it in
+`email_sends.provider`; the Email log page shows the Resend / Postal split.
 
 ---
 
@@ -316,6 +333,9 @@ previews).
 | --- | --- | --- |
 | `PLATFORM_NAME` | `Tracky` | Fallback display name. |
 | `RESEND_FROM_NAME` | `Tracky` | Fallback `From` name. |
+| `POSTAL_API_URL` | *(unset)* | Postal fallback base URL, e.g. `https://postal.your-domain`. |
+| `POSTAL_API_KEY` | *(unset)* | Postal server API key. Fallback is off until both are set. |
+| `EMAIL_FALLBACK_MODE` | `rate_limit` | `rate_limit` or `any_error` — when a send moves from Resend to Postal. |
 | `SHOPIFY_SCOPES` | `read_orders,write_orders,read_fulfillments,write_fulfillments` | Default for a store that does not override it. Keep in sync with each app's configuration. |
 | `SHOPIFY_API_VERSION` | `2025-07` | Default for a store that does not override it. See the note in step 14 before changing. |
 | `SHOPIFY_API_KEY` | *(unset)* | Fallback app client ID — see step 11. Only used by stores carrying no keys of their own. |
@@ -673,6 +693,7 @@ Nothing to deploy. Send the merchant to
 | `AUTH_SECRET` | Everyone is signed out | Change it, redeploy |
 | `CRON_SECRET` | None | Change it, redeploy |
 | `RESEND_API_KEY` | None | Change it, redeploy |
+| `POSTAL_API_KEY` | None | Create a new one in Postal, revoke the old, redeploy |
 | `QSTASH_*` | In-flight messages may fail their signature check | Rotate the signing keys in Upstash first; keep both current and next set |
 | `SHOPIFY_API_SECRET` | Breaks only the stores still falling back to it | Rotate in the Partner dashboard, update the variable, redeploy immediately |
 | A store's own app secret | **Breaks every webhook, OAuth flow and App Proxy request for that one store** | Rotate in the Partner dashboard, then paste the new secret under **Stores → Shopify app keys** (or in `/platform`, where it is audited). Takes effect on the next request, no redeploy |

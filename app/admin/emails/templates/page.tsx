@@ -21,9 +21,9 @@ import {
   type EmailDesignId,
 } from "@/lib/email/designs/catalog";
 import { MERGE_VARIABLES, sampleMergeContext } from "@/lib/email/merge";
+import { emailConfigured } from "@/lib/email/providers";
 import { SAMPLE_ORDER_FACTS } from "@/lib/email/order-facts";
 import { renderEmail } from "@/lib/email/render";
-import { env } from "@/lib/env";
 import { DesignGallery } from "./design-gallery";
 import { DesignSwatches } from "./design-swatches";
 import { HoomaSetForm } from "./hooma-set-form";
@@ -83,10 +83,11 @@ export default async function TemplatesPage() {
         }
       />
 
-      {!env.resend.configured ? (
+      {!emailConfigured() ? (
         <Alert tone="warning" title="Email sending is not configured">
-          Set RESEND_API_KEY and RESEND_FROM_EMAIL to start sending. You can
-          still write and preview templates without them.
+          Set RESEND_API_KEY and RESEND_FROM_EMAIL (or the Postal fallback) to
+          start sending. You can still write and preview templates without
+          them.
         </Alert>
       ) : null}
 
