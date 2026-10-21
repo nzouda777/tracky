@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 
 import { Alert, Card, CardBody, CardHeader, PageHeader } from "@/components/ui";
 import { requireOwner } from "@/lib/auth/session";
-import { parseProviderName, providerConfigured } from "@/lib/email/providers";
+import {
+  ATTEMPTS_BEFORE_FALLBACK,
+  parseProviderName,
+  providerConfigured,
+} from "@/lib/email/providers";
 import { env } from "@/lib/env";
 import { EmailProviderForm } from "./email-provider-form";
 
@@ -27,13 +31,11 @@ export default async function EmailDeliverySettingsPage() {
       />
 
       <Alert tone="info" title="How the fallback works">
-        Every email goes to the main provider first. The other one only takes
-        over when the main provider refuses it for a rate limit or a quota
+        Every email goes to the main provider first.{" "}
         {fallbackMode === "any_error"
-          ? " — or, as configured on this platform (EMAIL_FALLBACK_MODE=any_error), for any error at all."
-          : "; any other error is recorded in the email log and retried."}{" "}
-        Postal has no sending quota, so with Postal first, Resend rarely takes
-        over unless the platform runs in &ldquo;any error&rdquo; mode.
+          ? "On this platform (EMAIL_FALLBACK_MODE=any_error) the other provider takes over at the first failure."
+          : `If it fails, it is retried up to ${ATTEMPTS_BEFORE_FALLBACK} times in total, then the other provider takes over. A rate limit or quota refusal hands over at once.`}{" "}
+        If the other provider fails too, the email is marked failed in the log.
       </Alert>
 
       {!configured[primary] ? (

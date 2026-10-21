@@ -11,7 +11,7 @@ import {
 
 export * from "./types";
 
-/** Default order: Resend first, Postal when Resend is saturated. */
+/** Default order; a store can put Postal first (`stores.email_primary_provider`). */
 const CHAIN: EmailProvider[] = [resendProvider, postalProvider];
 
 export const EMAIL_PROVIDER_NAMES: EmailProviderName[] = CHAIN.map((p) => p.name);
@@ -50,24 +50,38 @@ export function emailConfigured(): boolean {
   return configuredChain().length > 0;
 }
 
-function shouldFallback(err: unknown): boolean {
-  if (env.email.fallbackMode === "any_error") return true;
-  return err instanceof RateLimitError;
-}
+/** How many times a provider is tried before the next one takes over. */
+export const ATTEMPTS_BEFORE_FALLBACK = 5;
+
+/** Pause before retry n (1-based): 0.5s, 1s, 2s, 4s. */
+const RETRY_BASE_DELAY_MS = 500;
+
+export type SendEmailOptions = {
+  /** Tries per provider before handing over; defaults to 5. */
+  attempts?: number;
+  /** First pause between tries, doubled each time; 0 in tests. */
+  retryDelayMs?: number;
+};
+
+const sleep = (ms: number) =>
+  ms > 0 ? new Promise<void>((resolve) => setTimeout(resolve, ms)) : Promise.resolve();
 
 /**
  * Sends one email through the first provider that accepts it. `chain`
  * defaults to the platform order; pass `providerChain(store.emailPrimaryProvider)`
  * for a store's own mail.
  *
- * A provider that refuses for a rate limit or quota hands over to the next
- * one; any other refusal is thrown, so the caller records it and QStash
- * retries. `EMAIL_FALLBACK_MODE=any_error` widens the hand-over to every
- * failure.
+ * Each provider but the last gets up to `attempts` tries, with a growing
+ * pause between them, before the next one takes over. Two refusals skip
+ * the retries and hand over at once: a rate limit or quota (retrying only
+ * makes it worse), and — with `EMAIL_FALLBACK_MODE=any_error` — any failure
+ * at all. The last provider is tried once and its error is thrown, so the
+ * caller records the send as failed.
  */
 export async function sendEmail(
   input: SendEmailInput,
   chain: EmailProvider[] = configuredChain(),
+  options: SendEmailOptions = {},
 ): Promise<SendEmailResult> {
   if (chain.length === 0) {
     throw new Error(
@@ -75,20 +89,36 @@ export async function sendEmail(
     );
   }
 
+  const attempts = Math.max(1, options.attempts ?? ATTEMPTS_BEFORE_FALLBACK);
+  const retryDelayMs = options.retryDelayMs ?? RETRY_BASE_DELAY_MS;
+  const handOverAtOnce = (err: unknown) =>
+    err instanceof RateLimitError || env.email.fallbackMode === "any_error";
+
   let lastErr: unknown;
   for (let i = 0; i < chain.length; i++) {
     const provider = chain[i];
     const isLast = i === chain.length - 1;
-    try {
-      return await provider.send(input);
-    } catch (err) {
-      lastErr = err;
-      if (isLast || !shouldFallback(err)) throw err;
-      console.warn(
-        `[email] ${provider.name} failed, falling back to ${chain[i + 1].name}`,
-        { idempotencyKey: input.idempotencyKey },
-      );
+    const tries = isLast ? 1 : attempts;
+
+    for (let attempt = 1; attempt <= tries; attempt++) {
+      try {
+        return await provider.send(input);
+      } catch (err) {
+        lastErr = err;
+        if (isLast) throw err;
+        if (handOverAtOnce(err) || attempt === tries) break;
+        console.warn(
+          `[email] ${provider.name} attempt ${attempt}/${tries} failed, retrying`,
+          { idempotencyKey: input.idempotencyKey },
+        );
+        await sleep(retryDelayMs * 2 ** (attempt - 1));
+      }
     }
+
+    console.warn(
+      `[email] ${provider.name} failed, falling back to ${chain[i + 1].name}`,
+      { idempotencyKey: input.idempotencyKey },
+    );
   }
   throw lastErr;
 }

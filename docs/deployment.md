@@ -171,11 +171,13 @@ merchant's name in their inbox while the domain stays yours.
 
 ### Fallback — Postal (self-hosted)
 
-When Resend refuses a send for a rate limit or a quota (HTTP 429,
-`daily_quota_exceeded`, `monthly_quota_exceeded`), the send is handed to our
-Postal server over its HTTP API. Any other refusal is recorded as `failed` and
-retried by QStash — it is not passed on. `EMAIL_FALLBACK_MODE=any_error`
-widens the hand-over to every failure.
+Each store picks its main provider (Settings → Email delivery); the other one
+is the fallback. The main provider gets up to **5 attempts** (pauses of 0.5s,
+1s, 2s, 4s) before the send is handed to the fallback. A rate limit or quota
+refusal (HTTP 429, `daily_quota_exceeded`, `monthly_quota_exceeded`) hands
+over at once, without retrying. `EMAIL_FALLBACK_MODE=any_error` skips the
+retries and hands over on the first failure of any kind. The fallback is tried
+once; if it also fails, the send is recorded as `failed`.
 
 1. In the Postal web UI, create an API credential (type **API**) for the mail
    server → `POSTAL_API_KEY`. Revoke any older key.
@@ -335,7 +337,7 @@ previews).
 | `RESEND_FROM_NAME` | `Tracky` | Fallback `From` name. |
 | `POSTAL_API_URL` | *(unset)* | Postal fallback base URL, e.g. `https://postal.your-domain`. |
 | `POSTAL_API_KEY` | *(unset)* | Postal server API key. Fallback is off until both are set. |
-| `EMAIL_FALLBACK_MODE` | `rate_limit` | `rate_limit` or `any_error` — when a send moves from Resend to Postal. |
+| `EMAIL_FALLBACK_MODE` | `rate_limit` | `rate_limit` (retry the main provider 5 times, rate limits hand over at once) or `any_error` (hand over on the first failure). |
 | `SHOPIFY_SCOPES` | `read_orders,write_orders,read_fulfillments,write_fulfillments` | Default for a store that does not override it. Keep in sync with each app's configuration. |
 | `SHOPIFY_API_VERSION` | `2025-07` | Default for a store that does not override it. See the note in step 14 before changing. |
 | `SHOPIFY_API_KEY` | *(unset)* | Fallback app client ID — see step 11. Only used by stores carrying no keys of their own. |

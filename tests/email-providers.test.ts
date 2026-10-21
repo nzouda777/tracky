@@ -12,7 +12,8 @@ import { postalProvider } from "@/lib/email/providers/postal";
 import { summariseVolume } from "@/lib/email/log";
 
 /**
- * The provider chain: Resend first, Postal only when Resend is saturated.
+ * The provider chain: the primary is tried up to five times, then the other
+ * provider takes over.
  *
  * The chain is passed in explicitly so these never touch a real provider;
  * Postal's own response handling is pinned against a stubbed `fetch`.
@@ -77,19 +78,69 @@ describe("sendEmail", () => {
     expect(postal.send).toHaveBeenCalledWith(INPUT);
   });
 
-  it("surfaces any other Resend error without calling Postal", async () => {
+  it("retries the primary five times before falling back on another error", async () => {
+    const postal = fakeProvider("postal", async () => {
+      throw new Error("Postal send failed: 500 Internal error");
+    });
+    const resend = fakeProvider("resend", async () => ({
+      provider: "resend",
+      providerMessageId: "re_9",
+    }));
+
+    const result = await sendEmail(INPUT, [postal, resend], { retryDelayMs: 0 });
+
+    expect(postal.send).toHaveBeenCalledTimes(5);
+    expect(resend.send).toHaveBeenCalledTimes(1);
+    expect(result).toEqual({ provider: "resend", providerMessageId: "re_9" });
+  });
+
+  it("stops retrying once the primary accepts", async () => {
+    let calls = 0;
+    const postal = fakeProvider("postal", async () => {
+      calls += 1;
+      if (calls < 3) throw new Error("Postal send failed: 502 Bad gateway");
+      return { provider: "postal", providerMessageId: "77" };
+    });
+    const resend = fakeProvider("resend", async () => ({
+      provider: "resend",
+      providerMessageId: "re_1",
+    }));
+
+    const result = await sendEmail(INPUT, [postal, resend], { retryDelayMs: 0 });
+
+    expect(postal.send).toHaveBeenCalledTimes(3);
+    expect(resend.send).not.toHaveBeenCalled();
+    expect(result.provider).toBe("postal");
+  });
+
+  it("hands over at once on a rate limit, without retrying", async () => {
+    const postal = fakeProvider("postal", async () => {
+      throw new RateLimitError("postal", "slow down");
+    });
+    const resend = fakeProvider("resend", async () => ({
+      provider: "resend",
+      providerMessageId: "re_2",
+    }));
+
+    await sendEmail(INPUT, [postal, resend], { retryDelayMs: 0 });
+
+    expect(postal.send).toHaveBeenCalledTimes(1);
+    expect(resend.send).toHaveBeenCalledTimes(1);
+  });
+
+  it("throws the fallback's error when both providers fail", async () => {
+    const postal = fakeProvider("postal", async () => {
+      throw new Error("Postal down");
+    });
     const resend = fakeProvider("resend", async () => {
       throw new Error("Invalid `to` field.");
     });
-    const postal = fakeProvider("postal", async () => ({
-      provider: "postal",
-      providerMessageId: "42",
-    }));
 
-    await expect(sendEmail(INPUT, [resend, postal])).rejects.toThrow(
-      "Invalid `to` field.",
-    );
-    expect(postal.send).not.toHaveBeenCalled();
+    await expect(
+      sendEmail(INPUT, [postal, resend], { retryDelayMs: 0 }),
+    ).rejects.toThrow("Invalid `to` field.");
+    expect(postal.send).toHaveBeenCalledTimes(5);
+    expect(resend.send).toHaveBeenCalledTimes(1);
   });
 
   it("falls back on any error in any_error mode", async () => {

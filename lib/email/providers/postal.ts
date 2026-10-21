@@ -16,12 +16,15 @@ type PostalResponse = {
   };
 };
 
+/** Per request, so five tries (with their pauses) stay under 40s. */
+const POSTAL_TIMEOUT_MS = 6_000;
+
 /**
  * Our self-hosted Postal server, over its HTTP API.
  *
  * Postal has no sending quota of its own; only an HTTP 429 (from a proxy in
- * front of it, say) counts as a rate limit, so with Postal first Resend takes
- * over on little else unless `EMAIL_FALLBACK_MODE=any_error`.
+ * front of it, say) counts as a rate limit. Any other failure is retried by
+ * `sendEmail`, and Resend takes over once Postal has failed five times.
  */
 export const postalProvider: EmailProvider = {
   name: "postal",
@@ -33,6 +36,8 @@ export const postalProvider: EmailProvider = {
   async send(input: SendEmailInput): Promise<SendEmailResult> {
     const res = await fetch(`${env.postal.apiUrl}/api/v1/send/message`, {
       method: "POST",
+      // A hung server must not eat the retries' time budget.
+      signal: AbortSignal.timeout(POSTAL_TIMEOUT_MS),
       headers: {
         "X-Server-API-Key": env.postal.apiKey,
         "content-type": "application/json",

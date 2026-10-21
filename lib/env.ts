@@ -141,8 +141,8 @@ export const env = {
   },
   email: {
     /**
-     * When a send moves on to the next provider: only on a rate limit or
-     * quota refusal (the default), or on any failure.
+     * When a send moves on to the next provider: after five failed attempts,
+     * or at once on a rate limit (the default); or at once on any failure.
      */
     get fallbackMode(): "rate_limit" | "any_error" {
       return read("EMAIL_FALLBACK_MODE") === "any_error" ? "any_error" : "rate_limit";
