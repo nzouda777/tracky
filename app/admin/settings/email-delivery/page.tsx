@@ -16,6 +16,7 @@ export default async function EmailDeliverySettingsPage() {
     resend: providerConfigured("resend"),
     postal: providerConfigured("postal"),
   };
+  const missing = { resend: env.resend.missing, postal: env.postal.missing };
   const fallbackMode = env.email.fallbackMode;
 
   return (
@@ -42,6 +43,21 @@ export default async function EmailDeliverySettingsPage() {
           provider.
         </Alert>
       ) : null}
+
+      {(["resend", "postal"] as const)
+        .filter((name) => missing[name].length > 0)
+        .map((name) => (
+          <Alert
+            key={name}
+            tone="warning"
+            title={`${name === "postal" ? "Postal" : "Resend"} is not configured on this deployment`}
+          >
+            Missing or empty: <code className="font-mono">{missing[name].join(", ")}</code>.
+            Vercel only applies environment variables to new deployments, so after
+            adding them in Vercel, redeploy — and check they are enabled for the
+            Production environment.
+          </Alert>
+        ))}
 
       <Card>
         <CardHeader title="Main provider" />

@@ -55,6 +55,7 @@ const SPACE: Record<string, string> = {
   "5": "20px",
   "6": "24px",
   "7": "28px",
+  "8": "32px",
   "9": "36px",
   "12": "48px",
   "16": "64px",
@@ -199,7 +200,7 @@ const IDENTITY = [
   rootRule(".min-h-dvh", "min-height:auto"),
   // Clearance below the theme's header, which otherwise sits right on the
   // tracker.
-  rootRule(".pt-16", `padding-top:${SPACE["16"]}`),
+  rootRule(".pt-8", `padding-top:${SPACE["8"]}`),
 
   rule(
     ".type-display",

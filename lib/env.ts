@@ -27,6 +27,11 @@ export function optional(name: string, fallback: string): string {
   return read(name) ?? fallback;
 }
 
+/** Which of `names` are unset or empty — names only, never values. */
+export function missingVariables(...names: string[]): string[] {
+  return names.filter((name) => read(name) === undefined);
+}
+
 /** True when a feature's credentials are present, so callers can degrade. */
 export function isConfigured(...names: string[]): boolean {
   return names.every((name) => read(name) !== undefined);
@@ -107,7 +112,11 @@ export const env = {
       return read("RESEND_REPLY_TO") ?? null;
     },
     get configured(): boolean {
-      return isConfigured("RESEND_API_KEY", "RESEND_FROM_EMAIL");
+      return this.missing.length === 0;
+    },
+    /** The variables Resend still needs, for the settings page. */
+    get missing(): string[] {
+      return missingVariables("RESEND_API_KEY", "RESEND_FROM_EMAIL");
     },
   },
   /**
@@ -123,7 +132,11 @@ export const env = {
       return required("POSTAL_API_KEY");
     },
     get configured(): boolean {
-      return isConfigured("POSTAL_API_URL", "POSTAL_API_KEY", "RESEND_FROM_EMAIL");
+      return this.missing.length === 0;
+    },
+    /** The variables Postal still needs, for the settings page. */
+    get missing(): string[] {
+      return missingVariables("POSTAL_API_URL", "POSTAL_API_KEY", "RESEND_FROM_EMAIL");
     },
   },
   email: {
