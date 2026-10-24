@@ -185,6 +185,35 @@ once; if it also fails, the send is recorded as `failed`.
 3. Postal sends from the same `RESEND_FROM_EMAIL`, so that domain needs SPF
    and DKIM on **both** Resend and Postal.
 
+Postal only takes Gmail addresses (`gmail.com`, `googlemail.com`) first. Mail
+to any other domain (iCloud, Outlook, Yahoo, custom domains…) always goes to
+Resend first, whatever the store's main provider: those mailbox providers
+soft-fail mail from a sending IP without an established reputation. Postal
+stays the fallback if Resend refuses. The list is `POSTAL_ALLOWED_DOMAINS` in
+`lib/email/providers/index.ts`.
+
+#### Delivery webhook
+
+Postal accepting an email (`status = sent`) does not mean it was delivered.
+The webhook reports what the recipient's server did, shown in the email log as
+*delivered*, *delayed (soft fail)*, *held*, *not delivered* or *bounced*.
+
+1. Generate a secret (`openssl rand -hex 32`) → `POSTAL_WEBHOOK_SECRET` in
+   Vercel, then redeploy.
+2. In Postal, mail server → **Webhooks** → **Add webhook**:
+   URL `https://<your app>/api/webhooks/postal?token=<POSTAL_WEBHOOK_SECRET>`,
+   events **MessageSent**, **MessageDelayed**, **MessageDeliveryFailed**,
+   **MessageHeld**, **MessageBounced**.
+3. Optional: copy Postal's signing public key into `POSTAL_WEBHOOK_PUBLIC_KEY`
+   so the RSA signature is checked as well as the token.
+
+On **MessageDeliveryFailed** (hard fail) or **MessageHeld**, the email is sent
+again through Resend once, and the log shows it under Resend with Postal's
+report kept. If the store has been paused, the order cancelled or the template
+deactivated since, it is not resent. A soft fail is only recorded: Postal keeps
+retrying, and a later hard fail triggers the reroute. A bounce is recorded but
+not resent — the address itself is usually the problem.
+
 Each sent row records the provider that accepted it in
 `email_sends.provider`; the Email log page shows the Resend / Postal split.
 
@@ -337,6 +366,8 @@ previews).
 | `RESEND_FROM_NAME` | `Tracky` | Fallback `From` name. |
 | `POSTAL_API_URL` | *(unset)* | Postal fallback base URL, e.g. `https://postal.your-domain`. |
 | `POSTAL_API_KEY` | *(unset)* | Postal server API key. Fallback is off until both are set. |
+| `POSTAL_WEBHOOK_SECRET` | *(unset)* | Token in the Postal delivery webhook URL. The webhook answers 503 until it is set. |
+| `POSTAL_WEBHOOK_PUBLIC_KEY` | *(unset)* | Postal's signing public key; when set, webhook signatures are verified too. |
 | `EMAIL_FALLBACK_MODE` | `rate_limit` | `rate_limit` (retry the main provider 5 times, rate limits hand over at once) or `any_error` (hand over on the first failure). |
 | `SHOPIFY_SCOPES` | `read_orders,write_orders,read_fulfillments,write_fulfillments` | Default for a store that does not override it. Keep in sync with each app's configuration. |
 | `SHOPIFY_API_VERSION` | `2025-07` | Default for a store that does not override it. See the note in step 14 before changing. |
@@ -696,6 +727,7 @@ Nothing to deploy. Send the merchant to
 | `CRON_SECRET` | None | Change it, redeploy |
 | `RESEND_API_KEY` | None | Change it, redeploy |
 | `POSTAL_API_KEY` | None | Create a new one in Postal, revoke the old, redeploy |
+| `POSTAL_WEBHOOK_SECRET` | Delivery reports are rejected until Postal's webhook URL carries the new token | Set the new value, redeploy, then update the URL in Postal |
 | `QSTASH_*` | In-flight messages may fail their signature check | Rotate the signing keys in Upstash first; keep both current and next set |
 | `SHOPIFY_API_SECRET` | Breaks only the stores still falling back to it | Rotate in the Partner dashboard, update the variable, redeploy immediately |
 | A store's own app secret | **Breaks every webhook, OAuth flow and App Proxy request for that one store** | Rotate in the Partner dashboard, then paste the new secret under **Stores → Shopify app keys** (or in `/platform`, where it is audited). Takes effect on the next request, no redeploy |

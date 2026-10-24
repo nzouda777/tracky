@@ -354,7 +354,7 @@ async function sendInviteEmail({
   hasPassword: boolean;
   primaryProvider: string;
 }): Promise<boolean> {
-  const chain = providerChain(primaryProvider);
+  const chain = providerChain(primaryProvider, to);
   if (chain.length === 0) return false;
 
   try {

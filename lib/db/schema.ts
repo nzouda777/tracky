@@ -699,6 +699,17 @@ export const emailSends = pgTable(
      */
     provider: text("provider"),
     providerMessageId: text("provider_message_id"),
+    /**
+     * What the recipient's mail server did with it, as reported by the
+     * provider's webhook (Postal only): `delayed` (soft fail, still being
+     * retried), `delivered`, `held`, `failed` (hard fail) or `bounced`. Null
+     * until a report arrives — `status = sent` only means the provider
+     * accepted the email.
+     */
+    deliveryStatus: text("delivery_status"),
+    /** The provider's last delivery report: the remote server's answer. */
+    deliveryDetail: text("delivery_detail"),
+    deliveryUpdatedAt: timestamp("delivery_updated_at", { withTimezone: true }),
     error: text("error"),
     /** Set for manual sends so the UI can tell them apart. */
     triggeredByUserId: uuid("triggered_by_user_id").references(() => users.id, {
@@ -710,6 +721,8 @@ export const emailSends = pgTable(
     index("email_sends_due_idx").on(table.status, table.scheduledFor),
     index("email_sends_order_idx").on(table.orderId),
     index("email_sends_store_idx").on(table.storeId),
+    // Postal webhooks find their send by the message ID Postal returned.
+    index("email_sends_provider_message_idx").on(table.providerMessageId),
     // A sequence step fires at most once per order: makes scheduling idempotent.
     uniqueIndex("email_sends_order_step_key").on(
       table.orderId,

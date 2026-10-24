@@ -24,12 +24,27 @@ export function parseProviderName(value: unknown): EmailProviderName {
 }
 
 /**
- * The providers that can actually send, in fallback order, with `primary`
- * (a store's choice) moved to the front. An unconfigured primary simply drops
- * out, so mail still goes through the other one.
+ * The only mailbox domains our Postal server sends to first. Other providers
+ * (iCloud, Outlook, Yahoo…) soft-fail or throttle a sending IP without an
+ * established reputation, so mail to any other domain goes to Resend first
+ * whatever the store's main provider is.
  */
-export function providerChain(primary?: string | null): EmailProvider[] {
-  const first = parseProviderName(primary);
+export const POSTAL_ALLOWED_DOMAINS = ["gmail.com", "googlemail.com"];
+
+/** Whether `to` is an address Resend should take first: anything but Gmail. */
+export function prefersResend(to: string | null | undefined): boolean {
+  const domain = to?.trim().toLowerCase().split("@").pop();
+  return domain !== undefined && domain !== "" && !POSTAL_ALLOWED_DOMAINS.includes(domain);
+}
+
+/**
+ * The providers that can actually send, in fallback order, with `primary`
+ * (a store's choice) moved to the front — or Resend, when `to` is on a
+ * domain that prefers it. An unconfigured primary simply drops out, so mail
+ * still goes through the other one.
+ */
+export function providerChain(primary?: string | null, to?: string | null): EmailProvider[] {
+  const first = prefersResend(to) ? "resend" : parseProviderName(primary);
   return [
     ...CHAIN.filter((provider) => provider.name === first),
     ...CHAIN.filter((provider) => provider.name !== first),

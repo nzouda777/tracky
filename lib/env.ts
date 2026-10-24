@@ -138,6 +138,20 @@ export const env = {
     get missing(): string[] {
       return missingVariables("POSTAL_API_URL", "POSTAL_API_KEY", "RESEND_FROM_EMAIL");
     },
+    /**
+     * Shared secret in the delivery webhook's URL (`?token=`). Without it the
+     * webhook endpoint answers 503 and accepts nothing.
+     */
+    get webhookSecret(): string | null {
+      return read("POSTAL_WEBHOOK_SECRET") ?? null;
+    },
+    /**
+     * Postal's signing public key (PEM, or the bare base64 Postal shows).
+     * When set, every webhook must also carry a valid `X-Postal-Signature`.
+     */
+    get webhookPublicKey(): string | null {
+      return read("POSTAL_WEBHOOK_PUBLIC_KEY") ?? null;
+    },
   },
   email: {
     /**

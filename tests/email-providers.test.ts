@@ -200,6 +200,28 @@ describe("providerChain", () => {
     expect(names("sendgrid")).toEqual(["resend", "postal"]);
   });
 
+  it("puts Resend first for every non-Gmail recipient, whatever the store chose", () => {
+    expect(names("postal")).toEqual(["postal", "resend"]);
+    expect(providerChain("postal", "Kirsty@iCloud.com").map((p) => p.name)).toEqual([
+      "resend",
+      "postal",
+    ]);
+    expect(providerChain("postal", "a@me.com")[0].name).toBe("resend");
+    expect(providerChain("postal", "a@outlook.com")[0].name).toBe("resend");
+    expect(providerChain("postal", "a@yahoo.fr")[0].name).toBe("resend");
+    expect(providerChain("postal", "a@shop.example")[0].name).toBe("resend");
+  });
+
+  it("keeps the store's choice for Gmail recipients", () => {
+    expect(providerChain("postal", "A@Gmail.com")[0].name).toBe("postal");
+    expect(providerChain("postal", "a@googlemail.com")[0].name).toBe("postal");
+  });
+
+  it("still sends non-Gmail mail through Postal when Resend is not configured", () => {
+    delete process.env.RESEND_API_KEY;
+    expect(providerChain("postal", "a@icloud.com").map((p) => p.name)).toEqual(["postal"]);
+  });
+
   it("drops an unconfigured primary so mail still goes out", () => {
     delete process.env.POSTAL_API_KEY;
     expect(names("postal")).toEqual(["resend"]);

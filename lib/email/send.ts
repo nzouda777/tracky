@@ -16,7 +16,7 @@ import { mayEmailOrder } from "@/lib/stores/tracking-window";
 import { buildTrackingLink } from "@/lib/tracking/links";
 import { buildMergeContext } from "./merge";
 import { buildOrderFacts } from "./order-facts";
-import { providerChain, sendEmail } from "./providers";
+import { providerChain, sendEmail, type SendEmailInput } from "./providers";
 import { renderEmail } from "./render";
 
 export type DispatchResult =
@@ -25,8 +25,8 @@ export type DispatchResult =
   | { status: "failed"; error: string };
 
 /**
- * Renders and sends one `email_sends` row through the provider chain (Resend,
- * then Postal), then records the outcome and which provider took it. Safe to
+ * Renders and sends one `email_sends` row through the provider chain (the
+ * store's main provider, then the other), then records the outcome and which provider took it. Safe to
  * call twice: a row that is no longer `scheduled` is skipped, which is what
  * makes the QStash job and the cron sweep able to overlap.
  */
@@ -45,32 +45,13 @@ export async function dispatchEmailSend(
   }
 
   try {
-    const context = await loadSendContext(send);
-    if ("skip" in context) {
-      await markSkipped(send.id, context.skip);
-      return { status: "skipped", reason: context.skip };
+    const prepared = await prepareSend(send);
+    if ("skip" in prepared) {
+      await markSkipped(send.id, prepared.skip);
+      return { status: "skipped", reason: prepared.skip };
     }
 
-    const { order, store, branding, template, stage } = context;
-
-    const rendered = await renderEmail({
-      subject: template.subject,
-      body: template.body,
-      previewText: template.previewText,
-      design: template.design,
-      designOptions: template.designOptions,
-      order: buildOrderFacts(order),
-      branding,
-      store,
-      context: buildMergeContext({
-        order,
-        store,
-        stage,
-        trackingLink: buildTrackingLink(store, order),
-      }),
-    });
-
-    const chain = providerChain(store.emailPrimaryProvider);
+    const chain = providerChain(prepared.store.emailPrimaryProvider, send.toEmail);
     if (chain.length === 0) {
       const reason =
         "Email provider is not configured (RESEND_API_KEY or POSTAL_API_KEY).";
@@ -79,7 +60,136 @@ export async function dispatchEmailSend(
     }
 
     // Throws on refusal; the catch below records it as failed.
-    const result = await sendEmail({
+    const result = await sendEmail(prepared.input, chain);
+
+    await db
+      .update(emailSends)
+      .set({
+        status: "sent",
+        sentAt: new Date(),
+        subject: prepared.input.subject,
+        provider: result.provider,
+        providerMessageId: result.providerMessageId,
+        // A retried send starts a new delivery: drop the previous report.
+        deliveryStatus: null,
+        deliveryDetail: null,
+        deliveryUpdatedAt: null,
+        error: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(emailSends.id, send.id));
+
+    return { status: "sent", providerMessageId: result.providerMessageId };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await markFailed(send.id, message);
+    return { status: "failed", error: message };
+  }
+}
+
+/**
+ * Sends again through Resend an email Postal accepted but then could not
+ * deliver (hard fail, or held), as reported by Postal's webhook.
+ *
+ * The caller has already claimed the row (its `delivery_status` moved to
+ * `failed`/`held`), which is what keeps a redelivered webhook from sending
+ * twice. A store paused, a cancelled order or a deactivated template since
+ * the first send means the email is not sent again — the row says why.
+ */
+export async function rerouteToResend(emailSendId: string): Promise<DispatchResult> {
+  const [send] = await db
+    .select()
+    .from(emailSends)
+    .where(eq(emailSends.id, emailSendId))
+    .limit(1);
+  if (!send) return { status: "skipped", reason: "Send record not found." };
+
+  const postalReport = send.deliveryDetail ?? "no detail";
+  const note = async (detail: string) => {
+    await db
+      .update(emailSends)
+      .set({ deliveryDetail: detail.slice(0, 1000), updatedAt: new Date() })
+      .where(eq(emailSends.id, send.id));
+  };
+
+  const chain = providerChain("resend").filter((p) => p.name === "resend");
+  if (chain.length === 0) {
+    const reason = "Resend is not configured, so it could not take over.";
+    await note(`${postalReport} — ${reason}`);
+    return { status: "skipped", reason };
+  }
+
+  try {
+    const prepared = await prepareSend(send);
+    if ("skip" in prepared) {
+      await note(`${postalReport} — not resent: ${prepared.skip}`);
+      return { status: "skipped", reason: prepared.skip };
+    }
+
+    // A key of its own: Resend has never seen this send, but a retried
+    // reroute must still not deliver it twice.
+    const result = await sendEmail(
+      { ...prepared.input, idempotencyKey: `${send.id}:reroute` },
+      chain,
+    );
+
+    await db
+      .update(emailSends)
+      .set({
+        status: "sent",
+        sentAt: new Date(),
+        provider: result.provider,
+        providerMessageId: result.providerMessageId,
+        // Resend sends no delivery reports here, so the outcome is unknown
+        // again; the detail keeps what Postal said.
+        deliveryStatus: null,
+        deliveryDetail: `Postal could not deliver (${postalReport}); resent via Resend.`.slice(0, 1000),
+        deliveryUpdatedAt: new Date(),
+        error: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(emailSends.id, send.id));
+
+    return { status: "sent", providerMessageId: result.providerMessageId };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await markFailed(
+      send.id,
+      `Postal could not deliver (${postalReport}); Resend fallback failed: ${message}`,
+    );
+    return { status: "failed", error: message };
+  }
+}
+
+/** Loads, checks and renders one send: everything but choosing a provider. */
+async function prepareSend(
+  send: EmailSend,
+): Promise<{ skip: string } | { store: typeof stores.$inferSelect; input: SendEmailInput }> {
+  const context = await loadSendContext(send);
+  if ("skip" in context) return context;
+
+  const { order, store, branding, template, stage } = context;
+
+  const rendered = await renderEmail({
+    subject: template.subject,
+    body: template.body,
+    previewText: template.previewText,
+    design: template.design,
+    designOptions: template.designOptions,
+    order: buildOrderFacts(order),
+    branding,
+    store,
+    context: buildMergeContext({
+      order,
+      store,
+      stage,
+      trackingLink: buildTrackingLink(store, order),
+    }),
+  });
+
+  return {
+    store,
+    input: {
       // Shared platform sending domain for v1; the store name carries the brand.
       from: `${store.name ?? env.resend.fromName} <${env.resend.fromEmail}>`,
       // Every template invites the customer to reply, so replies have to reach
@@ -92,27 +202,8 @@ export async function dispatchEmailSend(
       text: rendered.text,
       headers: { "X-Entity-Ref-ID": send.id },
       idempotencyKey: send.id,
-    }, chain);
-
-    await db
-      .update(emailSends)
-      .set({
-        status: "sent",
-        sentAt: new Date(),
-        subject: rendered.subject,
-        provider: result.provider,
-        providerMessageId: result.providerMessageId,
-        error: null,
-        updatedAt: new Date(),
-      })
-      .where(eq(emailSends.id, send.id));
-
-    return { status: "sent", providerMessageId: result.providerMessageId };
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    await markFailed(send.id, message);
-    return { status: "failed", error: message };
-  }
+    },
+  };
 }
 
 type SendContext =

@@ -110,6 +110,7 @@ export async function listEmailLog(tdb: TenantDb, filters: EmailLogFilters) {
       or(
         ilike(emailSends.toEmail, pattern),
         ilike(emailSends.error, pattern),
+        ilike(emailSends.deliveryDetail, pattern),
         ilike(orders.orderNumber, pattern),
       ) as SQL,
     );

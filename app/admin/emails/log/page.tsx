@@ -39,6 +39,21 @@ const TONES = {
   skipped: "neutral",
 } as const;
 
+/** What the recipient's server did, from the provider's webhook (Postal). */
+const DELIVERY = {
+  delivered: { tone: "success", label: "delivered" },
+  delayed: { tone: "warning", label: "delayed (soft fail)" },
+  held: { tone: "warning", label: "held" },
+  failed: { tone: "danger", label: "not delivered" },
+  bounced: { tone: "danger", label: "bounced" },
+} as const;
+
+function DeliveryBadge({ status }: { status: string | null }) {
+  if (!status) return null;
+  const entry = DELIVERY[status as keyof typeof DELIVERY];
+  return <Badge tone={entry?.tone ?? "neutral"}>{entry?.label ?? status}</Badge>;
+}
+
 const PROVIDER_LABELS: Record<string, string> = {
   resend: "Resend",
   postal: "Postal",
@@ -269,7 +284,12 @@ export default async function EmailLogPage({
                     ) : null}
                   </Td>
                   <Td>
-                    <Badge tone={TONES[send.status]}>{send.status}</Badge>
+                    <div className="flex flex-col items-start gap-1">
+                      <Badge tone={TONES[send.status]}>{send.status}</Badge>
+                      <span title={send.deliveryDetail ?? undefined}>
+                        <DeliveryBadge status={send.deliveryStatus} />
+                      </span>
+                    </div>
                   </Td>
                   <Td>
                     {send.provider ? (
@@ -391,6 +411,21 @@ function SendDetail({
 
   const fields: Array<[string, React.ReactNode]> = [
     ["Status", <Badge key="status" tone={TONES[send.status]}>{send.status}</Badge>],
+    [
+      "Delivery",
+      send.deliveryStatus ? (
+        <span key="delivery" className="inline-flex flex-wrap items-center gap-2">
+          <DeliveryBadge status={send.deliveryStatus} />
+          <span className="text-xs text-ink-500">
+            {formatDateTime(send.deliveryUpdatedAt)}
+          </span>
+        </span>
+      ) : send.status === "sent" ? (
+        "No delivery report yet"
+      ) : (
+        "—"
+      ),
+    ],
     ["Provider", send.provider ? providerLabel(send.provider) : "—"],
     [
       "Provider message ID",
@@ -445,6 +480,14 @@ function SendDetail({
             <dd className="mt-0.5 break-words text-ink-900">{value}</dd>
           </div>
         ))}
+        {send.deliveryDetail ? (
+          <div className="sm:col-span-2">
+            <dt className="text-xs font-medium text-ink-500">Delivery report</dt>
+            <dd className="mt-0.5 whitespace-pre-wrap break-words font-mono text-xs text-ink-600">
+              {send.deliveryDetail}
+            </dd>
+          </div>
+        ) : null}
         {send.error ? (
           <div className="sm:col-span-2">
             <dt className="text-xs font-medium text-ink-500">
