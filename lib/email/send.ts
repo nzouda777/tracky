@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 
 import {
   autoAdvanceSettings,
@@ -6,6 +6,7 @@ import {
   db,
   emailSends,
   emailTemplates,
+  orderStageHistory,
   orders,
   stages,
   stores,
@@ -170,13 +171,27 @@ async function prepareSend(
 
   const { order, store, branding, template, stage } = context;
 
+  // The store's stages and this order's history, for the designs that draw
+  // the progress and the list of updates.
+  const [allStages, history] = await Promise.all([
+    db
+      .select()
+      .from(stages)
+      .where(eq(stages.storeId, store.id))
+      .orderBy(asc(stages.position)),
+    db
+      .select()
+      .from(orderStageHistory)
+      .where(eq(orderStageHistory.orderId, order.id)),
+  ]);
+
   const rendered = await renderEmail({
     subject: template.subject,
     body: template.body,
     previewText: template.previewText,
     design: template.design,
     designOptions: template.designOptions,
-    order: buildOrderFacts(order),
+    order: buildOrderFacts(order, { stages: allStages, history }),
     branding,
     store,
     context: buildMergeContext({

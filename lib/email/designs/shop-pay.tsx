@@ -9,67 +9,70 @@ import {
   Text,
 } from "@react-email/components";
 
-import { checkpoints, isOffRoute } from "./journey";
+import { isOffRoute } from "./journey";
 import { EmailShell, authoredBody, mix, type EmailModel } from "./shared";
 
-const PAGE = "#F4F4F5";
+const PAGE = "#F2F1F7";
 const WHITE = "#FFFFFF";
 const INK = "#0B0B0F";
-const MUTED = "#6B6B76";
-const LINE = "#E6E6EA";
-/** Shop Pay's purple — the one colour this design is recognised by. */
+const MUTED = "#707079";
+const LINE = "#ECEBF2";
+/** Shop's purple — the one colour this design is recognised by. */
 const PURPLE = "#5A31F4";
+const GREEN = "#0E8A4F";
+const RED = "#C0392B";
 const SANS =
   "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
 
-function Card({
-  children,
-  padding = "24px",
-}: {
-  children: React.ReactNode;
-  padding?: string;
-}) {
+/** Updates shown on the timeline before "See N more updates". */
+const SHOWN = 3;
+
+function Card({ children, padding = "20px" }: { children: React.ReactNode; padding?: string }) {
   return (
-    <Section
-      style={{
-        backgroundColor: WHITE,
-        borderRadius: 20,
-        padding,
-        margin: "0 0 12px",
-      }}
-    >
+    <Section style={{ backgroundColor: WHITE, borderRadius: 18, padding, margin: "0 0 12px" }}>
       {children}
     </Section>
   );
 }
 
-function Label({ children }: { children: React.ReactNode }) {
-  return (
-    <Text
+/** A 44px rounded tile: the product photo, or the store's initial. */
+function Thumb({ src, label }: { src: string | null; label: string }) {
+  return src ? (
+    <Img
+      src={src}
+      alt={label}
+      width={44}
+      height={44}
+      style={{ borderRadius: 10, objectFit: "cover", display: "block" }}
+    />
+  ) : (
+    <div
       style={{
-        color: MUTED,
-        fontSize: 13,
-        fontWeight: 500,
-        lineHeight: "18px",
-        margin: "0 0 4px",
+        width: 44,
+        height: 44,
+        borderRadius: 10,
+        backgroundColor: mix(PURPLE, WHITE, 0.1),
+        color: PURPLE,
+        fontSize: 18,
+        fontWeight: 700,
+        lineHeight: "44px",
+        textAlign: "center",
       }}
     >
-      {children}
-    </Text>
+      {label.trim().charAt(0).toUpperCase() || "•"}
+    </div>
   );
 }
 
 /**
- * Shop Pay: the look of the Shop app's order updates. Rounded white cards on
- * a pale grey page, a bold status, a purple progress line with dots, a full
- * width purple pill to track the order, then the items and the delivery
- * address as cards of their own. The purple is fixed — it is what makes the
- * design read as Shop Pay — while the masthead stays the store's own logo.
+ * Shop Pay: the Shop app's tracking screen, without the map. A bold
+ * "Tracking" title over the order number, the status as a purple pill, the
+ * latest updates on a thick purple rail with "See more updates", the order
+ * number to copy, and the items as the app's home-list rows — thumbnail,
+ * title, price and store, status in colour. Rounded white cards on a faint
+ * lilac page; the masthead stays the store's own.
  */
 export function ShopPayLayout({ model }: { model: EmailModel }) {
-  const steps = checkpoints(model.stage);
-  const offRoute = isOffRoute(model.stage);
-  const track = mix(PURPLE, WHITE, 0.16);
   const body = authoredBody(model.html, {
     text: INK,
     muted: MUTED,
@@ -77,116 +80,157 @@ export function ShopPayLayout({ model }: { model: EmailModel }) {
     size: model.size - 1,
   });
 
-  const items = model.order?.items ?? [];
-  const addressLines = model.order?.addressLines.length
-    ? model.order.addressLines
-    : model.address
-      ? [model.address]
-      : [];
+  const order = model.order;
+  const items = order?.items ?? [];
+  const allEvents = order?.events.length
+    ? order.events
+    : [
+        {
+          title: model.stage || "Order confirmed",
+          detail: "",
+          date: model.orderDate,
+          time: "",
+        },
+      ];
+  const events = allEvents.slice(0, SHOWN);
+  const more = allEvents.length - events.length;
+
+  const delivered = /^\s*(order\s+)?delivered\b/i.test(model.stage);
+  const statusColor = delivered ? GREEN : isOffRoute(model.stage) ? RED : PURPLE;
+  const rail = mix(PURPLE, WHITE, 0.55);
 
   return (
     <EmailShell model={model} background={PAGE} font={SANS}>
-      <Container style={{ maxWidth: 480, margin: "0 auto", padding: "32px 12px 40px" }}>
-        <Section style={{ padding: "0 8px 20px", textAlign: "center" }}>
+      <Container style={{ maxWidth: 460, margin: "0 auto", padding: "28px 12px 40px" }}>
+        <Section style={{ padding: "0 8px 18px" }}>
           {model.logoUrl ? (
             <Img
               src={model.logoUrl}
               alt={model.storeName}
-              style={{ display: "inline-block", maxHeight: 36, maxWidth: 160, height: "auto" }}
+              style={{ display: "block", maxHeight: 30, maxWidth: 140, height: "auto" }}
             />
           ) : (
-            <Text style={{ color: INK, fontSize: 18, fontWeight: 700, margin: 0 }}>
+            <Text style={{ color: INK, fontSize: 16, fontWeight: 700, margin: 0 }}>
               {model.storeName}
             </Text>
           )}
         </Section>
 
-        <Card padding="28px 24px">
-          {model.orderNumber ? (
-            <Label>
-              Order {model.orderNumber}
-              {model.orderDate ? ` · ${model.orderDate}` : ""}
-            </Label>
-          ) : null}
+        <Card padding="24px 20px">
           <Text
             style={{
               color: INK,
-              fontSize: 28,
-              fontWeight: 700,
+              fontSize: 30,
+              fontWeight: 800,
               letterSpacing: "-0.02em",
               lineHeight: "34px",
               margin: 0,
             }}
           >
-            {model.stage || "Order confirmed"}
+            Tracking
+            {model.orderNumber ? (
+              <>
+                <br />
+                {model.orderNumber}
+              </>
+            ) : null}
           </Text>
 
-          {offRoute ? null : (
-            <Section style={{ padding: "24px 0 0" }}>
-              <Row>
-                {steps.map((step, index) => {
-                  const reached = step.state !== "next";
-                  return (
-                    <Column
-                      key={index}
-                      style={{ width: "33.33%", verticalAlign: "top" }}
-                    >
-                      <Row>
-                        <Column style={{ width: 14, verticalAlign: "middle" }}>
-                          <div
-                            style={{
-                              width: 14,
-                              height: 14,
-                              borderRadius: 999,
-                              backgroundColor: reached ? PURPLE : track,
-                              fontSize: 0,
-                              lineHeight: "14px",
-                            }}
-                          >
-                            &nbsp;
-                          </div>
-                        </Column>
-                        {index < steps.length - 1 ? (
-                          <Column style={{ verticalAlign: "middle", padding: "0 4px" }}>
-                            <div
-                              style={{
-                                height: 4,
-                                borderRadius: 999,
-                                backgroundColor:
-                                  steps[index + 1].state !== "next" ? PURPLE : track,
-                                fontSize: 0,
-                                lineHeight: "4px",
-                              }}
-                            >
-                              &nbsp;
-                            </div>
-                          </Column>
-                        ) : null}
-                      </Row>
-                      <Text
-                        style={{
-                          color: reached ? INK : MUTED,
-                          fontSize: 12,
-                          fontWeight: step.state === "now" ? 700 : 500,
-                          lineHeight: "16px",
-                          margin: "8px 4px 0 0",
-                        }}
-                      >
-                        {step.name}
-                      </Text>
-                    </Column>
-                  );
-                })}
-              </Row>
-            </Section>
-          )}
+          <Section style={{ padding: "14px 0 0" }}>
+            <span
+              style={{
+                display: "inline-block",
+                backgroundColor: mix(statusColor, WHITE, 0.1),
+                borderRadius: 999,
+                color: statusColor,
+                fontSize: 13,
+                fontWeight: 600,
+                padding: "5px 12px",
+              }}
+            >
+              {model.stage || "Order confirmed"}
+            </span>
+          </Section>
 
-          <Section style={{ padding: "24px 0 0" }}>
+          <Section style={{ padding: "18px 0 0" }}>
             <div dangerouslySetInnerHTML={{ __html: body }} />
           </Section>
 
+          {/* The rail: one thick rounded bar beside the updates. */}
+          <Section style={{ padding: "20px 0 0" }}>
+            <Row>
+              <Column style={{ width: 22, verticalAlign: "top" }}>
+                <div
+                  style={{
+                    width: 8,
+                    height: events.length * 56 - 12,
+                    borderRadius: 999,
+                    backgroundColor: rail,
+                    fontSize: 0,
+                    lineHeight: 0,
+                    margin: "4px 0 0",
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 8,
+                      height: 8,
+                      borderRadius: 999,
+                      backgroundColor: PURPLE,
+                    }}
+                  >
+                    &nbsp;
+                  </div>
+                </div>
+              </Column>
+              <Column style={{ verticalAlign: "top" }}>
+                {events.map((event, index) => (
+                  <Section key={index} style={{ height: 56 }}>
+                    <Text
+                      style={{
+                        color: INK,
+                        fontSize: 15,
+                        fontWeight: 600,
+                        lineHeight: "20px",
+                        margin: 0,
+                      }}
+                    >
+                      {event.title}
+                    </Text>
+                    <Text style={{ color: MUTED, fontSize: 12, lineHeight: "17px", margin: "3px 0 0" }}>
+                      {[event.detail, [event.date, event.time].filter(Boolean).join(", ")]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </Text>
+                  </Section>
+                ))}
+              </Column>
+            </Row>
+          </Section>
+
           {model.trackingUrl ? (
-            <Section style={{ padding: "24px 0 0" }}>
+            <Text style={{ fontSize: 14, fontWeight: 600, margin: "4px 0 0 22px" }}>
+              <Link href={model.trackingUrl} style={{ color: PURPLE, textDecoration: "none" }}>
+                {more > 0
+                  ? `See ${more} more update${more === 1 ? "" : "s"}`
+                  : "See tracking details"}
+              </Link>
+            </Text>
+          ) : null}
+
+          {model.orderNumber ? (
+            <Section style={{ borderTop: `1px solid ${LINE}`, margin: "20px 0 0", padding: "16px 0 0" }}>
+              <Text style={{ color: MUTED, fontSize: 12, lineHeight: "16px", margin: 0 }}>
+                Order number
+              </Text>
+              <Text style={{ color: PURPLE, fontSize: 15, fontWeight: 600, lineHeight: "22px", margin: "2px 0 0" }}>
+                {model.orderNumber}
+              </Text>
+            </Section>
+          ) : null}
+
+          {model.trackingUrl ? (
+            <Section style={{ padding: "20px 0 0" }}>
               <Button
                 href={model.trackingUrl}
                 style={{
@@ -208,39 +252,37 @@ export function ShopPayLayout({ model }: { model: EmailModel }) {
         </Card>
 
         {items.length > 0 ? (
-          <Card>
-            <Label>Items</Label>
+          <Card padding="8px 20px">
             {items.map((item, index) => (
               <Row
                 key={index}
-                style={{
-                  borderBottom:
-                    index === items.length - 1 ? undefined : `1px solid ${LINE}`,
-                }}
+                style={{ borderBottom: index === items.length - 1 ? undefined : `1px solid ${LINE}` }}
               >
-                <Column style={{ padding: "12px 0", verticalAlign: "top" }}>
-                  <Text style={{ color: INK, fontSize: 15, fontWeight: 600, lineHeight: "20px", margin: 0 }}>
+                <Column style={{ width: 56, padding: "14px 0", verticalAlign: "middle" }}>
+                  <Thumb src={item.imageUrl} label={model.storeName} />
+                </Column>
+                <Column style={{ padding: "14px 0", verticalAlign: "middle" }}>
+                  <Text style={{ color: INK, fontSize: 14, fontWeight: 600, lineHeight: "19px", margin: 0 }}>
                     {item.title}
+                    {item.quantity > 1 ? ` × ${item.quantity}` : ""}
                   </Text>
                   <Text style={{ color: MUTED, fontSize: 13, lineHeight: "18px", margin: "2px 0 0" }}>
-                    {[item.variant, `Qty ${item.quantity}`].filter(Boolean).join(" · ")}
+                    {[item.price, item.variant || model.storeName].filter(Boolean).join(" • ")}
                   </Text>
-                </Column>
-                <Column align="right" style={{ padding: "12px 0", verticalAlign: "top", width: "32%" }}>
-                  <Text style={{ color: INK, fontSize: 15, fontWeight: 600, margin: 0, textAlign: "right" }}>
-                    {item.price}
+                  <Text style={{ color: statusColor, fontSize: 13, fontWeight: 500, lineHeight: "18px", margin: "2px 0 0" }}>
+                    {model.stage || "Order confirmed"}
                   </Text>
                 </Column>
               </Row>
             ))}
-            {model.order?.total ? (
+            {order?.total ? (
               <Row style={{ borderTop: `1px solid ${LINE}` }}>
-                <Column style={{ padding: "14px 0 0" }}>
-                  <Text style={{ color: INK, fontSize: 15, fontWeight: 700, margin: 0 }}>Total</Text>
+                <Column style={{ padding: "14px 0" }}>
+                  <Text style={{ color: INK, fontSize: 14, fontWeight: 700, margin: 0 }}>Total</Text>
                 </Column>
-                <Column align="right" style={{ padding: "14px 0 0" }}>
-                  <Text style={{ color: INK, fontSize: 15, fontWeight: 700, margin: 0, textAlign: "right" }}>
-                    {model.order.total}
+                <Column align="right" style={{ padding: "14px 0" }}>
+                  <Text style={{ color: INK, fontSize: 14, fontWeight: 700, margin: 0, textAlign: "right" }}>
+                    {order.total}
                   </Text>
                 </Column>
               </Row>
@@ -248,19 +290,15 @@ export function ShopPayLayout({ model }: { model: EmailModel }) {
           </Card>
         ) : null}
 
-        {addressLines.length > 0 ? (
+        {(order?.addressLines.length || model.address) ? (
           <Card>
-            <Label>Delivering to</Label>
-            {addressLines.map((line, index) => (
+            <Text style={{ color: MUTED, fontSize: 12, lineHeight: "16px", margin: "0 0 4px" }}>
+              Delivering to
+            </Text>
+            {(order?.addressLines.length ? order.addressLines : [model.address]).map((line, index) => (
               <Text
                 key={index}
-                style={{
-                  color: INK,
-                  fontSize: 15,
-                  fontWeight: index === 0 ? 600 : 400,
-                  lineHeight: "22px",
-                  margin: 0,
-                }}
+                style={{ color: INK, fontSize: 14, fontWeight: index === 0 ? 600 : 400, lineHeight: "21px", margin: 0 }}
               >
                 {line}
               </Text>
@@ -268,7 +306,7 @@ export function ShopPayLayout({ model }: { model: EmailModel }) {
           </Card>
         ) : null}
 
-        <Section style={{ padding: "16px 12px 0", textAlign: "center" }}>
+        <Section style={{ padding: "12px 12px 0", textAlign: "center" }}>
           <Text style={{ color: MUTED, fontSize: 13, lineHeight: "20px", margin: 0 }}>
             Questions about your order? Reply to this email
             {model.helpUrl ? (
@@ -281,7 +319,7 @@ export function ShopPayLayout({ model }: { model: EmailModel }) {
             ) : null}
             .
           </Text>
-          <Text style={{ color: MUTED, fontSize: 11, lineHeight: "17px", margin: "16px 0 0" }}>
+          <Text style={{ color: MUTED, fontSize: 11, lineHeight: "17px", margin: "14px 0 0" }}>
             {model.footerText}
           </Text>
           {model.postalAddress ? (

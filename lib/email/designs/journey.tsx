@@ -31,7 +31,7 @@ const SANS =
  * store runs — so the tracker is placed → now → delivered, and the last one
  * only fills when the current stage says so.
  */
-export function checkpoints(stage: string) {
+function checkpoints(stage: string) {
   // Only a stage that *starts* by saying it was delivered counts: "Delivered"
   // or "Order delivered", never "Not delivered", "Could not be delivered" or
   // "Out for delivery". A false "Delivered" is the one thing this tracker

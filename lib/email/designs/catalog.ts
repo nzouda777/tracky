@@ -118,18 +118,18 @@ export const EMAIL_DESIGNS = [
   {
     id: "shopify",
     name: "Shopify",
-    tagline: "Like Shopify's own notifications",
+    tagline: "Like Shopify's own order pages",
     description:
-      "The stock Shopify order email: shop name and order number on top, a plain headline, a square button in your brand colour, then the order summary and customer information under thin rules.",
-    swatches: ["#FFFFFF", "#333333", "#E5E5E5"],
+      "\"Track your order\" under a thin top bar: a pale status card with a ticked progress line, the tracking history, the order summary with product photos, and the addresses, each in a hairline card.",
+    swatches: ["#FFFFFF", "#F0F7FB", "#1A1F2B"],
   },
   {
     id: "shop-pay",
     name: "Shop Pay",
-    tagline: "Purple, rounded, app-like",
+    tagline: "The Shop app's tracking screen",
     description:
-      "The Shop app's order updates: rounded white cards on pale grey, a bold status over a purple progress line, a purple pill to track, then items and address as cards.",
-    swatches: ["#F4F4F5", "#5A31F4", "#FFFFFF"],
+      "A bold \"Tracking\" title over the order number, the status as a purple pill, the latest updates on a thick purple rail, then the items as app-style rows with photo, price and status.",
+    swatches: ["#F2F1F7", "#5A31F4", "#FFFFFF"],
   },
 ] as const;
 
