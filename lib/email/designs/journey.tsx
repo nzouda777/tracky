@@ -31,7 +31,7 @@ const SANS =
  * store runs — so the tracker is placed → now → delivered, and the last one
  * only fills when the current stage says so.
  */
-function checkpoints(stage: string) {
+export function checkpoints(stage: string) {
   // Only a stage that *starts* by saying it was delivered counts: "Delivered"
   // or "Order delivered", never "Not delivered", "Could not be delivered" or
   // "Out for delivery". A false "Delivered" is the one thing this tracker
@@ -48,6 +48,16 @@ function checkpoints(stage: string) {
       state: delivered ? ("now" as const) : ("next" as const),
     },
   ];
+}
+
+/**
+ * A stage that has left the road to the door — cancelled, returned, failed,
+ * on hold — gets no tracker: a half-filled bar would say it is still coming.
+ */
+export function isOffRoute(stage: string): boolean {
+  return /cancel|return|refund|fail|lost|hold|undeliver|not delivered/i.test(
+    stage,
+  );
 }
 
 function Tile({
@@ -100,12 +110,7 @@ export function JourneyLayout({ model }: { model: EmailModel }) {
   const onAccent = visibleOn(WHITE, accent, INK);
   const empty = mix(INK, WHITE, 0.1);
   const steps = checkpoints(model.stage);
-  // A stage that has left the road to the door — cancelled, returned, failed,
-  // on hold — gets no tracker: a half-filled bar would say it is still coming.
-  const offRoute =
-    /cancel|return|refund|fail|lost|hold|undeliver|not delivered/i.test(
-      model.stage,
-    );
+  const offRoute = isOffRoute(model.stage);
   const body = authoredBody(model.html, {
     text: INK,
     muted: MUTED,

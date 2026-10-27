@@ -10,6 +10,8 @@ import { MaisonLayout } from "./maison";
 import { MinimalLayout } from "./minimal";
 import { NoirLayout } from "./noir";
 import type { DesignLayout } from "./shared";
+import { ShopPayLayout } from "./shop-pay";
+import { ShopifyLayout } from "./shopify";
 import { ShowroomLayout } from "./showroom";
 import { SpotlightLayout } from "./spotlight";
 import { TicketLayout } from "./ticket";
@@ -30,6 +32,8 @@ const LAYOUTS: Record<EmailDesignId, DesignLayout> = {
   ticket: TicketLayout,
   journey: JourneyLayout,
   hooma: HoomaLayout,
+  shopify: ShopifyLayout,
+  "shop-pay": ShopPayLayout,
 };
 
 /** The layout for a stored design id; unknown ids fall back to the default. */

@@ -115,6 +115,22 @@ export const EMAIL_DESIGNS = [
       "Logo on soft grey, a pastel gradient hero with an icon circle and the status as headline, a next-update note, an order card, items and address. Every text, colour and section is editable per template.",
     swatches: ["#F6F6F6", "#DBEAFE", "#3B82F6"],
   },
+  {
+    id: "shopify",
+    name: "Shopify",
+    tagline: "Like Shopify's own notifications",
+    description:
+      "The stock Shopify order email: shop name and order number on top, a plain headline, a square button in your brand colour, then the order summary and customer information under thin rules.",
+    swatches: ["#FFFFFF", "#333333", "#E5E5E5"],
+  },
+  {
+    id: "shop-pay",
+    name: "Shop Pay",
+    tagline: "Purple, rounded, app-like",
+    description:
+      "The Shop app's order updates: rounded white cards on pale grey, a bold status over a purple progress line, a purple pill to track, then items and address as cards.",
+    swatches: ["#F4F4F5", "#5A31F4", "#FFFFFF"],
+  },
 ] as const;
 
 /** Designs with their own settings panel in the template editor. */
