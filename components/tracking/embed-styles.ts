@@ -214,8 +214,17 @@ const IDENTITY = [
 
   `@keyframes tracky-waypoint-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.45;transform:scale(1.35)}}`,
   rule(".waypoint-pulse", "animation:tracky-waypoint-pulse 2.4s ease-in-out infinite"),
+  // `!important`, unlike everything else here: themes kill motion with blanket
+  // rules such as `svg { animation: none !important }`, and an important
+  // declaration outranks our id-scoped one whatever its specificity. The
+  // Processing glyph then sat still on the storefront while it turned on our
+  // own domain. Ours is important too, so the id decides it again.
   `@keyframes tracky-spin{to{transform:rotate(360deg)}}`,
-  rule(".tracking-spin", "animation:tracky-spin 1.6s linear infinite"),
+  rule(
+    ".tracking-spin",
+    "animation:tracky-spin 1.6s linear infinite !important;" +
+      "transform-origin:50% 50% !important",
+  ),
 ];
 
 const TYPE = [
@@ -349,7 +358,7 @@ const SM = [
 const REDUCED_MOTION =
   `@media (prefers-reduced-motion:reduce){` +
   rule(".waypoint-pulse", "animation:none") +
-  rule(".tracking-spin", "animation:none") +
+  rule(".tracking-spin", "animation:none !important") +
   `${S} *,${S} *::before,${S} *::after{animation-duration:.01ms !important;` +
   `animation-iteration-count:1 !important;transition-duration:.01ms !important}}`;
 
