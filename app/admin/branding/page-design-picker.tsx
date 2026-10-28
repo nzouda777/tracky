@@ -74,7 +74,92 @@ function Thumb({ design }: { design: PageDesign }) {
   if (design.layout === "atelier") return <AtelierThumb design={design} />;
   if (design.layout === "beaute") return <BeauteThumb design={design} />;
   if (design.layout === "maison") return <MaisonThumb design={design} />;
+  if (design.layout === "shopify") return <ShopifyThumb design={design} />;
+  if (design.layout === "shop") return <ShopThumb design={design} />;
   return <ColumnThumb design={design} />;
+}
+
+/** A top bar, "Track your order", a pale status card over ticked steps. */
+function ShopifyThumb({ design }: { design: PageDesign }) {
+  const p = design.preset;
+  const pale = p.sectionBackground ?? "#EEEEEE";
+  return (
+    <span aria-hidden className="block h-36 overflow-hidden" style={{ backgroundColor: p.backgroundColor, color: p.textColor }}>
+      <span className="flex justify-between border-b px-3 py-1.5 text-[7px]" style={{ borderColor: pale }}>
+        <span>Store</span>
+        <span className="opacity-60">Order #1042</span>
+      </span>
+      <span className="block px-3 pt-2">
+        <span className="block text-[11px] leading-tight">Track your order</span>
+        <span className="mt-1.5 block overflow-hidden rounded-[3px] border" style={{ borderColor: pale }}>
+          <span className="block px-1.5 py-1 text-[7px] font-semibold" style={{ backgroundColor: pale, color: p.primaryColor }}>
+            Out for delivery
+          </span>
+          <span className="flex items-center px-1.5 py-1.5">
+            {[2, 2, 1, 0].map((state, i) => (
+              <span key={i} className="flex flex-1 items-center">
+                <span
+                  className="size-2 shrink-0 rounded-full"
+                  style={{
+                    backgroundColor: state === 2 ? p.primaryColor : "#FFFFFF",
+                    border: state === 2 ? "none" : `1px solid ${state === 1 ? p.primaryColor : "#D5DCE2"}`,
+                  }}
+                />
+                {i < 3 ? (
+                  <span className="h-px flex-1" style={{ backgroundColor: state === 2 ? p.primaryColor : "#D5DCE2" }} />
+                ) : null}
+              </span>
+            ))}
+          </span>
+        </span>
+        <span className="mt-1.5 block rounded-[3px] border px-1.5 py-1" style={{ borderColor: pale }}>
+          {[0, 1].map((i) => (
+            <span key={i} className="flex items-center gap-1 py-[2px] text-[6px]">
+              <span className="size-1.5 rounded-full" style={{ backgroundColor: p.primaryColor }} />
+              Tracking update
+            </span>
+          ))}
+        </span>
+      </span>
+    </span>
+  );
+}
+
+/** "Tracking #1042", a purple pill, updates on a thick rail with dots. */
+function ShopThumb({ design }: { design: PageDesign }) {
+  const p = design.preset;
+  return (
+    <span aria-hidden className="block h-36 overflow-hidden px-2.5 pt-2.5" style={{ backgroundColor: p.backgroundColor, color: p.textColor }}>
+      <span className="block rounded-[8px] px-2.5 py-2" style={{ backgroundColor: p.sectionBackground ?? "#FFFFFF" }}>
+        <span className="block text-[12px] font-extrabold leading-none tracking-tight">Tracking</span>
+        <span className="block text-[9px] font-extrabold leading-tight">#1042</span>
+        <span
+          className="mt-1 inline-block rounded-full px-1.5 py-[1px] text-[6px] font-semibold"
+          style={{ color: p.primaryColor, backgroundColor: `${p.primaryColor}1A` }}
+        >
+          In transit
+        </span>
+        <span className="mt-1.5 flex gap-1.5">
+          <span className="relative block w-1.5 rounded-full" style={{ backgroundColor: `${p.primaryColor}66` }}>
+            {[0, 1, 2].map((i) => (
+              <span key={i} className="absolute left-[2px] block size-[2px] rounded-full bg-white" style={{ top: 3 + i * 13 }} />
+            ))}
+          </span>
+          <span className="flex flex-1 flex-col gap-1">
+            {["Arrived at depot", "Departed", "Order processed"].map((name) => (
+              <span key={name} className="block">
+                <span className="block text-[7px] font-semibold leading-tight">{name}</span>
+                <span className="block text-[5px] opacity-60">Melbourne · Apr 19</span>
+              </span>
+            ))}
+          </span>
+        </span>
+        <span className="mt-1 block text-[6px] font-semibold" style={{ color: p.primaryColor }}>
+          See 3 more updates
+        </span>
+      </span>
+    </span>
+  );
 }
 
 /** A Didone wordmark over a numbered index between hairlines. */

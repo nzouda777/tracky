@@ -10,19 +10,19 @@ import {
 } from "@react-email/components";
 
 import type { EmailOrderFacts } from "../order-facts";
-import {
-  EmailShell,
-  authoredBody,
-  mix,
-  visibleOn,
-  type EmailModel,
-} from "./shared";
+import { EmailShell, authoredBody, type EmailModel } from "./shared";
 
+// The palette of Shopify's own order status page, fixed rather than taken
+// from the store's branding: that recognisable teal is the point of the design.
 const WHITE = "#FFFFFF";
-const INK = "#1A1F2B";
-const MUTED = "#5F6B7A";
-const FAINT = "#8A94A3";
-const LINE = "#DDE6EE";
+const INK = "#13212E";
+const MUTED = "#5C6B7A";
+const FAINT = "#8593A1";
+const LINE = "#DCE7EE";
+const TEAL = "#0E7FA8";
+const TINT = "#F2F8FB";
+const TINT_LINE = "#D3E6F0";
+const PANEL = "#F7FBFD";
 const SANS =
   "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif";
 
@@ -78,7 +78,7 @@ function Disc({ state, accent }: { state: Step["state"]; accent: string }) {
 function Card({
   children,
   background = WHITE,
-  border = LINE,
+  border = TINT_LINE,
   padding = "24px 20px",
 }: {
   children: React.ReactNode;
@@ -117,9 +117,9 @@ function CardTitle({ children }: { children: React.ReactNode }) {
  * used only for status and links.
  */
 export function ShopifyLayout({ model }: { model: EmailModel }) {
-  const accent = visibleOn(model.accent, WHITE, INK);
-  const tint = mix(accent, WHITE, 0.06);
-  const tintLine = mix(accent, WHITE, 0.18);
+  const accent = TEAL;
+  const tint = TINT;
+  const tintLine = TINT_LINE;
   const body = authoredBody(model.html, {
     text: MUTED,
     muted: FAINT,
@@ -371,7 +371,7 @@ export function ShopifyLayout({ model }: { model: EmailModel }) {
           </Card>
         ) : null}
 
-        <Card background={mix(accent, WHITE, 0.03)}>
+        <Card background={PANEL} border={TINT_LINE}>
           <Row>
             {addressLines.length > 0 ? (
               <Column style={{ verticalAlign: "top", width: "50%", paddingRight: 16 }}>

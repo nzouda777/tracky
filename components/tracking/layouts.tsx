@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { TimelineEntry } from "@/lib/orders/stages";
 import type { PageLayout } from "@/lib/tracking/page-designs";
 import { monogramOf } from "@/lib/utils";
+import { ShopifyLayout, ShopLayout } from "./commerce-layouts";
 
 /**
  * The tracking page's alternative skeletons.
@@ -31,6 +32,38 @@ export type OrderParts = {
   delivered: boolean;
   cancelled: boolean;
 
+  /** The four phases, each dated by the first event that reached it. */
+  steps: Array<{
+    id: string;
+    name: string;
+    state: "done" | "now" | "next";
+    date: string | null;
+  }>;
+  /** Every recorded update, newest first, delivery proof on top. */
+  updates: Array<{
+    id: string;
+    title: string;
+    detail: string;
+    date: string;
+    time: string;
+  }>;
+  /** Empty when the store hides the order summary. */
+  items: Array<{
+    id: string;
+    title: string;
+    variant: string | null;
+    quantity: number;
+    price: string | null;
+    imageUrl: string | null;
+  }>;
+  total: string | null;
+  /** Full address lines, or city and country only for an unverified visitor. */
+  shipTo: string[];
+  unverified: boolean;
+  /** Where an unverified visitor confirms their email. */
+  verifyHref: string;
+  canEditAddress: boolean;
+
   pill: ReactNode;
   cancelledNotice: ReactNode;
   route: ReactNode;
@@ -40,7 +73,7 @@ export type OrderParts = {
   editAddress: ReactNode;
 };
 
-type LayoutProps = {
+export type LayoutProps = {
   storeName: string;
   /**
    * Whether the store's name or logo may appear. Off by default: embedded in
@@ -70,6 +103,8 @@ const LAYOUTS: Record<Exclude<PageLayout, "column">, (props: LayoutProps) => Rea
   beaute: BeauteLayout,
   maison: MaisonLayout,
   classic: ClassicLayout,
+  shopify: ShopifyLayout,
+  shop: ShopLayout,
 };
 
 export function DesignedLayout({

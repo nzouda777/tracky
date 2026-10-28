@@ -121,7 +121,7 @@ export const EMAIL_DESIGNS = [
     tagline: "Like Shopify's own order pages",
     description:
       "\"Track your order\" under a thin top bar: a pale status card with a ticked progress line, the tracking history, the order summary with product photos, and the addresses, each in a hairline card.",
-    swatches: ["#FFFFFF", "#F0F7FB", "#1A1F2B"],
+    swatches: ["#FFFFFF", "#F2F8FB", "#0E7FA8"],
   },
   {
     id: "shop-pay",

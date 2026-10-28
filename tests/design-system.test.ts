@@ -88,11 +88,13 @@ describe("colour roles stay reserved", () => {
 
   it("uses the delivered green only on the terminal waypoint", () => {
     // …and on the "Last update" card at the head of the event history, the
-    // one other place the page marks where the order is right now.
+    // one other place the page marks where the order is right now. The Shop
+    // layout sets a delivered order's status in it, as the Shop app does.
     const allowed = new Set([
       "components/tracking/branding.tsx",
       "components/tracking/route-line.tsx",
       "components/tracking/event-history.tsx",
+      "components/tracking/commerce-layouts.tsx",
     ]);
 
     const offenders = FILES.filter(

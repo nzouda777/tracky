@@ -330,6 +330,54 @@ export const PAGE_DESIGNS = [
       sectionBackground: "#F0F0F0",
     },
   },
+  {
+    id: "shopify",
+    layout: "shopify",
+    name: "Shopify",
+    tagline: "Shopify's own order status page",
+    description:
+      "\"Track your order\" under a thin top bar: a pale blue status card over a ticked, dated progress line, the tracking details, the order summary with product photos and the addresses.",
+    swatches: ["#FFFFFF", "#F2F8FB", "#0E7FA8"],
+    preset: {
+      primaryColor: "#0E7FA8",
+      accentColor: "#0E7FA8",
+      backgroundColor: "#FFFFFF",
+      textColor: "#13212E",
+      secondaryColor: "#0E7FA8",
+      fontFamily:
+        "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Helvetica Neue', sans-serif",
+      headingFontSize: 30,
+      contentAlignment: "left",
+      cardRadius: 6,
+      buttonRadius: 4,
+      buttonFullWidth: false,
+      sectionBackground: "#F2F8FB",
+    },
+  },
+  {
+    id: "shop",
+    layout: "shop",
+    name: "Shop Pay",
+    tagline: "The Shop app's tracking screen",
+    description:
+      "A bold \"Tracking\" title over the order number, the status as a purple pill, every update on a thick purple rail with a dot at each step, and the items as app-style rows.",
+    swatches: ["#F3F2F8", "#5A31F4", "#FFFFFF"],
+    preset: {
+      primaryColor: "#5A31F4",
+      accentColor: "#5A31F4",
+      backgroundColor: "#F3F2F8",
+      textColor: "#0B0B0F",
+      secondaryColor: "#5A31F4",
+      fontFamily:
+        "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif",
+      headingFontSize: 32,
+      contentAlignment: "left",
+      cardRadius: 18,
+      buttonRadius: 40,
+      buttonFullWidth: true,
+      sectionBackground: "#FFFFFF",
+    },
+  },
 ] as const;
 
 /**
@@ -910,6 +958,17 @@ const LAYERS: Record<PageDesignId, LayerRule[]> = {
       "(min-width:560px)",
     ],
     [`& ${P("classic-search")} form > ${P("button")}`, "grid-column:2;width:auto !important", "(min-width:560px)"],
+  ],
+
+  // --- Shopify and Shop: drawn inline by their layouts -----------------------
+  shopify: [
+    [`& ${P("footer")}`, "text-align:center;border-top-width:1px"],
+    [`& ${P("waiting")}`, "align-self:center"],
+  ],
+  shop: [
+    [`& ${P("footer")}`, "text-align:center;border-top-width:0 !important;margin-top:8px !important"],
+    [`& ${P("help")}`, "border:0 !important;background:var(--brand-section) !important"],
+    [`& ${P("faq")} details`, "border:0 !important;background:var(--brand-section) !important"],
   ],
 };
 

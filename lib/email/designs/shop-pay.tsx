@@ -156,36 +156,40 @@ export function ShopPayLayout({ model }: { model: EmailModel }) {
             <div dangerouslySetInnerHTML={{ __html: body }} />
           </Section>
 
-          {/* The rail: one thick rounded bar beside the updates. */}
+          {/* The rail: one thick rounded bar, built a segment per update so
+              every step gets its own white dot. The newest is solid purple. */}
           <Section style={{ padding: "20px 0 0" }}>
-            <Row>
-              <Column style={{ width: 22, verticalAlign: "top" }}>
-                <div
-                  style={{
-                    width: 8,
-                    height: events.length * 56 - 12,
-                    borderRadius: 999,
-                    backgroundColor: rail,
-                    fontSize: 0,
-                    lineHeight: 0,
-                    margin: "4px 0 0",
-                  }}
-                >
-                  <div
+            {events.map((event, index) => {
+              const first = index === 0;
+              const last = index === events.length - 1;
+              return (
+                <Row key={index}>
+                  <Column
                     style={{
-                      width: 8,
-                      height: 8,
-                      borderRadius: 999,
-                      backgroundColor: PURPLE,
+                      width: 10,
+                      height: 58,
+                      verticalAlign: "top",
+                      backgroundColor: first ? PURPLE : rail,
+                      borderRadius: `${first ? "999px 999px" : "0 0"} ${last ? "999px 999px" : "0 0"}`,
+                      textAlign: "center",
                     }}
                   >
-                    &nbsp;
-                  </div>
-                </div>
-              </Column>
-              <Column style={{ verticalAlign: "top" }}>
-                {events.map((event, index) => (
-                  <Section key={index} style={{ height: 56 }}>
+                    <div
+                      style={{
+                        width: first ? 6 : 4,
+                        height: first ? 6 : 4,
+                        margin: first ? "6px auto 0" : "7px auto 0",
+                        borderRadius: 999,
+                        backgroundColor: WHITE,
+                        fontSize: 0,
+                        lineHeight: 0,
+                      }}
+                    >
+                      &nbsp;
+                    </div>
+                  </Column>
+                  <Column style={{ width: 14 }}>&nbsp;</Column>
+                  <Column style={{ verticalAlign: "top", paddingBottom: last ? 0 : 14 }}>
                     <Text
                       style={{
                         color: INK,
@@ -202,10 +206,10 @@ export function ShopPayLayout({ model }: { model: EmailModel }) {
                         .filter(Boolean)
                         .join(" · ")}
                     </Text>
-                  </Section>
-                ))}
-              </Column>
-            </Row>
+                  </Column>
+                </Row>
+              );
+            })}
           </Section>
 
           {model.trackingUrl ? (

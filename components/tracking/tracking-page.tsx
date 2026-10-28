@@ -14,6 +14,7 @@ import { getPageDesign } from "@/lib/tracking/page-designs";
 import { DesignedLayout, type OrderParts } from "./layouts";
 import { RouteLine } from "./route-line";
 import { buildPhaseTimeline } from "@/lib/orders/stages";
+import { phaseOf } from "@/lib/stages/defaults";
 
 const SCOPE_ID = "tracky-tracking";
 
@@ -265,6 +266,18 @@ function orderParts({
   );
   const currentIndex = phases.findIndex((entry) => entry.state === "current");
 
+  // Each phase is dated by the first recorded event that reached it, never by
+  // a prediction; "Order placed" falls back to the order date itself.
+  const reachedAt = new Map<string, Date>();
+  for (const { event, stage: eventStage } of [...events].reverse()) {
+    if (eventStage && !reachedAt.has(phaseOf(eventStage))) {
+      reachedAt.set(phaseOf(eventStage), event.occurredAt);
+    }
+  }
+  if (!reachedAt.has("placed")) reachedAt.set("placed", order.orderDate);
+
+  const showSummary = branding.showOrderSummary;
+
   return {
     orderNumber: order.orderNumber,
     customer: unverified
@@ -296,6 +309,56 @@ function orderParts({
         </p>
       </div>
     ) : null,
+    steps: phases.map((entry) => {
+      const reached = entry.state !== "upcoming";
+      const at = reached ? reachedAt.get(entry.stage.phase) : undefined;
+      return {
+        id: entry.stage.id,
+        name: entry.stage.name,
+        state:
+          entry.state === "complete" || (entry.state === "current" && entry.stage.isTerminal)
+            ? ("done" as const)
+            : reached
+              ? ("now" as const)
+              : ("next" as const),
+        date: at ? formatDay(at) : null,
+      };
+    }),
+    updates: [
+      ...(proof
+        ? [
+            {
+              id: "proof",
+              title: "Delivered",
+              detail: proof.recipientName ? `Signed for by ${proof.recipientName}` : "",
+              date: formatDay(proof.deliveredAt),
+              time: formatTime(proof.deliveredAt),
+            },
+          ]
+        : []),
+      ...events.map(({ event, stage: eventStage }) => ({
+        id: event.id,
+        title: eventStage?.name ?? "Update",
+        detail: event.note || eventStage?.description || "",
+        date: formatDay(event.occurredAt),
+        time: formatTime(event.occurredAt),
+      })),
+    ],
+    items: showSummary
+      ? order.lineItems.map((item, index) => ({
+          id: `${item.id ?? item.title}-${index}`,
+          title: item.title,
+          variant: item.variantTitle?.trim() || null,
+          quantity: item.quantity,
+          price: formatCodeAmount(item.price, order.currency) || null,
+          imageUrl: item.imageUrl?.trim() || null,
+        }))
+      : [],
+    total: showSummary ? formatCodeAmount(order.total, order.currency) || null : null,
+    shipTo: shipToLines(order, unverified),
+    unverified,
+    verifyHref,
+    canEditAddress: !unverified && canEditAddress,
     route: <RouteLine timeline={phases} />,
     waiting: settled ? null : <WaitingIndicator />,
     events: <EventHistory events={events} proof={proof} />,
@@ -494,14 +557,7 @@ function Manifest({
   verifyHref: string;
   canEditAddress: boolean;
 }) {
-  const address = order.shippingAddress;
-  const shipTo = unverified
-    ? // City and country only: enough to confirm it is going to the right
-      // place, not enough to be someone's doorstep.
-      [address?.city, address?.country]
-        .map((line) => line?.trim())
-        .filter((line): line is string => Boolean(line))
-    : formatAddressLines(address);
+  const shipTo = shipToLines(order, unverified);
 
   return (
     <section data-part="manifest">
@@ -634,6 +690,35 @@ function Manifest({
       </dl>
     </section>
   );
+}
+
+/** The delivery address as lines, or only city and country when unverified. */
+function shipToLines(order: Order, unverified: boolean): string[] {
+  const address = order.shippingAddress;
+  return unverified
+    ? // City and country only: enough to confirm it is going to the right
+      // place, not enough to be someone's doorstep.
+      [address?.city, address?.country]
+        .map((line) => line?.trim())
+        .filter((line): line is string => Boolean(line))
+    : formatAddressLines(address);
+}
+
+/** `Sep 24, 2025` */
+function formatDay(at: Date): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(at);
+}
+
+/** `9:12 AM` */
+function formatTime(at: Date): string {
+  return new Intl.DateTimeFormat("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(at);
 }
 
 /**
