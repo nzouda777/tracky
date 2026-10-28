@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { getCurrentUser, getMemberships } from "@/lib/auth/session";
+import { LEGAL_PAGES } from "@/lib/legal";
 import { MarketingNavLink } from "./nav-link";
 
 const NAV = [
@@ -128,25 +129,48 @@ export async function SiteShell({ children }: { children: React.ReactNode }) {
               </p>
             </div>
 
-            <nav aria-label="Footer">
-              <ul className="space-y-2 text-sm">
-                {NAV.map((item) => (
-                  <li key={item.href}>
-                    <Link
-                      href={item.href}
-                      className="text-ink-600 hover:text-ink-900"
-                    >
-                      {item.label}
+            <div className="flex flex-wrap gap-x-16 gap-y-8">
+              <nav aria-label="Footer">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-500">
+                  Tracky
+                </h2>
+                <ul className="mt-3 space-y-2 text-sm">
+                  {NAV.map((item) => (
+                    <li key={item.href}>
+                      <Link
+                        href={item.href}
+                        className="text-ink-600 hover:text-ink-900"
+                      >
+                        {item.label}
+                      </Link>
+                    </li>
+                  ))}
+                  <li>
+                    <Link href="/login" className="text-ink-600 hover:text-ink-900">
+                      Sign in
                     </Link>
                   </li>
-                ))}
-                <li>
-                  <Link href="/login" className="text-ink-600 hover:text-ink-900">
-                    Sign in
-                  </Link>
-                </li>
-              </ul>
-            </nav>
+                </ul>
+              </nav>
+
+              <nav aria-label="Legal">
+                <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-500">
+                  Legal
+                </h2>
+                <ul className="mt-3 space-y-2 text-sm">
+                  {LEGAL_PAGES.map((page) => (
+                    <li key={page.href}>
+                      <Link
+                        href={page.href}
+                        className="text-ink-600 hover:text-ink-900"
+                      >
+                        {page.label}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </nav>
+            </div>
           </div>
 
           <p className="mt-8 border-t border-ink-200 pt-6 text-xs text-ink-500">
